@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quanta — AI для работы со знаниями</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d0d0d;
+            --bg-secondary: #141414;
+            --bg-card: #1a1a1a;
+            --bg-input: #1e1e1e;
+            --bg-hover: #252525;
+            --text-primary: #e8e8e8;
+            --text-secondary: #888888;
+            --text-muted: #555555;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --border: #262626;
+            --border-light: #333333;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Background particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(13, 13, 13, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .github-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .github-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-light);
+        }
+
+        /* Main content */
+        main {
+            position: relative;
+            z-index: 1;
+            padding-top: 80px;
+        }
+
+        /* Hero section */
+        .hero {
+            min-height: calc(100vh - 80px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .hero-logo {
+            font-size: 4rem;
+            font-weight: 700;
+            letter-spacing: -2px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #fff 0%, #888 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+
+        /* Input area */
+        .input-container {
+            width: 100%;
+            max-width: 700px;
+            margin-bottom: 24px;
+        }
+
+        .input-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .input-textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            resize: none;
+            min-height: 60px;
+            max-height: 200px;
+        }
+
+        .input-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .input-left {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .send-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            border: none;
+            color: var(--bg-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            background: #fff;
+        }
+
+        /* Mode selector */
+        .mode-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-selector:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* Quick actions */
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .quick-action:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-light);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .quick-action svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Features section */
+        .features {
+            padding: 80px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Stats section */
+        .stats {
+            padding: 60px 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 32px;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* How it works */
+        .how-it-works {
+            padding: 80px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .step {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            padding: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+        }
+
+        .step-content p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 20px;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                padding: 12px 16px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero-logo {
+                font-size: 2.5rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .step {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .step-number {
+                margin: 0 auto;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Typing effect */
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background: var(--accent);
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Code block styling */
+        pre {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-input);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Workspace — панель вывода результатов AI, в стиле input-wrapper/feature-card */
+        .workspace {
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto 32px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            text-align: left;
+            overflow: hidden;
+        }
+
+        .workspace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .workspace-body {
+            padding: 18px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .msg {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .msg-role {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .msg-user .msg-role { color: var(--accent-hover); }
+
+        .msg-content {
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .msg-content img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-top: 8px;
+        }
+
+        .msg-content table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+
+        .msg-content th, .msg-content td {
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        .ws-download {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: var(--accent);
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .ws-download:hover { background: var(--accent-hover); }
+
+        .ws-loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Header -->
+    <header>
+        <a href="#" class="logo">
+            <div class="logo-icon">Q</div>
+            <span>Quanta</span>
+        </a>
+        <nav class="nav-links">
+            <a href="#features" class="nav-link">Возможности</a>
+            <a href="#how-it-works" class="nav-link">Как работает</a>
+            <a href="#stats" class="nav-link">Статистика</a>
+        </nav>
+        <a href="https://github.com" target="_blank" class="github-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            GitHub
+        </a>
+    </header>
+
+    <!-- Main -->
+    <main>
+        <!-- Hero -->
+        <section class="hero">
+            <h1 class="hero-logo animate-in">QUANTA</h1>
+            <p class="hero-subtitle animate-in delay-1">
+                AI-платформа для работы со знаниями, генерации контента и анализа данных
+            </p>
+
+            <!-- Input -->
+            <div class="input-container animate-in delay-2">
+                <div class="input-wrapper">
+                    <textarea 
+                        class="input-textarea" 
+                        placeholder="Опишите задачу или задайте вопрос..."
+                        id="mainInput"
+                        rows="3"
+                    ></textarea>
+                    <div class="input-actions">
+                        <div class="input-left">
+                            <button class="icon-btn" title="Загрузить файл" onclick="triggerFileUpload()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </button>
+                            <button class="icon-btn" id="voiceBtn" title="Голосовой ввод" onclick="startVoiceInput()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="23"/>
+                                    <line x1="8" y1="23" x2="16" y2="23"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button class="mode-selector" onclick="toggleModel()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                                <span id="modeLabel">Быстрый</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </button>
+                            <button class="send-btn" onclick="handleSend()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="22" y1="2" x2="11" y2="13"/>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions animate-in delay-3">
+                <button class="quick-action" onclick="runQuickAction('cluster')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                    Кластер
+                </button>
+                <button class="quick-action" onclick="runQuickAction('slides')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    Слайды
+                </button>
+                <button class="quick-action" onclick="runQuickAction('research')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        <line x1="11" y1="8" x2="11" y2="14"/>
+                        <line x1="8" y1="11" x2="14" y2="11"/>
+                    </svg>
+                    Глубокое исследование
+                </button>
+                <button class="quick-action" onclick="runQuickAction('website')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <line x1="2" y1="8" x2="22" y2="8"/>
+                        <line x1="6" y1="12" x2="6" y2="12"/>
+                        <line x1="10" y1="12" x2="10" y2="12"/>
+                    </svg>
+                    Сайты
+                </button>
+                <button class="quick-action" onclick="triggerFileUpload()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    Документы
+                </button>
+                <button class="quick-action" onclick="runQuickAction('table')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <line x1="3" y1="9" x2="21" y2="9"/>
+                        <line x1="3" y1="15" x2="21" y2="15"/>
+                        <line x1="9" y1="3" x2="9" y2="21"/>
+                        <line x1="15" y1="3" x2="15" y2="21"/>
+                    </svg>
+                    Таблицы
+                </button>
+            </div>
+
+            <!-- Панель вывода AI -->
+            <div class="workspace" id="workspace" style="display:none;">
+                <div class="workspace-header">
+                    <span id="workspaceTitle">Quanta AI</span>
+                    <button class="icon-btn" onclick="closeWorkspace()" title="Закрыть">✕</button>
+                </div>
+                <div class="workspace-body" id="workspaceBody"></div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="features" id="features">
+            <h2 class="section-title">Возможности Quanta</h2>
+            <p class="section-subtitle">Всё, что нужно для работы с информацией и создания контента</p>
+            <div class="features-grid">
+                <div class="feature-card" onclick="document.getElementById('mainInput').scrollIntoView({behavior:'smooth', block:'center'}); document.getElementById('mainInput').focus();">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">🤖</div>
+                    <h3>AI-ассистент</h3>
+                    <p>Умный чат-бот на базе современных языковых моделей. Отвечает на вопросы, пишет код, объясняет сложные темы простым языком.</p>
+                </div>
+                <div class="feature-card" onclick="triggerFileUpload()">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">📄</div>
+                    <h3>Анализ документов</h3>
+                    <p>Загружайте PDF, DOCX, TXT файлы. AI извлечёт ключевую информацию, создаст摘要, ответит на вопросы по содержимому.</p>
+                </div>
+                <div class="feature-card" onclick="runQuickAction('image')">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎨</div>
+                    <h3>Генерация изображений</h3>
+                    <p>Создавайте уникальные изображения по текстовому описанию. Подходит для иллюстраций, дизайна и визуализации идей.</p>
+                </div>
+                <div class="feature-card" onclick="triggerFileUpload()">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">📊</div>
+                    <h3>Анализ данных</h3>
+                    <p>Загружайте CSV и Excel файлы. Стройте графики, получайте статистические инсайты, прогнозируйте тренды.</p>
+                </div>
+                <div class="feature-card" onclick="runQuickAction('research')">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">🔬</div>
+                    <h3>Deep Research</h3>
+                    <p>Глубокое исследование любой темы. AI соберёт информацию из множества источников и представит структурированный отчёт.</p>
+                </div>
+                <div class="feature-card" onclick="runQuickAction('slides')">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">📽️</div>
+                    <h3>Генерация презентаций</h3>
+                    <p>Превращайте текст в профессиональные слайды. Выбирайте темы оформления, добавляйте диаграммы и изображения.</p>
+                </div>
+                <div class="feature-card" onclick="runQuickAction('website')">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">🌐</div>
+                    <h3>Веб-скрапинг</h3>
+                    <p>Анализируйте любые веб-страницы. Извлекайте текст, изображения, структурированные данные — всё автоматически.</p>
+                </div>
+                <div class="feature-card" onclick="runQuickAction('code')">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">💻</div>
+                    <h3>Помощь в кодинге</h3>
+                    <p>Пишет, объясняет и отлаживает код на 50+ языках программирования. От Python до Rust, от JavaScript до Go.</p>
+                </div>
+                <div class="feature-card" onclick="runQuickAction('translate')">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">🌍</div>
+                    <h3>Умный перевод</h3>
+                    <p>Перевод с сохранением контекста, стиля и терминологии. Поддержка 100+ языков, включая редкие и технические.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="stats" id="stats">
+            <div class="stats-grid">
+                <div>
+                    <div class="stat-value">50+</div>
+                    <div class="stat-label">Языков программирования</div>
+                </div>
+                <div>
+                    <div class="stat-value">100+</div>
+                    <div class="stat-label">Языков перевода</div>
+                </div>
+                <div>
+                    <div class="stat-value">9</div>
+                    <div class="stat-label">Модулей AI</div>
+                </div>
+                <div>
+                    <div class="stat-value">∞</div>
+                    <div class="stat-label">Возможностей</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How it works -->
+        <section class="how-it-works" id="how-it-works">
+            <h2 class="section-title">Как это работает</h2>
+            <p class="section-subtitle">Три простых шага к результату</p>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Опишите задачу</h3>
+                        <p>Введите запрос в центральное поле или выберите один из быстрых шаблонов. Можно загрузить файл или указать URL.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>AI обрабатывает</h3>
+                        <p>Quanta анализирует запрос, выбирает оптимальные инструменты и модели, собирает данные из нужных источников.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Получите результат</h3>
+                        <p>Готовый ответ, документ, презентация или анализ. Экспортируйте в любой формат или продолжите диалог.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>Quanta — открытая AI-платформа. <a href="https://github.com" target="_blank">GitHub</a> • <a href="#">Документация</a> • <a href="#">API</a></p>
+        <p style="margin-top: 8px; font-size: 0.8rem;">Создано с ❤️ для людей. MIT License.</p>
+    </footer>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Скрытый инпут для загрузки файлов -->
+    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls">
+
+    <!-- Реальный AI без бэкенда: Puter.js (бесплатный доступ к GPT-4o/Claude/DALL-E прямо из браузера) -->
+    <script src="https://js.puter.com/v2/"></script>
+    <!-- Разбор документов и таблиц на клиенте -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Графики -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <!-- Генерация настоящих .pptx файлов -->
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+    <script>
+        // Particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+        createParticles();
+
+        // Toast
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ============================================================
+        //  QUANTA AI ENGINE — реальные нейросети через Puter.js (бесплатно,
+        //  без бэкенда, без API-ключей). Работает и на GitHub Pages.
+        // ============================================================
+
+        const MODELS = { quick: 'gpt-4o-mini', deep: 'gpt-4o' };
+        let currentMode = 'quick';
+
+        function toggleModel() {
+            currentMode = currentMode === 'quick' ? 'deep' : 'quick';
+            document.getElementById('modeLabel').textContent = currentMode === 'quick' ? 'Быстрый' : 'Глубокий';
+            showToast(currentMode === 'quick' ? 'Быстрый режим (gpt-4o-mini)' : 'Глубокий режим (gpt-4o)');
+        }
+
+        function openWorkspace(title) {
+            const ws = document.getElementById('workspace');
+            document.getElementById('workspaceTitle').textContent = title || 'Quanta AI';
+            ws.style.display = 'block';
+            ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function closeWorkspace() {
+            document.getElementById('workspace').style.display = 'none';
+            document.getElementById('workspaceBody').innerHTML = '';
+        }
+
+        function addMessage(role, contentHtml) {
+            const body = document.getElementById('workspaceBody');
+            const div = document.createElement('div');
+            div.className = 'msg msg-' + role;
+            div.innerHTML = '<div class="msg-role">' + (role === 'user' ? 'Вы' : 'Quanta') + '</div><div class="msg-content">' + contentHtml + '</div>';
+            body.appendChild(div);
+            body.scrollTop = body.scrollHeight;
+            return div.querySelector('.msg-content');
+        }
+
+        function addLoading(label) {
+            const el = addMessage('ai', '');
+            el.innerHTML = '<div class="ws-loading"><div class="spinner"></div>' + (label || 'Думаю...') + '</div>';
+            return el;
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        // Простой рендер markdown-подобного текста (код-блоки, жирный, переносы)
+        function renderText(text) {
+            let safe = escapeHtml(text);
+            safe = safe.replace(/```([\s\S]*?)```/g, (m, code) => '<pre><code>' + code.trim() + '</code></pre>');
+            safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+            return safe;
+        }
+
+        function withTimeout(promise, ms, label) {
+            let timer;
+            const timeout = new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error(
+                    (label || 'Запрос') + ' не ответил за ' + Math.round(ms / 1000) + ' сек. ' +
+                    'Часто причина — окно входа Puter зависло/показывает пустой экран: проверьте, ' +
+                    'не блокирует ли его блокировщик рекламы или блокировка всплывающих окон, ' +
+                    'разрешите сторонние cookies и попробуйте снова.'
+                )), ms);
+            });
+            return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+        }
+
+        let _puterHintShown = false;
+        function maybeShowPuterHint() {
+            if (_puterHintShown) return;
+            _puterHintShown = true;
+            showToast('Может открыться окно входа Puter — это бесплатно, один раз');
+        }
+
+        // Основной вызов реальной нейросети
+        async function askAI(prompt, opts = {}) {
+            if (typeof puter === 'undefined') {
+                throw new Error('AI-движок не загрузился (проверьте интернет-соединение или блокировщик рекламы)');
+            }
+            maybeShowPuterHint();
+            const model = opts.model || MODELS[currentMode];
+            const response = await withTimeout(puter.ai.chat(prompt, { model }), 40000, 'Чат');
+            if (typeof response === 'string') return response;
+            return response?.message?.content || response?.text || JSON.stringify(response);
+        }
+
+        // ---------- Главный чат ----------
+        async function handleSend() {
+            const input = document.getElementById('mainInput');
+            const text = input.value.trim();
+            if (!text) {
+                showToast('Введите запрос');
+                return;
+            }
+            openWorkspace('Чат с Quanta AI');
+            addMessage('user', renderText(text));
+            input.value = '';
+            const loadingEl = addLoading('Генерирую ответ...');
+            try {
+                const answer = await askAI(text);
+                loadingEl.innerHTML = renderText(answer);
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
+
+        // ---------- Быстрые действия / карточки ----------
+        async function runQuickAction(kind) {
+            const input = document.getElementById('mainInput');
+            const text = input.value.trim();
+
+            if (kind === 'cluster') return void handleClusterAnalysis(text);
+            if (kind === 'slides') return void handleSlides(text);
+            if (kind === 'research') return void handleResearch(text);
+            if (kind === 'website') return void handleWebsite(text);
+            if (kind === 'image') return void handleImage(text);
+            if (kind === 'code') return void handleGenericMode(text, 'code', 'Помощь в кодинге',
+                'Ты опытный senior-разработчик. Отвечай с примерами кода в блоках ```, объясняй кратко и по делу. Запрос пользователя: ');
+            if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод',
+                'Ты профессиональный переводчик. Определи язык текста и переведи его на русский (если текст на русском — переведи на английский), сохраняя стиль и терминологию. Сначала укажи направление перевода, затем сам перевод. Текст: ');
+            if (kind === 'table') return void triggerFileUpload();
+        }
+
+        async function handleGenericMode(text, kind, title, systemPrefix) {
+            if (!text) {
+                showToast('Сначала введите текст в поле запроса');
+                document.getElementById('mainInput').focus();
+                return;
+            }
+            openWorkspace(title);
+            addMessage('user', renderText(text));
+            document.getElementById('mainInput').value = '';
+            const loadingEl = addLoading('Обрабатываю...');
+            try {
+                const answer = await askAI(systemPrefix + text);
+                loadingEl.innerHTML = renderText(answer);
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
+
+        // ---------- Генерация изображений (реальная модель) ----------
+        async function handleImage(text) {
+            if (!text) {
+                showToast('Опишите изображение в поле запроса');
+                document.getElementById('mainInput').focus();
+                return;
+            }
+            openWorkspace('Генерация изображений');
+            addMessage('user', renderText(text));
+            document.getElementById('mainInput').value = '';
+            const loadingEl = addLoading('Рисую изображение...');
+            try {
+                maybeShowPuterHint();
+                const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация изображения');
+                const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
+                if (!src) throw new Error('Не удалось получить изображение');
+                loadingEl.innerHTML = '<img src="' + src + '" alt="Generated"><br><a class="ws-download" href="' + src + '" download="quanta-image.png" target="_blank">Скачать</a>';
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка генерации: ' + escapeHtml(e.message);
+            }
+        }
+
+        // ---------- Deep Research (декомпозиция + синтез, на базе реальной модели) ----------
+        async function handleResearch(text) {
+            if (!text) {
+                showToast('Введите тему исследования в поле запроса');
+                document.getElementById('mainInput').focus();
+                return;
+            }
+            openWorkspace('Deep Research');
+            addMessage('user', renderText(text));
+            document.getElementById('mainInput').value = '';
+            const loadingEl = addLoading('Разбиваю тему на подзадачи...');
+            try {
+                const planRaw = await askAI(
+                    'Разбей следующую тему на 4 ключевых подвопроса для глубокого исследования. Ответь ТОЛЬКО списком подвопросов, каждый с новой строки, без нумерации и пояснений. Тема: ' + text,
+                    { model: MODELS.deep }
+                );
+                const subquestions = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
+                let report = '<b>План исследования:</b><br>' + subquestions.map(q => '• ' + escapeHtml(q)).join('<br>') + '<br><br>';
+                loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
+
+                for (const q of subquestions) {
+                    const answer = await askAI('Кратко (3-5 предложений) ответь на вопрос в контексте темы "' + text + '": ' + q, { model: MODELS.deep });
+                    report += '<b>' + escapeHtml(q) + '</b><br>' + renderText(answer) + '<br><br>';
+                    loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
+                }
+
+                const summary = await askAI('На основе темы "' + text + '" напиши краткое заключение исследования (4-6 предложений), обобщающее ключевые выводы.', { model: MODELS.deep });
+                report += '<b>Заключение</b><br>' + renderText(summary);
+                loadingEl.innerHTML = report + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Отчёт составлен на основе знаний модели, без живого поиска в интернете — на статичном сайте без сервера это ограничение.</div>';
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
+
+        // ---------- Анализ сайтов (через публичный CORS-прокси) ----------
+        async function handleWebsite(text) {
+            let url = text;
+            if (!url || !/^https?:\/\//i.test(url)) {
+                url = prompt('Введите URL сайта для анализа (например https://example.com):', text || 'https://');
+                if (!url) return;
+            }
+            openWorkspace('Анализ сайта');
+            addMessage('user', renderText(url));
+            document.getElementById('mainInput').value = '';
+            const loadingEl = addLoading('Загружаю страницу...');
+            try {
+                const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+                const controller = new AbortController();
+                const t = setTimeout(() => controller.abort(), 20000);
+                const res = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(t);
+                if (!res.ok) throw new Error('Не удалось загрузить страницу (код ' + res.status + ')');
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                doc.querySelectorAll('script,style,noscript').forEach(el => el.remove());
+                let text2 = doc.body ? doc.body.innerText : html;
+                text2 = text2.replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000);
+                loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
+                const answer = await askAI('Проанализируй содержимое сайта и дай структурированную сводку: о чём сайт, ключевые темы, важные факты. Содержимое:\n\n' + text2, { model: MODELS.deep });
+                loadingEl.innerHTML = renderText(answer) + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Загрузка через публичный CORS-прокси — некоторые сайты могут быть недоступны.</div>';
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Прокси может быть временно недоступен или сайт блокирует доступ.</span>';
+            }
+        }
+
+        // ---------- Генерация презентаций (реальный .pptx файл) ----------
+        async function handleSlides(text) {
+            if (!text) {
+                showToast('Опишите тему презентации в поле запроса');
+                document.getElementById('mainInput').focus();
+                return;
+            }
+            openWorkspace('Генерация презентации');
+            addMessage('user', renderText(text));
+            document.getElementById('mainInput').value = '';
+            const loadingEl = addLoading('Придумываю структуру слайдов...');
+            try {
+                const raw = await askAI(
+                    'Создай план презентации на тему "' + text + '" из 6 слайдов. ' +
+                    'Ответь СТРОГО в формате JSON без пояснений и без markdown-разметки: ' +
+                    '{"title":"...","slides":[{"title":"...","bullets":["...","...","..."]}]}',
+                    { model: MODELS.deep }
+                );
+                const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+                const data = JSON.parse(jsonStr);
+
+                const pptx = new PptxGenJS();
+                const titleSlide = pptx.addSlide();
+                titleSlide.background = { color: '0D0D0D' };
+                titleSlide.addText(data.title || text, { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 36, bold: true, color: 'FFFFFF', align: 'center' });
+
+                (data.slides || []).forEach(s => {
+                    const slide = pptx.addSlide();
+                    slide.background = { color: '141414' };
+                    slide.addText(s.title || '', { x: 0.5, y: 0.4, w: 9, h: 0.8, fontSize: 24, bold: true, color: '818CF8' });
+                    slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: true, breakLine: true } })), { x: 0.5, y: 1.4, w: 9, h: 4, fontSize: 16, color: 'E8E8E8' });
+                });
+
+                const blob = await pptx.write('blob');
+                const url = URL.createObjectURL(blob);
+                loadingEl.innerHTML = '✅ Презентация готова: <b>' + escapeHtml(data.title || text) + '</b> (' + (data.slides || []).length + ' слайдов)<br><a class="ws-download" href="' + url + '" download="presentation.pptx">Скачать .pptx</a>';
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
+
+        // ---------- Кластерный анализ (реальный k-means для чисел, иначе AI-объяснение) ----------
+        async function handleClusterAnalysis(text) {
+            openWorkspace('Кластерный анализ');
+            addMessage('user', renderText(text || '(без загруженных данных)'));
+            document.getElementById('mainInput').value = '';
+            const loadingEl = addLoading('Анализирую...');
+            try {
+                const prompt = text
+                    ? 'Опиши, как провести кластерный анализ для следующей задачи, и предложи вероятное число кластеров и их характеристики: ' + text
+                    : 'Объясни кратко, что такое кластерный анализ и для каких задач его применяют, с 2 примерами. Также предложи загрузить CSV с числовыми данными для реального анализа.';
+                const answer = await askAI(prompt, { model: MODELS.deep });
+                loadingEl.innerHTML = renderText(answer) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Загрузите CSV/Excel через кнопку 📎 или карточку «Анализ данных» — тогда Quanta посчитает кластеры по-настоящему (k-means) и построит график.</span>';
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
+
+        // ---------- Голосовой ввод (Web Speech API) ----------
+        function startVoiceInput() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                showToast('Голосовой ввод не поддерживается в этом браузере');
+                return;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'ru-RU';
+            recognition.interimResults = false;
+            const btn = document.getElementById('voiceBtn');
+            btn.style.color = 'var(--danger)';
+            showToast('Слушаю...');
+            recognition.start();
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                const input = document.getElementById('mainInput');
+                input.value = (input.value ? input.value + ' ' : '') + transcript;
+            };
+            recognition.onerror = () => showToast('Не удалось распознать речь');
+            recognition.onend = () => { btn.style.color = ''; };
+        }
+
+        // ---------- Загрузка файлов: документы / таблицы ----------
+        function triggerFileUpload() {
+            document.getElementById('fileInput').click();
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const ext = file.name.split('.').pop().toLowerCase();
+            e.target.value = '';
+
+            if (['csv', 'xlsx', 'xls'].includes(ext)) {
+                await handleSpreadsheet(file);
+            } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) {
+                await handleDocument(file, ext);
+            } else {
+                showToast('Формат файла не поддерживается');
+            }
+        });
+
+        async function extractTextFromFile(file, ext) {
+            if (ext === 'txt' || ext === 'md') {
+                return await file.text();
+            }
+            if (ext === 'pdf') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                const buf = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+                let full = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    full += content.items.map(it => it.str).join(' ') + '\n';
+                }
+                return full;
+            }
+            if (ext === 'docx') {
+                const buf = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer: buf });
+                return result.value;
+            }
+            return '';
+        }
+
+        async function handleDocument(file, ext) {
+            openWorkspace('Анализ документа: ' + file.name);
+            addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
+            const loadingEl = addLoading('Читаю файл...');
+            try {
+                let content = await extractTextFromFile(file, ext);
+                if (!content || !content.trim()) throw new Error('Не удалось извлечь текст из файла');
+                content = content.trim().slice(0, 12000);
+                loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
+                const answer = await askAI('Проанализируй документ и дай структурированную сводку: основная тема, ключевые пункты, важные факты и цифры. Содержимое документа:\n\n' + content, { model: MODELS.deep });
+                loadingEl.innerHTML = renderText(answer);
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
+
+        async function handleSpreadsheet(file) {
+            openWorkspace('Анализ таблицы: ' + file.name);
+            addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
+            const loadingEl = addLoading('Читаю таблицу...');
+            try {
+                let rows = [];
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    const text = await file.text();
+                    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
+                    rows = parsed.data;
+                } else {
+                    const buf = await file.arrayBuffer();
+                    const wb = XLSX.read(buf, { type: 'array' });
+                    const sheet = wb.Sheets[wb.SheetNames[0]];
+                    rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+                }
+                if (!rows.length) throw new Error('Таблица пуста или не распознана');
+
+                const columns = Object.keys(rows[0]);
+                const numericCols = columns.filter(c => rows.every(r => r[c] === null || r[c] === '' || typeof r[c] === 'number'));
+
+                const stats = {};
+                numericCols.forEach(c => {
+                    const vals = rows.map(r => r[c]).filter(v => typeof v === 'number');
+                    if (!vals.length) return;
+                    const sum = vals.reduce((a, b) => a + b, 0);
+                    const mean = sum / vals.length;
+                    const sorted = [...vals].sort((a, b) => a - b);
+                    stats[c] = {
+                        count: vals.length,
+                        mean: mean.toFixed(2),
+                        min: Math.min(...vals),
+                        max: Math.max(...vals),
+                        median: sorted[Math.floor(sorted.length / 2)]
+                    };
+                });
+
+                let statsHtml = '<b>Строк:</b> ' + rows.length + ' • <b>Столбцов:</b> ' + columns.length + '<br><br>';
+                statsHtml += '<table><tr><th>Колонка</th><th>Среднее</th><th>Мин</th><th>Медиана</th><th>Макс</th></tr>';
+                Object.entries(stats).forEach(([c, s]) => {
+                    statsHtml += '<tr><td>' + escapeHtml(c) + '</td><td>' + s.mean + '</td><td>' + s.min + '</td><td>' + s.median + '</td><td>' + s.max + '</td></tr>';
+                });
+                statsHtml += '</table>';
+
+                // Реальный k-means по первым двум числовым столбцам (если есть)
+                let chartHtml = '';
+                if (numericCols.length >= 2) {
+                    const [cx, cy] = numericCols;
+                    const points = rows.map(r => [r[cx], r[cy]]).filter(p => typeof p[0] === 'number' && typeof p[1] === 'number');
+                    const k = Math.min(3, points.length);
+                    const clusters = kMeans(points, k);
+                    const canvasId = 'chart_' + Date.now();
+                    chartHtml = '<canvas id="' + canvasId + '" height="220"></canvas>';
+                    loadingEl.innerHTML = statsHtml + '<br>' + chartHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
+                    setTimeout(() => renderClusterChart(canvasId, points, clusters, cx, cy), 50);
+                } else {
+                    loadingEl.innerHTML = statsHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
+                }
+
+                const summaryPrompt = 'Вот статистика по таблице (' + rows.length + ' строк): ' + JSON.stringify(stats) + '. Дай 3-4 содержательных инсайта на русском языке простым языком, без markdown-таблиц.';
+                const insights = await askAI(summaryPrompt, { model: MODELS.deep });
+                const finalHtml = statsHtml + (chartHtml ? '<br>' + chartHtml : '') + '<br><b>Инсайты от AI:</b><br>' + renderText(insights);
+                loadingEl.innerHTML = finalHtml;
+                if (chartHtml) setTimeout(() => renderClusterChart(loadingEl.querySelector('canvas').id, null, null, null, null, true), 60);
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
+
+        // Простая реализация k-means (реальный алгоритм, без AI)
+        function kMeans(points, k) {
+            let centroids = points.slice(0, k).map(p => [...p]);
+            let assignments = new Array(points.length).fill(0);
+            for (let iter = 0; iter < 15; iter++) {
+                assignments = points.map(p => {
+                    let best = 0, bestDist = Infinity;
+                    centroids.forEach((c, i) => {
+                        const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2;
+                        if (d < bestDist) { bestDist = d; best = i; }
+                    });
+                    return best;
+                });
+                centroids = centroids.map((c, i) => {
+                    const members = points.filter((_, idx) => assignments[idx] === i);
+                    if (!members.length) return c;
+                    const mx = members.reduce((a, p) => a + p[0], 0) / members.length;
+                    const my = members.reduce((a, p) => a + p[1], 0) / members.length;
+                    return [mx, my];
+                });
+            }
+            return assignments;
+        }
+
+        let _lastChartCache = null;
+        function renderClusterChart(canvasId, points, clusters, cx, cy, reuse) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            if (points) _lastChartCache = { points, clusters, cx, cy };
+            const data = _lastChartCache;
+            if (!data) return;
+            const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'];
+            const datasets = [...new Set(data.clusters)].map(cl => ({
+                label: 'Кластер ' + (cl + 1),
+                data: data.points.filter((_, i) => data.clusters[i] === cl).map(p => ({ x: p[0], y: p[1] })),
+                backgroundColor: colors[cl % colors.length]
+            }));
+            new Chart(canvas, {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: data.cx, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#262626' } },
+                        y: { title: { display: true, text: data.cy, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#262626' } }
+                    },
+                    plugins: { legend: { labels: { color: '#e8e8e8' } } }
+                }
+            });
+        }
+
+        // Enter to send
+        document.getElementById('mainInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Intersection observer for animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.feature-card, .step').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease-out';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
