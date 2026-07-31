@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quanta — AI для работы со знаниями</title>
+    <meta name="description" content="Quanta — бесплатная AI-платформа в браузере: чат с нейросетью, анализ документов и таблиц, генерация изображений и презентаций, deep research, перевод и код. Без регистрации и серверов.">
+    <meta name="keywords" content="quanta, quanta ai, ai платформа, нейросеть онлайн, чат с ии бесплатно, генерация изображений, анализ документов ai, deep research">
+    <meta property="og:title" content="Quanta — AI-платформа в браузере">
+    <meta property="og:description" content="Чат с нейросетью, анализ документов и таблиц, генерация изображений и презентаций — бесплатно, без регистрации.">
+    <meta property="og:type" content="website">
+    <meta name="robots" content="index, follow">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -1065,6 +1071,77 @@
         }
 
         // ============================================================
+        //  ЭКСПОРТ ФАЙЛОВ — любой ответ AI можно сохранить как
+        //  .txt, .doc (Word) или .pdf (через диалог печати браузера)
+        // ============================================================
+        let _exportRegistry = {};
+        let _exportCounter = 0;
+
+        function registerExport(text) {
+            const id = 'exp' + (_exportCounter++);
+            _exportRegistry[id] = text;
+            return id;
+        }
+
+        function attachExport(el, text, filenameBase) {
+            if (!text || !el) return;
+            const id = registerExport(text);
+            const bar = document.createElement('div');
+            bar.style.cssText = 'margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;';
+            bar.innerHTML =
+                '<button class="ws-download" style="border:none;cursor:pointer;" onclick="exportFile(\'' + id + '\',\'txt\',\'' + filenameBase + '\')">📄 Скачать .txt</button>' +
+                '<button class="ws-download" style="border:none;cursor:pointer;background:#2563eb;" onclick="exportFile(\'' + id + '\',\'doc\',\'' + filenameBase + '\')">📝 Скачать Word</button>' +
+                '<button class="ws-download" style="border:none;cursor:pointer;background:#64748b;" onclick="exportFile(\'' + id + '\',\'pdf\',\'' + filenameBase + '\')">📕 Сохранить PDF</button>';
+            el.appendChild(bar);
+        }
+
+        function exportFile(id, type, filenameBase) {
+            const text = _exportRegistry[id];
+            if (!text) { showToast('Текст для экспорта не найден'); return; }
+            if (type === 'txt') downloadTxt(text, filenameBase + '.txt');
+            if (type === 'doc') downloadDoc(text, filenameBase + '.doc');
+            if (type === 'pdf') downloadPdfViaPrint(text, filenameBase);
+        }
+
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }
+
+        function downloadTxt(text, filename) {
+            triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filename);
+        }
+
+        function downloadDoc(text, filename) {
+            const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
+            const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+                '<head><meta charset="utf-8"><title>Export</title></head><body>' + body + '</body></html>';
+            triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filename);
+        }
+
+        // PDF делаем через системный диалог печати браузера — это гарантирует
+        // корректное отображение кириллицы (в отличие от JS-PDF-библиотек без встроенных шрифтов)
+        function downloadPdfViaPrint(text, filenameBase) {
+            const win = window.open('', '_blank');
+            if (!win) { showToast('Разрешите всплывающие окна для сохранения PDF'); return; }
+            win.document.write(
+                '<html><head><meta charset="utf-8"><title>' + escapeHtml(filenameBase) + '</title>' +
+                '<style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;white-space:pre-wrap;color:#111;}</style>' +
+                '</head><body>' + escapeHtml(text) + '</body></html>'
+            );
+            win.document.close();
+            win.focus();
+            setTimeout(() => win.print(), 350);
+            showToast('В открывшемся окне выберите «Сохранить как PDF»');
+        }
+
+        // ============================================================
         //  QUANTA AI ENGINE — реальные нейросети через Puter.js (бесплатно,
         //  без бэкенда, без API-ключей). Работает и на GitHub Pages.
         // ============================================================
@@ -1221,6 +1298,7 @@
             try {
                 const answer = await askAI(text, { useHistory: true });
                 loadingEl.innerHTML = renderText(answer);
+                attachExport(loadingEl, answer, 'quanta-chat');
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
@@ -1256,6 +1334,7 @@
             try {
                 const answer = await askAI(systemPrefix + text);
                 loadingEl.innerHTML = renderText(answer);
+                attachExport(loadingEl, answer, 'quanta-' + kind);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
@@ -1301,17 +1380,21 @@
                 );
                 const subquestions = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
                 let report = '<b>План исследования:</b><br>' + subquestions.map(q => '• ' + escapeHtml(q)).join('<br>') + '<br><br>';
+                let reportPlain = 'План исследования:\n' + subquestions.map(q => '• ' + q).join('\n') + '\n\n';
                 loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
 
                 for (const q of subquestions) {
                     const answer = await askAI('Кратко (3-5 предложений) ответь на вопрос в контексте темы "' + text + '": ' + q, { model: MODELS.deep });
                     report += '<b>' + escapeHtml(q) + '</b><br>' + renderText(answer) + '<br><br>';
+                    reportPlain += q + '\n' + answer + '\n\n';
                     loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
                 }
 
                 const summary = await askAI('На основе темы "' + text + '" напиши краткое заключение исследования (4-6 предложений), обобщающее ключевые выводы.', { model: MODELS.deep });
                 report += '<b>Заключение</b><br>' + renderText(summary);
+                reportPlain += 'Заключение\n' + summary;
                 loadingEl.innerHTML = report + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Отчёт составлен на основе знаний модели, без живого поиска в интернете — на статичном сайте без сервера это ограничение.</div>';
+                attachExport(loadingEl, reportPlain, 'quanta-research');
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
@@ -1343,6 +1426,7 @@
                 loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
                 const answer = await askAI('Проанализируй содержимое сайта и дай структурированную сводку: о чём сайт, ключевые темы, важные факты. Содержимое:\n\n' + text2, { model: MODELS.deep });
                 loadingEl.innerHTML = renderText(answer) + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Загрузка через публичный CORS-прокси — некоторые сайты могут быть недоступны.</div>';
+                attachExport(loadingEl, answer, 'quanta-website');
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Прокси может быть временно недоступен или сайт блокирует доступ.</span>';
             }
@@ -1401,6 +1485,7 @@
                     : 'Объясни кратко, что такое кластерный анализ и для каких задач его применяют, с 2 примерами. Также предложи загрузить CSV с числовыми данными для реального анализа.';
                 const answer = await askAI(prompt, { model: MODELS.deep });
                 loadingEl.innerHTML = renderText(answer) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Загрузите CSV/Excel через кнопку 📎 или карточку «Анализ данных» — тогда Quanta посчитает кластеры по-настоящему (k-means) и построит график.</span>';
+                attachExport(loadingEl, answer, 'quanta-cluster');
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
@@ -1477,6 +1562,7 @@
                 const response = await withTimeout(puter.ai.chat(question, dataUrl, false, { model: MODELS.deep }), 45000, 'Анализ изображения');
                 const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
                 loadingEl.innerHTML = '<img src="' + dataUrl + '" alt="' + escapeHtml(file.name) + '"><br>' + renderText(answer);
+                attachExport(loadingEl, answer, 'quanta-image-analysis');
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
@@ -1517,6 +1603,7 @@
                 loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
                 const answer = await askAI('Проанализируй документ и дай структурированную сводку: основная тема, ключевые пункты, важные факты и цифры. Содержимое документа:\n\n' + content, { model: MODELS.deep });
                 loadingEl.innerHTML = renderText(answer);
+                attachExport(loadingEl, answer, 'quanta-document');
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
@@ -1586,8 +1673,30 @@
                 const finalHtml = statsHtml + (chartHtml ? '<br>' + chartHtml : '') + '<br><b>Инсайты от AI:</b><br>' + renderText(insights);
                 loadingEl.innerHTML = finalHtml;
                 if (chartHtml) setTimeout(() => renderClusterChart(loadingEl.querySelector('canvas').id, null, null, null, null, true), 60);
+                attachExport(loadingEl, insights, 'quanta-table-insights');
+                const xlsxBtn = document.createElement('button');
+                xlsxBtn.className = 'ws-download';
+                xlsxBtn.style.cssText = 'border:none;cursor:pointer;background:#16a34a;margin-top:8px;';
+                xlsxBtn.textContent = '📊 Скачать Excel со статистикой';
+                xlsxBtn.onclick = () => downloadStatsXlsx(rows, stats, 'quanta-analysis');
+                loadingEl.appendChild(xlsxBtn);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
+
+        // Реальный экспорт готового .xlsx с исходными данными + статистикой
+        function downloadStatsXlsx(rows, stats, filenameBase) {
+            try {
+                const wb = XLSX.utils.book_new();
+                const wsData = XLSX.utils.json_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, wsData, 'Данные');
+                const statsRows = Object.entries(stats).map(([col, s]) => ({ Колонка: col, Среднее: s.mean, Мин: s.min, Медиана: s.median, Макс: s.max, Кол_во: s.count }));
+                const wsStats = XLSX.utils.json_to_sheet(statsRows);
+                XLSX.utils.book_append_sheet(wb, wsStats, 'Статистика');
+                XLSX.writeFile(wb, filenameBase + '.xlsx');
+            } catch (e) {
+                showToast('Не удалось создать Excel-файл: ' + e.message);
             }
         }
 
