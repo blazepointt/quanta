@@ -146,6 +146,19 @@
             font-weight: 500;
             border: 1px solid var(--border);
             transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #puterAuthBtn.puter-signed-in {
+            background: rgba(34, 197, 94, 0.12);
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #4ade80;
         }
 
         .github-btn:hover {
@@ -522,6 +535,22 @@
                 display: none;
             }
 
+            .github-btn span, .github-btn:not(#puterAuthBtn) {
+                font-size: 0;
+            }
+
+            .github-btn svg {
+                margin: 0;
+            }
+
+            #puterAuthBtn span {
+                display: none;
+            }
+
+            .github-btn {
+                padding: 8px 10px;
+            }
+
             .hero-logo {
                 font-size: 2.5rem;
             }
@@ -739,12 +768,21 @@
             <a href="#how-it-works" class="nav-link">Как работает</a>
             <a href="#stats" class="nav-link">Статистика</a>
         </nav>
-        <a href="https://github.com" target="_blank" class="github-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-            </svg>
-            GitHub
-        </a>
+        <div class="header-actions">
+            <a href="https://github.com" target="_blank" class="github-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                GitHub
+            </a>
+            <button class="github-btn" id="puterAuthBtn" onclick="handlePuterAuthClick()" title="Войти в Puter, чтобы заработал AI">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/>
+                </svg>
+                <span id="puterAuthLabel">Войти в Puter</span>
+            </button>
+        </div>
     </header>
 
     <!-- Main -->
@@ -865,7 +903,10 @@
             <div class="workspace" id="workspace" style="display:none;">
                 <div class="workspace-header">
                     <span id="workspaceTitle">Quanta AI</span>
-                    <button class="icon-btn" onclick="closeWorkspace()" title="Закрыть">✕</button>
+                    <div style="display:flex; gap:6px;">
+                        <button class="icon-btn" onclick="resetChatHistory(); showToast('Начат новый диалог')" title="Новый диалог (забыть историю)">🗑</button>
+                        <button class="icon-btn" onclick="closeWorkspace()" title="Закрыть">✕</button>
+                    </div>
                 </div>
                 <div class="workspace-body" id="workspaceBody"></div>
             </div>
@@ -986,7 +1027,7 @@
     <div class="toast" id="toast"></div>
 
     <!-- Скрытый инпут для загрузки файлов -->
-    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls">
+    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,image/*">
 
     <!-- Реальный AI без бэкенда: Puter.js (бесплатный доступ к GPT-4o/Claude/DALL-E прямо из браузера) -->
     <script src="https://js.puter.com/v2/"></script>
@@ -1036,6 +1077,45 @@
             document.getElementById('modeLabel').textContent = currentMode === 'quick' ? 'Быстрый' : 'Глубокий';
             showToast(currentMode === 'quick' ? 'Быстрый режим (gpt-4o-mini)' : 'Глубокий режим (gpt-4o)');
         }
+
+        // ---------- Вход в Puter (нужен людям, кто закрыл окно входа и вернулся) ----------
+        async function refreshPuterAuthUI() {
+            const btn = document.getElementById('puterAuthBtn');
+            const label = document.getElementById('puterAuthLabel');
+            if (typeof puter === 'undefined') return;
+            try {
+                const signedIn = await puter.auth.isSignedIn();
+                if (signedIn) {
+                    btn.classList.add('puter-signed-in');
+                    label.textContent = 'Puter подключён';
+                } else {
+                    btn.classList.remove('puter-signed-in');
+                    label.textContent = 'Войти в Puter';
+                }
+            } catch (e) { /* тихо игнорируем — статус не критичен */ }
+        }
+
+        async function handlePuterAuthClick() {
+            if (typeof puter === 'undefined') {
+                showToast('AI-движок ещё не загрузился, подождите пару секунд');
+                return;
+            }
+            try {
+                const signedIn = await puter.auth.isSignedIn();
+                if (signedIn) {
+                    showToast('Puter уже подключён — можно пользоваться AI');
+                    return;
+                }
+                await puter.auth.signIn();
+                showToast('Готово! Puter подключён, AI заработает');
+            } catch (e) {
+                showToast('Вход не завершён — попробуйте ещё раз');
+            } finally {
+                refreshPuterAuthUI();
+            }
+        }
+
+        window.addEventListener('load', () => setTimeout(refreshPuterAuthUI, 800));
 
         function openWorkspace(title) {
             const ws = document.getElementById('workspace');
@@ -1097,6 +1177,13 @@
             showToast('Может открыться окно входа Puter — это бесплатно, один раз');
         }
 
+        // История диалога — Quanta помнит предыдущие вопросы в рамках одной сессии чата
+        let chatHistory = [];
+
+        function resetChatHistory() {
+            chatHistory = [];
+        }
+
         // Основной вызов реальной нейросети
         async function askAI(prompt, opts = {}) {
             if (typeof puter === 'undefined') {
@@ -1104,12 +1191,22 @@
             }
             maybeShowPuterHint();
             const model = opts.model || MODELS[currentMode];
-            const response = await withTimeout(puter.ai.chat(prompt, { model }), 40000, 'Чат');
-            if (typeof response === 'string') return response;
-            return response?.message?.content || response?.text || JSON.stringify(response);
+            const payload = opts.useHistory
+                ? [...chatHistory, { role: 'user', content: prompt }]
+                : prompt;
+            const response = await withTimeout(puter.ai.chat(payload, { model }), 40000, 'Чат');
+            const answer = typeof response === 'string'
+                ? response
+                : (response?.message?.content || response?.text || JSON.stringify(response));
+            if (opts.useHistory) {
+                chatHistory.push({ role: 'user', content: prompt });
+                chatHistory.push({ role: 'assistant', content: answer });
+                if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20); // не раздуваем контекст бесконечно
+            }
+            return answer;
         }
 
-        // ---------- Главный чат ----------
+        // ---------- Главный чат (с памятью предыдущих сообщений) ----------
         async function handleSend() {
             const input = document.getElementById('mainInput');
             const text = input.value.trim();
@@ -1122,7 +1219,7 @@
             input.value = '';
             const loadingEl = addLoading('Генерирую ответ...');
             try {
-                const answer = await askAI(text);
+                const answer = await askAI(text, { useHistory: true });
                 loadingEl.innerHTML = renderText(answer);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
@@ -1343,14 +1440,47 @@
             const ext = file.name.split('.').pop().toLowerCase();
             e.target.value = '';
 
+            const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'heic', 'heif', 'tiff', 'tif', 'ico'];
+
             if (['csv', 'xlsx', 'xls'].includes(ext)) {
                 await handleSpreadsheet(file);
             } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) {
                 await handleDocument(file, ext);
+            } else if (imageExts.includes(ext) || file.type.startsWith('image/')) {
+                await handleImageUpload(file);
             } else {
                 showToast('Формат файла не поддерживается');
             }
         });
+
+        function fileToDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ---------- Загрузка изображений (любой формат) — анализ через vision-модель ----------
+        async function handleImageUpload(file) {
+            openWorkspace('Анализ изображения: ' + file.name);
+            addMessage('user', 'Загружено изображение: ' + escapeHtml(file.name));
+            const loadingEl = addLoading('Читаю изображение...');
+            try {
+                const dataUrl = await fileToDataURL(file);
+                loadingEl.innerHTML = '<img src="' + dataUrl + '" alt="' + escapeHtml(file.name) + '"><div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>Анализирую содержимое...</div>';
+                if (typeof puter === 'undefined') throw new Error('AI-движок не загрузился');
+                maybeShowPuterHint();
+                const question = document.getElementById('mainInput').value.trim() || 'Подробно опиши, что изображено на этой картинке, включая важные детали, текст (если есть) и контекст.';
+                document.getElementById('mainInput').value = '';
+                const response = await withTimeout(puter.ai.chat(question, dataUrl, false, { model: MODELS.deep }), 45000, 'Анализ изображения');
+                const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
+                loadingEl.innerHTML = '<img src="' + dataUrl + '" alt="' + escapeHtml(file.name) + '"><br>' + renderText(answer);
+            } catch (e) {
+                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            }
+        }
 
         async function extractTextFromFile(file, ext) {
             if (ext === 'txt' || ext === 'md') {
