@@ -64,20 +64,35 @@
             --danger: #ef4444;
         }
 
+        /* --- Vibe Coder Fixes: Жесткий контроль переполнения --- */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        body {
+        body, main {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
+            max-width: 100vw;
             overflow-x: hidden;
             line-height: 1.6;
         }
+        
+        pre, code, .ai-response-container, .msg-content {
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            overflow-x: auto;
+        }
+
+        /* Скрываем картинку до тех пор, пока JS не добавит src */
+        img[alt="Preview"]:not([src]) {
+            display: none;
+        }
+        /* ----------------------------------------------------- */
 
         /* Background particles */
         .particles {
@@ -813,9 +828,9 @@
 
             <div class="input-container animate-in delay-2">
                 <div class="input-wrapper">
-                    <!-- Превью фото с подписью -->
+                    <!-- Превью фото с подписью, пустой src убран для чистоты консоли -->
                     <div class="image-preview-bar" id="imagePreviewBar">
-                        <img id="imagePreviewThumb" class="image-preview-thumb" src="" alt="Preview">
+                        <img id="imagePreviewThumb" class="image-preview-thumb" alt="Preview">
                         <div class="image-preview-info">
                             <div class="image-preview-name" id="imagePreviewName">image.png</div>
                             <div class="image-preview-hint">Напишите подпись к изображению ниже и нажмите Отправить</div>
@@ -1060,747 +1075,746 @@
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
     <script>
-        // Состояние прикрепленного изображения
-        let pendingImage = null; // { file, dataUrl, name }
+        // Изолируем логику запуска для безопасности (паттерн DOMContentLoaded)
+        document.addEventListener('DOMContentLoaded', () => {
+            // Состояние прикрепленного изображения
+            window.pendingImage = null; // { file, dataUrl, name }
 
-        function createParticles() {
-            const container = document.getElementById('particles');
-            for (let i = 0; i < 50; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDelay = Math.random() * 20 + 's';
-                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
-                container.appendChild(particle);
-            }
-        }
-        createParticles();
-
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        // ============================================================
-        //  ЭКСПОРТ ФАЙЛОВ (.txt, .doc Word, PDF)
-        // ============================================================
-        let _exportRegistry = {};
-        let _exportCounter = 0;
-
-        function registerExport(text) {
-            const id = 'exp' + (_exportCounter++);
-            _exportRegistry[id] = text;
-            return id;
-        }
-
-        function attachExport(el, text, filenameBase) {
-            if (!text || !el) return;
-            const id = registerExport(text);
-            const bar = document.createElement('div');
-            bar.style.cssText = 'margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;';
-            bar.innerHTML =
-                '<button class="ws-download" style="border:none;cursor:pointer;" onclick="exportFile(\'' + id + '\',\'txt\',\'' + filenameBase + '\')">📄 Скачать .txt</button>' +
-                '<button class="ws-download" style="border:none;cursor:pointer;background:#2563eb;" onclick="exportFile(\'' + id + '\',\'doc\',\'' + filenameBase + '\')">📝 Скачать Word</button>' +
-                '<button class="ws-download" style="border:none;cursor:pointer;background:#64748b;" onclick="exportFile(\'' + id + '\',\'pdf\',\'' + filenameBase + '\')">📕 Сохранить PDF</button>';
-            el.appendChild(bar);
-        }
-
-        function exportFile(id, type, filenameBase) {
-            const text = _exportRegistry[id];
-            if (!text) { showToast('Текст для экспорта не найден'); return; }
-            if (type === 'txt') downloadTxt(text, filenameBase + '.txt');
-            if (type === 'doc') downloadDoc(text, filenameBase + '.doc');
-            if (type === 'pdf') downloadPdfViaPrint(text, filenameBase);
-        }
-
-        function triggerDownload(blob, filename) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-        }
-
-        function downloadTxt(text, filename) {
-            triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filename);
-        }
-
-        function downloadDoc(text, filename) {
-            const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
-            const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
-                '<head><meta charset="utf-8"><title>Export</title></head><body>' + body + '</body></html>';
-            triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filename);
-        }
-
-        function downloadPdfViaPrint(text, filenameBase) {
-            const win = window.open('', '_blank');
-            if (!win) { showToast('Разрешите всплывающие окна для сохранения PDF'); return; }
-            win.document.write(
-                '<html><head><meta charset="utf-8"><title>' + escapeHtml(filenameBase) + '</title>' +
-                '<style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;white-space:pre-wrap;color:#111;}</style>' +
-                '</head><body>' + escapeHtml(text) + '</body></html>'
-            );
-            win.document.close();
-            win.focus();
-            setTimeout(() => win.print(), 350);
-            showToast('В открывшемся окне выберите «Сохранить как PDF»');
-        }
-
-        // ============================================================
-        //  AI ENGINE (Puter.js)
-        // ============================================================
-        const MODELS = { quick: 'gpt-4o-mini', deep: 'gpt-4o' };
-        let currentMode = 'quick';
-
-        function toggleModel() {
-            currentMode = currentMode === 'quick' ? 'deep' : 'quick';
-            document.getElementById('modeLabel').textContent = currentMode === 'quick' ? 'Быстрый' : 'Глубокий';
-            showToast(currentMode === 'quick' ? 'Быстрый режим (gpt-4o-mini)' : 'Глубокий режим (gpt-4o)');
-        }
-
-        async function refreshPuterAuthUI() {
-            const btn = document.getElementById('puterAuthBtn');
-            const label = document.getElementById('puterAuthLabel');
-            if (typeof puter === 'undefined') return;
-            try {
-                const signedIn = await puter.auth.isSignedIn();
-                if (signedIn) {
-                    btn.classList.add('puter-signed-in');
-                    label.textContent = 'Puter подключён';
-                } else {
-                    btn.classList.remove('puter-signed-in');
-                    label.textContent = 'Войти в Puter';
+            function createParticles() {
+                const container = document.getElementById('particles');
+                for (let i = 0; i < 50; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 20 + 's';
+                    particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                    container.appendChild(particle);
                 }
-            } catch (e) { }
-        }
-
-        async function handlePuterAuthClick() {
-            if (typeof puter === 'undefined') {
-                showToast('AI-движок ещё не загрузился, подождите пару секунд');
-                return;
             }
-            try {
-                const signedIn = await puter.auth.isSignedIn();
-                if (signedIn) {
-                    showToast('Puter уже подключён — можно пользоваться AI');
+            createParticles();
+
+            window.showToast = function(message) {
+                const toast = document.getElementById('toast');
+                toast.textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+
+            // ============================================================
+            //  ЭКСПОРТ ФАЙЛОВ (.txt, .doc Word, PDF)
+            // ============================================================
+            let _exportRegistry = {};
+            let _exportCounter = 0;
+
+            function registerExport(text) {
+                const id = 'exp' + (_exportCounter++);
+                _exportRegistry[id] = text;
+                return id;
+            }
+
+            window.attachExport = function(el, text, filenameBase) {
+                if (!text || !el) return;
+                const id = registerExport(text);
+                const bar = document.createElement('div');
+                bar.style.cssText = 'margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;';
+                bar.innerHTML =
+                    '<button class="ws-download" style="border:none;cursor:pointer;" onclick="exportFile(\'' + id + '\',\'txt\',\'' + filenameBase + '\')">📄 Скачать .txt</button>' +
+                    '<button class="ws-download" style="border:none;cursor:pointer;background:#2563eb;" onclick="exportFile(\'' + id + '\',\'doc\',\'' + filenameBase + '\')">📝 Скачать Word</button>' +
+                    '<button class="ws-download" style="border:none;cursor:pointer;background:#64748b;" onclick="exportFile(\'' + id + '\',\'pdf\',\'' + filenameBase + '\')">📕 Сохранить PDF</button>';
+                el.appendChild(bar);
+            }
+
+            window.exportFile = function(id, type, filenameBase) {
+                const text = _exportRegistry[id];
+                if (!text) { showToast('Текст для экспорта не найден'); return; }
+                if (type === 'txt') downloadTxt(text, filenameBase + '.txt');
+                if (type === 'doc') downloadDoc(text, filenameBase + '.doc');
+                if (type === 'pdf') downloadPdfViaPrint(text, filenameBase);
+            }
+
+            function triggerDownload(blob, filename) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            }
+
+            function downloadTxt(text, filename) {
+                triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filename);
+            }
+
+            function downloadDoc(text, filename) {
+                const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
+                const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+                    '<head><meta charset="utf-8"><title>Export</title></head><body>' + body + '</body></html>';
+                triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filename);
+            }
+
+            function downloadPdfViaPrint(text, filenameBase) {
+                const win = window.open('', '_blank');
+                if (!win) { showToast('Разрешите всплывающие окна для сохранения PDF'); return; }
+                win.document.write(
+                    '<html><head><meta charset="utf-8"><title>' + escapeHtml(filenameBase) + '</title>' +
+                    '<style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;white-space:pre-wrap;color:#111;}</style>' +
+                    '</head><body>' + escapeHtml(text) + '</body></html>'
+                );
+                win.document.close();
+                win.focus();
+                setTimeout(() => win.print(), 350);
+                showToast('В открывшемся окне выберите «Сохранить как PDF»');
+            }
+
+            // ============================================================
+            //  AI ENGINE (Puter.js)
+            // ============================================================
+            const MODELS = { quick: 'gpt-4o-mini', deep: 'gpt-4o' };
+            let currentMode = 'quick';
+
+            window.toggleModel = function() {
+                currentMode = currentMode === 'quick' ? 'deep' : 'quick';
+                document.getElementById('modeLabel').textContent = currentMode === 'quick' ? 'Быстрый' : 'Глубокий';
+                showToast(currentMode === 'quick' ? 'Быстрый режим (gpt-4o-mini)' : 'Глубокий режим (gpt-4o)');
+            }
+
+            async function refreshPuterAuthUI() {
+                const btn = document.getElementById('puterAuthBtn');
+                const label = document.getElementById('puterAuthLabel');
+                if (typeof puter === 'undefined') return;
+                try {
+                    const signedIn = await puter.auth.isSignedIn();
+                    if (signedIn) {
+                        btn.classList.add('puter-signed-in');
+                        label.textContent = 'Puter подключён';
+                    } else {
+                        btn.classList.remove('puter-signed-in');
+                        label.textContent = 'Войти в Puter';
+                    }
+                } catch (e) { }
+            }
+
+            window.handlePuterAuthClick = async function() {
+                if (typeof puter === 'undefined') {
+                    showToast('AI-движок ещё не загрузился, подождите пару секунд');
                     return;
                 }
-                await puter.auth.signIn();
-                showToast('Готово! Puter подключён, AI заработает');
-            } catch (e) {
-                showToast('Вход не завершён — попробуйте ещё раз');
-            } finally {
-                refreshPuterAuthUI();
-            }
-        }
-
-        window.addEventListener('load', () => setTimeout(refreshPuterAuthUI, 800));
-
-        function openWorkspace(title) {
-            const ws = document.getElementById('workspace');
-            document.getElementById('workspaceTitle').textContent = title || 'Quanta AI';
-            ws.style.display = 'block';
-            ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        function closeWorkspace() {
-            document.getElementById('workspace').style.display = 'none';
-            document.getElementById('workspaceBody').innerHTML = '';
-        }
-
-        function addMessage(role, contentHtml) {
-            const body = document.getElementById('workspaceBody');
-            const div = document.createElement('div');
-            div.className = 'msg msg-' + role;
-            div.innerHTML = '<div class="msg-role">' + (role === 'user' ? 'Вы' : 'Quanta') + '</div><div class="msg-content">' + contentHtml + '</div>';
-            body.appendChild(div);
-            body.scrollTop = body.scrollHeight;
-            return div.querySelector('.msg-content');
-        }
-
-        function addLoading(label) {
-            const el = addMessage('ai', '');
-            el.innerHTML = '<div class="ws-loading"><div class="spinner"></div>' + (label || 'Думаю...') + '</div>';
-            return el;
-        }
-
-        function escapeHtml(str) {
-            return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        }
-
-        function renderText(text) {
-            let safe = escapeHtml(text);
-            safe = safe.replace(/```([\s\S]*?)```/g, (m, code) => '<pre><code>' + code.trim() + '</code></pre>');
-            safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-            return safe;
-        }
-
-        function withTimeout(promise, ms, label) {
-            let timer;
-            const timeout = new Promise((_, reject) => {
-                timer = setTimeout(() => reject(new Error(
-                    (label || 'Запрос') + ' не ответил за ' + Math.round(ms / 1000) + ' сек. ' +
-                    'Проверьте авторизацию в Puter или блокировщики всплывающих окон.'
-                )), ms);
-            });
-            return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-        }
-
-        let _puterHintShown = false;
-        function maybeShowPuterHint() {
-            if (_puterHintShown) return;
-            _puterHintShown = true;
-            showToast('Может открыться окно входа Puter — это бесплатно');
-        }
-
-        let chatHistory = [];
-        function resetChatHistory() { chatHistory = []; }
-
-        async function askAI(prompt, opts = {}) {
-            if (typeof puter === 'undefined') {
-                throw new Error('AI-движок не загрузился (проверьте интернет или adblock)');
-            }
-            maybeShowPuterHint();
-            const model = opts.model || MODELS[currentMode];
-            const payload = opts.useHistory
-                ? [...chatHistory, { role: 'user', content: prompt }]
-                : prompt;
-            const response = await withTimeout(puter.ai.chat(payload, { model }), 40000, 'Чат');
-            const answer = typeof response === 'string'
-                ? response
-                : (response?.message?.content || response?.text || JSON.stringify(response));
-            if (opts.useHistory) {
-                chatHistory.push({ role: 'user', content: prompt });
-                chatHistory.push({ role: 'assistant', content: answer });
-                if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-            }
-            return answer;
-        }
-
-        // ---------- Управление прикрепленным изображением ----------
-        function setPendingImage(file, dataUrl) {
-            pendingImage = { file, dataUrl, name: file.name };
-            document.getElementById('imagePreviewThumb').src = dataUrl;
-            document.getElementById('imagePreviewName').textContent = file.name;
-            document.getElementById('imagePreviewBar').style.display = 'flex';
-            document.getElementById('mainInput').placeholder = 'Задайте вопрос или добавьте подпись к этому фото...';
-            document.getElementById('mainInput').focus();
-        }
-
-        function removePendingImage() {
-            pendingImage = null;
-            document.getElementById('imagePreviewBar').style.display = 'none';
-            document.getElementById('imagePreviewThumb').src = '';
-            document.getElementById('mainInput').placeholder = 'Опишите задачу или задайте вопрос...';
-        }
-
-        // ---------- Отправка (Чат или Фото с подписью) ----------
-        async function handleSend() {
-            const input = document.getElementById('mainInput');
-            const text = input.value.trim();
-
-            if (pendingImage) {
-                const imgData = pendingImage;
-                removePendingImage();
-                input.value = '';
-
-                openWorkspace('Анализ фото: ' + imgData.name);
-                const userCaption = text || 'Подробно опиши, что изображено на картинке, важные детали и контекст.';
-                addMessage('user', '<img src="' + imgData.dataUrl + '" style="max-height:180px;margin-bottom:6px;"><br>' + renderText(text ? '💬 Подпись: ' + text : '(без подписи, общий анализ)'));
-
-                const loadingEl = addLoading('Анализирую изображение...');
                 try {
-                    if (typeof puter === 'undefined') throw new Error('AI-движок не загрузился');
-                    maybeShowPuterHint();
-                    const response = await withTimeout(puter.ai.chat(userCaption, imgData.dataUrl, false, { model: MODELS.deep }), 45000, 'Анализ фото');
-                    const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
-                    loadingEl.innerHTML = renderText(answer);
-                    attachExport(loadingEl, answer, 'quanta-photo-analysis');
+                    const signedIn = await puter.auth.isSignedIn();
+                    if (signedIn) {
+                        showToast('Puter уже подключён — можно пользоваться AI');
+                        return;
+                    }
+                    await puter.auth.signIn();
+                    showToast('Готово! Puter подключён, AI заработает');
                 } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка анализа фото: ' + escapeHtml(e.message);
+                    showToast('Вход не завершён — попробуйте ещё раз');
+                } finally {
+                    refreshPuterAuthUI();
                 }
-                return;
             }
 
-            if (!text) {
-                showToast('Введите запрос или прикрепите фото');
-                return;
-            }
-            openWorkspace('Чат с Quanta AI');
-            addMessage('user', renderText(text));
-            input.value = '';
-            const loadingEl = addLoading('Генерирую ответ...');
-            try {
-                const answer = await askAI(text, { useHistory: true });
-                loadingEl.innerHTML = renderText(answer);
-                attachExport(loadingEl, answer, 'quanta-chat');
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-            }
-        }
+            setTimeout(refreshPuterAuthUI, 800);
 
-        // ---------- Быстрые действия ----------
-        async function runQuickAction(kind) {
-            const input = document.getElementById('mainInput');
-            const text = input.value.trim();
-
-            if (kind === 'cluster') return void handleClusterAnalysis(text);
-            if (kind === 'slides') return void handleSlides(text);
-            if (kind === 'research') return void handleResearch(text);
-            if (kind === 'website') return void handleWebsite(text);
-            if (kind === 'image') return void handleImage(text);
-            if (kind === 'code') return void handleGenericMode(text, 'code', 'Помощь в кодинге',
-                'Ты опытный senior-разработчик. Отвечай с примерами кода в блоках ```, объясняй кратко и по делу. Запрос пользователя: ');
-            if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод',
-                'Ты профессиональный переводчик. Определи язык текста и переведи его на русский (если текст на русском — переведи на английский), сохраняя стиль и терминологию. Сначала укажи направление перевода, затем сам перевод. Текст: ');
-            if (kind === 'table') return void triggerFileUpload();
-        }
-
-        async function handleGenericMode(text, kind, title, systemPrefix) {
-            if (!text) {
-                showToast('Сначала введите текст в поле запроса');
-                document.getElementById('mainInput').focus();
-                return;
+            window.openWorkspace = function(title) {
+                const ws = document.getElementById('workspace');
+                document.getElementById('workspaceTitle').textContent = title || 'Quanta AI';
+                ws.style.display = 'block';
+                ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-            openWorkspace(title);
-            addMessage('user', renderText(text));
-            document.getElementById('mainInput').value = '';
-            const loadingEl = addLoading('Обрабатываю...');
-            try {
-                const answer = await askAI(systemPrefix + text);
-                loadingEl.innerHTML = renderText(answer);
-                attachExport(loadingEl, answer, 'quanta-' + kind);
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-            }
-        }
 
-        async function handleImage(text) {
-            if (!text) {
-                showToast('Опишите изображение в поле запроса');
-                document.getElementById('mainInput').focus();
-                return;
+            window.closeWorkspace = function() {
+                document.getElementById('workspace').style.display = 'none';
+                document.getElementById('workspaceBody').innerHTML = '';
             }
-            openWorkspace('Генерация изображений');
-            addMessage('user', renderText(text));
-            document.getElementById('mainInput').value = '';
-            const loadingEl = addLoading('Рисую изображение...');
-            try {
+
+            function addMessage(role, contentHtml) {
+                const body = document.getElementById('workspaceBody');
+                const div = document.createElement('div');
+                div.className = 'msg msg-' + role;
+                div.innerHTML = '<div class="msg-role">' + (role === 'user' ? 'Вы' : 'Quanta') + '</div><div class="msg-content">' + contentHtml + '</div>';
+                body.appendChild(div);
+                body.scrollTop = body.scrollHeight;
+                return div.querySelector('.msg-content');
+            }
+
+            function addLoading(label) {
+                const el = addMessage('ai', '');
+                el.innerHTML = '<div class="ws-loading"><div class="spinner"></div>' + (label || 'Думаю...') + '</div>';
+                return el;
+            }
+
+            function escapeHtml(str) {
+                return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            }
+
+            function renderText(text) {
+                let safe = escapeHtml(text);
+                safe = safe.replace(/```([\s\S]*?)```/g, (m, code) => '<pre><code>' + code.trim() + '</code></pre>');
+                safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+                return safe;
+            }
+
+            function withTimeout(promise, ms, label) {
+                let timer;
+                const timeout = new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error(
+                        (label || 'Запрос') + ' не ответил за ' + Math.round(ms / 1000) + ' сек. ' +
+                        'Проверьте авторизацию в Puter или блокировщики всплывающих окон.'
+                    )), ms);
+                });
+                return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+            }
+
+            let _puterHintShown = false;
+            function maybeShowPuterHint() {
+                if (_puterHintShown) return;
+                _puterHintShown = true;
+                showToast('Может открыться окно входа Puter — это бесплатно');
+            }
+
+            let chatHistory = [];
+            window.resetChatHistory = function() { chatHistory = []; }
+
+            async function askAI(prompt, opts = {}) {
+                if (typeof puter === 'undefined') {
+                    throw new Error('AI-движок не загрузился (проверьте интернет или adblock)');
+                }
                 maybeShowPuterHint();
-                const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация изображения');
-                const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
-                if (!src) throw new Error('Не удалось получить изображение');
-                loadingEl.innerHTML = '<img src="' + src + '" alt="Generated"><br><a class="ws-download" href="' + src + '" download="quanta-image.png" target="_blank">Скачать</a>';
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка генерации: ' + escapeHtml(e.message);
-            }
-        }
-
-        async function handleResearch(text) {
-            if (!text) {
-                showToast('Введите тему исследования в поле запроса');
-                document.getElementById('mainInput').focus();
-                return;
-            }
-            openWorkspace('Deep Research');
-            addMessage('user', renderText(text));
-            document.getElementById('mainInput').value = '';
-            const loadingEl = addLoading('Разбиваю тему на подзадачи...');
-            try {
-                const planRaw = await askAI(
-                    'Разбей следующую тему на 4 ключевых подвопроса для глубокого исследования. Ответь ТОЛЬКО списком подвопросов, каждый с новой строки, без нумерации и пояснений. Тема: ' + text,
-                    { model: MODELS.deep }
-                );
-                const subquestions = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
-                let report = '<b>План исследования:</b><br>' + subquestions.map(q => '• ' + escapeHtml(q)).join('<br>') + '<br><br>';
-                let reportPlain = 'План исследования:\n' + subquestions.map(q => '• ' + q).join('\n') + '\n\n';
-                loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
-
-                for (const q of subquestions) {
-                    const answer = await askAI('Кратко (3-5 предложений) ответь на вопрос в контексте темы "' + text + '": ' + q, { model: MODELS.deep });
-                    report += '<b>' + escapeHtml(q) + '</b><br>' + renderText(answer) + '<br><br>';
-                    reportPlain += q + '\n' + answer + '\n\n';
-                    loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
+                const model = opts.model || MODELS[currentMode];
+                const payload = opts.useHistory
+                    ? [...chatHistory, { role: 'user', content: prompt }]
+                    : prompt;
+                const response = await withTimeout(puter.ai.chat(payload, { model }), 40000, 'Чат');
+                const answer = typeof response === 'string'
+                    ? response
+                    : (response?.message?.content || response?.text || JSON.stringify(response));
+                if (opts.useHistory) {
+                    chatHistory.push({ role: 'user', content: prompt });
+                    chatHistory.push({ role: 'assistant', content: answer });
+                    if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
                 }
-
-                const summary = await askAI('На основе темы "' + text + '" напиши краткое заключение исследования (4-6 предложений), обобщающее ключевые выводы.', { model: MODELS.deep });
-                report += '<b>Заключение</b><br>' + renderText(summary);
-                reportPlain += 'Заключение\n' + summary;
-                loadingEl.innerHTML = report + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Отчёт составлен на основе знаний модели, без живого поиска в интернете — на статичном сайте без сервера это ограничение.</div>';
-                attachExport(loadingEl, reportPlain, 'quanta-research');
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                return answer;
             }
-        }
 
-        async function handleWebsite(text) {
-            let url = text;
-            if (!url || !/^https?:\/\//i.test(url)) {
-                url = prompt('Введите URL сайта для анализа (например [https://example.com](https://example.com)):', text || 'https://');
-                if (!url) return;
-            }
-            openWorkspace('Анализ сайта');
-            addMessage('user', renderText(url));
-            document.getElementById('mainInput').value = '';
-            const loadingEl = addLoading('Загружаю страницу...');
-            try {
-                const proxyUrl = '[https://api.allorigins.win/raw?url=](https://api.allorigins.win/raw?url=)' + encodeURIComponent(url);
-                const controller = new AbortController();
-                const t = setTimeout(() => controller.abort(), 20000);
-                const res = await fetch(proxyUrl, { signal: controller.signal });
-                clearTimeout(t);
-                if (!res.ok) throw new Error('Не удалось загрузить страницу (код ' + res.status + ')');
-                const html = await res.text();
-                const doc = new DOMParser().parseFromString(html, 'text/html');
-                doc.querySelectorAll('script,style,noscript').forEach(el => el.remove());
-                let text2 = doc.body ? doc.body.innerText : html;
-                text2 = text2.replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000);
-                loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
-                const answer = await askAI('Проанализируй содержимое сайта и дай структурированную сводку: о чём сайт, ключевые темы, важные факты. Содержимое:\n\n' + text2, { model: MODELS.deep });
-                loadingEl.innerHTML = renderText(answer) + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Загрузка через публичный CORS-прокси — некоторые сайты могут быть недоступны.</div>';
-                attachExport(loadingEl, answer, 'quanta-website');
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Прокси может быть временно недоступен или сайт блокирует доступ.</span>';
-            }
-        }
-
-        async function handleSlides(text) {
-            if (!text) {
-                showToast('Опишите тему презентации в поле запроса');
+            // ---------- Управление прикрепленным изображением ----------
+            function setPendingImage(file, dataUrl) {
+                window.pendingImage = { file, dataUrl, name: file.name };
+                document.getElementById('imagePreviewThumb').src = dataUrl;
+                document.getElementById('imagePreviewName').textContent = file.name;
+                document.getElementById('imagePreviewBar').style.display = 'flex';
+                document.getElementById('mainInput').placeholder = 'Задайте вопрос или добавьте подпись к этому фото...';
                 document.getElementById('mainInput').focus();
-                return;
             }
-            openWorkspace('Генерация презентации');
-            addMessage('user', renderText(text));
-            document.getElementById('mainInput').value = '';
-            const loadingEl = addLoading('Придумываю структуру слайдов...');
-            try {
-                const raw = await askAI(
-                    'Создай план презентации на тему "' + text + '" из 6 слайдов. ' +
-                    'Ответь СТРОГО в формате JSON без пояснений и без markdown-разметки: ' +
-                    '{"title":"...","slides":[{"title":"...","bullets":["...","...","..."]}]}',
-                    { model: MODELS.deep }
-                );
-                const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
-                const data = JSON.parse(jsonStr);
 
-                const pptx = new PptxGenJS();
-                const titleSlide = pptx.addSlide();
-                titleSlide.background = { color: '0D0D0D' };
-                titleSlide.addText(data.title || text, { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 36, bold: true, color: 'FFFFFF', align: 'center' });
-
-                (data.slides || []).forEach(s => {
-                    const slide = pptx.addSlide();
-                    slide.background = { color: '141414' };
-                    slide.addText(s.title || '', { x: 0.5, y: 0.4, w: 9, h: 0.8, fontSize: 24, bold: true, color: '818CF8' });
-                    slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: true, breakLine: true } })), { x: 0.5, y: 1.4, w: 9, h: 4, fontSize: 16, color: 'E8E8E8' });
-                });
-
-                const blob = await pptx.write('blob');
-                const url = URL.createObjectURL(blob);
-                loadingEl.innerHTML = '✅ Презентация готова: <b>' + escapeHtml(data.title || text) + '</b> (' + (data.slides || []).length + ' слайдов)<br><a class="ws-download" href="' + url + '" download="presentation.pptx">Скачать .pptx</a>';
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+            window.removePendingImage = function() {
+                window.pendingImage = null;
+                document.getElementById('imagePreviewBar').style.display = 'none';
+                document.getElementById('imagePreviewThumb').removeAttribute('src');
+                document.getElementById('mainInput').placeholder = 'Опишите задачу или задайте вопрос...';
             }
-        }
 
-        // ---------- Кластерный анализ (текстовый режим) ----------
-        async function handleClusterAnalysis(text) {
-            openWorkspace('Кластерный анализ');
-            addMessage('user', renderText(text || '(без загруженных данных)'));
-            document.getElementById('mainInput').value = '';
-            const loadingEl = addLoading('Анализирую...');
-            try {
-                const prompt = text
-                    ? 'Опиши, как провести кластерный анализ для следующей задачи, и предложи вероятное число кластеров и их характеристики: ' + text
-                    : 'Объясни кратко, что такое кластерный анализ и для каких задач его применяют, с 2 примерами. Также предложи загрузить CSV с числовыми данными для реального анализа.';
-                const answer = await askAI(prompt, { model: MODELS.deep });
-                loadingEl.innerHTML = renderText(answer) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Загрузите CSV/Excel через кнопку 📎 или карточку «Анализ данных» — тогда Quanta посчитает кластеры по-настоящему (k-means) и построит график.</span>';
-                attachExport(loadingEl, answer, 'quanta-cluster');
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-            }
-        }
-
-        function startVoiceInput() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                showToast('Голосовой ввод не поддерживается в этом браузере');
-                return;
-            }
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'ru-RU';
-            recognition.interimResults = false;
-            const btn = document.getElementById('voiceBtn');
-            btn.style.color = 'var(--danger)';
-            showToast('Слушаю...');
-            recognition.start();
-            recognition.onresult = (e) => {
-                const transcript = e.results[0][0].transcript;
+            // ---------- Отправка (Чат или Фото с подписью) ----------
+            window.handleSend = async function() {
                 const input = document.getElementById('mainInput');
-                input.value = (input.value ? input.value + ' ' : '') + transcript;
-            };
-            recognition.onerror = () => showToast('Не удалось распознать речь');
-            recognition.onend = () => { btn.style.color = ''; };
-        }
+                const text = input.value.trim();
 
-        function triggerFileUpload() {
-            document.getElementById('fileInput').click();
-        }
+                if (window.pendingImage) {
+                    const imgData = window.pendingImage;
+                    removePendingImage();
+                    input.value = '';
 
-        document.getElementById('fileInput').addEventListener('change', async function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const ext = file.name.split('.').pop().toLowerCase();
-            e.target.value = '';
+                    openWorkspace('Анализ фото: ' + imgData.name);
+                    const userCaption = text || 'Подробно опиши, что изображено на картинке, важные детали и контекст.';
+                    addMessage('user', '<img src="' + imgData.dataUrl + '" style="max-height:180px;margin-bottom:6px;"><br>' + renderText(text ? '💬 Подпись: ' + text : '(без подписи, общий анализ)'));
 
-            const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'];
-
-            if (imageExts.includes(ext) || file.type.startsWith('image/')) {
-                const dataUrl = await fileToDataURL(file);
-                setPendingImage(file, dataUrl);
-                showToast('Фото прикреплено! Напишите подпись и нажмите Отправить');
-            } else if (['csv', 'xlsx', 'xls'].includes(ext)) {
-                await handleSpreadsheet(file);
-            } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) {
-                await handleDocument(file, ext);
-            } else {
-                showToast('Формат файла не поддерживается');
-            }
-        });
-
-        function fileToDataURL(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-        async function extractTextFromFile(file, ext) {
-            if (ext === 'txt' || ext === 'md') {
-                return await file.text();
-            }
-            if (ext === 'pdf') {
-                pdfjsLib.GlobalWorkerOptions.workerSrc = '[https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js](https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js)';
-                const buf = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-                let full = '';
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const content = await page.getTextContent();
-                    full += content.items.map(it => it.str).join(' ') + '\n';
-                }
-                return full;
-            }
-            if (ext === 'docx') {
-                const buf = await file.arrayBuffer();
-                const result = await mammoth.extractRawText({ arrayBuffer: buf });
-                return result.value;
-            }
-            return '';
-        }
-
-        async function handleDocument(file, ext) {
-            openWorkspace('Анализ документа: ' + file.name);
-            addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
-            const loadingEl = addLoading('Читаю файл...');
-            try {
-                let content = await extractTextFromFile(file, ext);
-                if (!content || !content.trim()) throw new Error('Не удалось извлечь текст из файла');
-                content = content.trim().slice(0, 12000);
-                loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
-                const answer = await askAI('Проанализируй документ и дай структурированную сводку: основная тема, ключевые пункты, важные факты и цифры. Содержимое документа:\n\n' + content, { model: MODELS.deep });
-                loadingEl.innerHTML = renderText(answer);
-                attachExport(loadingEl, answer, 'quanta-document');
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-            }
-        }
-
-        // ---------- Анализ таблиц (CSV, Excel) + k-means + Chart.js ----------
-        async function handleSpreadsheet(file) {
-            openWorkspace('Анализ таблицы: ' + file.name);
-            addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
-            const loadingEl = addLoading('Читаю таблицу...');
-            try {
-                let rows = [];
-                if (file.name.toLowerCase().endsWith('.csv')) {
-                    const text = await file.text();
-                    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
-                    rows = parsed.data;
-                } else {
-                    const buf = await file.arrayBuffer();
-                    const wb = XLSX.read(buf, { type: 'array' });
-                    const sheet = wb.Sheets[wb.SheetNames[0]];
-                    rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
-                }
-                if (!rows.length) throw new Error('Таблица пуста или не распознана');
-
-                const columns = Object.keys(rows[0]);
-                const numericCols = columns.filter(c => rows.every(r => r[c] === null || r[c] === '' || typeof r[c] === 'number'));
-
-                const stats = {};
-                numericCols.forEach(c => {
-                    const vals = rows.map(r => r[c]).filter(v => typeof v === 'number');
-                    if (!vals.length) return;
-                    const sum = vals.reduce((a, b) => a + b, 0);
-                    const mean = sum / vals.length;
-                    const sorted = [...vals].sort((a, b) => a - b);
-                    stats[c] = {
-                        count: vals.length,
-                        mean: mean.toFixed(2),
-                        min: Math.min(...vals),
-                        max: Math.max(...vals),
-                        median: sorted[Math.floor(sorted.length / 2)]
-                    };
-                });
-
-                let statsHtml = '<b>Строк:</b> ' + rows.length + ' • <b>Столбцов:</b> ' + columns.length + '<br><br>';
-                statsHtml += '<table><tr><th>Колонка</th><th>Среднее</th><th>Мин</th><th>Медиана</th><th>Макс</th></tr>';
-                Object.entries(stats).forEach(([c, s]) => {
-                    statsHtml += '<tr><td>' + escapeHtml(c) + '</td><td>' + s.mean + '</td><td>' + s.min + '</td><td>' + s.median + '</td><td>' + s.max + '</td></tr>';
-                });
-                statsHtml += '</table>';
-
-                let chartHtml = '';
-                if (numericCols.length >= 2) {
-                    const [cx, cy] = numericCols;
-                    const points = rows.map(r => [r[cx], r[cy]]).filter(p => typeof p[0] === 'number' && typeof p[1] === 'number');
-                    const k = Math.min(3, points.length);
-                    const clusters = kMeans(points, k);
-                    const canvasId = 'chart_' + Date.now();
-                    chartHtml = '<canvas id="' + canvasId + '" height="220"></canvas>';
-                    loadingEl.innerHTML = statsHtml + '<br>' + chartHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
-                    setTimeout(() => renderClusterChart(canvasId, points, clusters, cx, cy), 50);
-                } else {
-                    loadingEl.innerHTML = statsHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
+                    const loadingEl = addLoading('Анализирую изображение...');
+                    try {
+                        if (typeof puter === 'undefined') throw new Error('AI-движок не загрузился');
+                        maybeShowPuterHint();
+                        const response = await withTimeout(puter.ai.chat(userCaption, imgData.dataUrl, false, { model: MODELS.deep }), 45000, 'Анализ фото');
+                        const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
+                        loadingEl.innerHTML = renderText(answer);
+                        attachExport(loadingEl, answer, 'quanta-photo-analysis');
+                    } catch (e) {
+                        loadingEl.innerHTML = '⚠️ Ошибка анализа фото: ' + escapeHtml(e.message);
+                    }
+                    return;
                 }
 
-                const summaryPrompt = 'Вот статистика по таблице (' + rows.length + ' строк): ' + JSON.stringify(stats) + '. Дай 3-4 содержательных инсайта на русском языке простым языком, без markdown-таблиц.';
-                const insights = await askAI(summaryPrompt, { model: MODELS.deep });
-                const finalHtml = statsHtml + (chartHtml ? '<br>' + chartHtml : '') + '<br><b>Инсайты от AI:</b><br>' + renderText(insights);
-                loadingEl.innerHTML = finalHtml;
-                if (chartHtml) setTimeout(() => renderClusterChart(loadingEl.querySelector('canvas').id, null, null, null, null, true), 60);
-                attachExport(loadingEl, insights, 'quanta-table-insights');
-
-                const xlsxBtn = document.createElement('button');
-                xlsxBtn.className = 'ws-download';
-                xlsxBtn.style.cssText = 'border:none;cursor:pointer;background:#16a34a;margin-top:8px;';
-                xlsxBtn.textContent = '📊 Скачать Excel со статистикой';
-                xlsxBtn.onclick = () => downloadStatsXlsx(rows, stats, 'quanta-analysis');
-                loadingEl.appendChild(xlsxBtn);
-            } catch (e) {
-                loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                if (!text) {
+                    showToast('Введите запрос или прикрепите фото');
+                    return;
+                }
+                openWorkspace('Чат с Quanta AI');
+                addMessage('user', renderText(text));
+                input.value = '';
+                const loadingEl = addLoading('Генерирую ответ...');
+                try {
+                    const answer = await askAI(text, { useHistory: true });
+                    loadingEl.innerHTML = renderText(answer);
+                    attachExport(loadingEl, answer, 'quanta-chat');
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                }
             }
-        }
 
-        // Экспорт таблицы со статистикой в .xlsx
-        function downloadStatsXlsx(rows, stats, filenameBase) {
-            try {
-                const wb = XLSX.utils.book_new();
-                const wsData = XLSX.utils.json_to_sheet(rows);
-                XLSX.utils.book_append_sheet(wb, wsData, 'Данные');
-                const statsRows = Object.entries(stats).map(([col, s]) => ({ Колонка: col, Среднее: s.mean, Мин: s.min, Медиана: s.median, Макс: s.max, Кол_во: s.count }));
-                const wsStats = XLSX.utils.json_to_sheet(statsRows);
-                XLSX.utils.book_append_sheet(wb, wsStats, 'Статистика');
-                XLSX.writeFile(wb, filenameBase + '.xlsx');
-            } catch (e) {
-                showToast('Не удалось создать Excel-файл: ' + e.message);
+            // ---------- Быстрые действия ----------
+            window.runQuickAction = async function(kind) {
+                const input = document.getElementById('mainInput');
+                const text = input.value.trim();
+
+                if (kind === 'cluster') return void handleClusterAnalysis(text);
+                if (kind === 'slides') return void handleSlides(text);
+                if (kind === 'research') return void handleResearch(text);
+                if (kind === 'website') return void handleWebsite(text);
+                if (kind === 'image') return void handleImage(text);
+                if (kind === 'code') return void handleGenericMode(text, 'code', 'Помощь в кодинге',
+                    'Ты опытный senior-разработчик. Отвечай с примерами кода в блоках ```, объясняй кратко и по делу. Запрос пользователя: ');
+                if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод',
+                    'Ты профессиональный переводчик. Определи язык текста и переведи его на русский (если текст на русском — переведи на английский), сохраняя стиль и терминологию. Сначала укажи направление перевода, затем сам перевод. Текст: ');
+                if (kind === 'table') return void triggerFileUpload();
             }
-        }
 
-        // Алгоритм k-means
-        function kMeans(points, k) {
-            let centroids = points.slice(0, k).map(p => [...p]);
-            let assignments = new Array(points.length).fill(0);
-            for (let iter = 0; iter < 15; iter++) {
-                assignments = points.map(p => {
-                    let best = 0, bestDist = Infinity;
-                    centroids.forEach((c, i) => {
-                        const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2;
-                        if (d < bestDist) { bestDist = d; best = i; }
+            async function handleGenericMode(text, kind, title, systemPrefix) {
+                if (!text) {
+                    showToast('Сначала введите текст в поле запроса');
+                    document.getElementById('mainInput').focus();
+                    return;
+                }
+                openWorkspace(title);
+                addMessage('user', renderText(text));
+                document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Обрабатываю...');
+                try {
+                    const answer = await askAI(systemPrefix + text);
+                    loadingEl.innerHTML = renderText(answer);
+                    attachExport(loadingEl, answer, 'quanta-' + kind);
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                }
+            }
+
+            async function handleImage(text) {
+                if (!text) {
+                    showToast('Опишите изображение в поле запроса');
+                    document.getElementById('mainInput').focus();
+                    return;
+                }
+                openWorkspace('Генерация изображений');
+                addMessage('user', renderText(text));
+                document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Рисую изображение...');
+                try {
+                    maybeShowPuterHint();
+                    const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация изображения');
+                    const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
+                    if (!src) throw new Error('Не удалось получить изображение');
+                    loadingEl.innerHTML = '<img src="' + src + '" alt="Generated"><br><a class="ws-download" href="' + src + '" download="quanta-image.png" target="_blank">Скачать</a>';
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка генерации: ' + escapeHtml(e.message);
+                }
+            }
+
+            async function handleResearch(text) {
+                if (!text) {
+                    showToast('Введите тему исследования в поле запроса');
+                    document.getElementById('mainInput').focus();
+                    return;
+                }
+                openWorkspace('Deep Research');
+                addMessage('user', renderText(text));
+                document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Разбиваю тему на подзадачи...');
+                try {
+                    const planRaw = await askAI(
+                        'Разбей следующую тему на 4 ключевых подвопроса для глубокого исследования. Ответь ТОЛЬКО списком подвопросов, каждый с новой строки, без нумерации и пояснений. Тема: ' + text,
+                        { model: MODELS.deep }
+                    );
+                    const subquestions = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
+                    let report = '<b>План исследования:</b><br>' + subquestions.map(q => '• ' + escapeHtml(q)).join('<br>') + '<br><br>';
+                    let reportPlain = 'План исследования:\n' + subquestions.map(q => '• ' + q).join('\n') + '\n\n';
+                    loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
+
+                    for (const q of subquestions) {
+                        const answer = await askAI('Кратко (3-5 предложений) ответь на вопрос в контексте темы "' + text + '": ' + q, { model: MODELS.deep });
+                        report += '<b>' + escapeHtml(q) + '</b><br>' + renderText(answer) + '<br><br>';
+                        reportPlain += q + '\n' + answer + '\n\n';
+                        loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
+                    }
+
+                    const summary = await askAI('На основе темы "' + text + '" напиши краткое заключение исследования (4-6 предложений), обобщающее ключевые выводы.', { model: MODELS.deep });
+                    report += '<b>Заключение</b><br>' + renderText(summary);
+                    reportPlain += 'Заключение\n' + summary;
+                    loadingEl.innerHTML = report + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Отчёт составлен на основе знаний модели, без живого поиска в интернете — на статичном сайте без сервера это ограничение.</div>';
+                    attachExport(loadingEl, reportPlain, 'quanta-research');
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                }
+            }
+
+            async function handleWebsite(text) {
+                let url = text;
+                if (!url || !/^https?:\/\//i.test(url)) {
+                    url = prompt('Введите URL сайта для анализа (например [https://example.com](https://example.com)):', text || 'https://');
+                    if (!url) return;
+                }
+                openWorkspace('Анализ сайта');
+                addMessage('user', renderText(url));
+                document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Загружаю страницу...');
+                try {
+                    const proxyUrl = '[https://api.allorigins.win/raw?url=](https://api.allorigins.win/raw?url=)' + encodeURIComponent(url);
+                    const controller = new AbortController();
+                    const t = setTimeout(() => controller.abort(), 20000);
+                    const res = await fetch(proxyUrl, { signal: controller.signal });
+                    clearTimeout(t);
+                    if (!res.ok) throw new Error('Не удалось загрузить страницу (код ' + res.status + ')');
+                    const html = await res.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    doc.querySelectorAll('script,style,noscript').forEach(el => el.remove());
+                    let text2 = doc.body ? doc.body.innerText : html;
+                    text2 = text2.replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000);
+                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
+                    const answer = await askAI('Проанализируй содержимое сайта и дай структурированную сводку: о чём сайт, ключевые темы, важные факты. Содержимое:\n\n' + text2, { model: MODELS.deep });
+                    loadingEl.innerHTML = renderText(answer) + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Загрузка через публичный CORS-прокси — некоторые сайты могут быть недоступны.</div>';
+                    attachExport(loadingEl, answer, 'quanta-website');
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Прокси может быть временно недоступен или сайт блокирует доступ.</span>';
+                }
+            }
+
+            async function handleSlides(text) {
+                if (!text) {
+                    showToast('Опишите тему презентации в поле запроса');
+                    document.getElementById('mainInput').focus();
+                    return;
+                }
+                openWorkspace('Генерация презентации');
+                addMessage('user', renderText(text));
+                document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Придумываю структуру слайдов...');
+                try {
+                    const raw = await askAI(
+                        'Создай план презентации на тему "' + text + '" из 6 слайдов. ' +
+                        'Ответь СТРОГО в формате JSON без пояснений и без markdown-разметки: ' +
+                        '{"title":"...","slides":[{"title":"...","bullets":["...","...","..."]}]}',
+                        { model: MODELS.deep }
+                    );
+                    const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+                    const data = JSON.parse(jsonStr);
+
+                    const pptx = new PptxGenJS();
+                    const titleSlide = pptx.addSlide();
+                    titleSlide.background = { color: '0D0D0D' };
+                    titleSlide.addText(data.title || text, { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 36, bold: true, color: 'FFFFFF', align: 'center' });
+
+                    (data.slides || []).forEach(s => {
+                        const slide = pptx.addSlide();
+                        slide.background = { color: '141414' };
+                        slide.addText(s.title || '', { x: 0.5, y: 0.4, w: 9, h: 0.8, fontSize: 24, bold: true, color: '818CF8' });
+                        slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: true, breakLine: true } })), { x: 0.5, y: 1.4, w: 9, h: 4, fontSize: 16, color: 'E8E8E8' });
                     });
-                    return best;
-                });
-                centroids = centroids.map((c, i) => {
-                    const members = points.filter((_, idx) => assignments[idx] === i);
-                    if (!members.length) return c;
-                    const mx = members.reduce((a, p) => a + p[0], 0) / members.length;
-                    const my = members.reduce((a, p) => a + p[1], 0) / members.length;
-                    return [mx, my];
+
+                    const blob = await pptx.write('blob');
+                    const url = URL.createObjectURL(blob);
+                    loadingEl.innerHTML = '✅ Презентация готова: <b>' + escapeHtml(data.title || text) + '</b> (' + (data.slides || []).length + ' слайдов)<br><a class="ws-download" href="' + url + '" download="presentation.pptx">Скачать .pptx</a>';
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                }
+            }
+
+            async function handleClusterAnalysis(text) {
+                openWorkspace('Кластерный анализ');
+                addMessage('user', renderText(text || '(без загруженных данных)'));
+                document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Анализирую...');
+                try {
+                    const prompt = text
+                        ? 'Опиши, как провести кластерный анализ для следующей задачи, и предложи вероятное число кластеров и их характеристики: ' + text
+                        : 'Объясни кратко, что такое кластерный анализ и для каких задач его применяют, с 2 примерами. Также предложи загрузить CSV с числовыми данными для реального анализа.';
+                    const answer = await askAI(prompt, { model: MODELS.deep });
+                    loadingEl.innerHTML = renderText(answer) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Загрузите CSV/Excel через кнопку 📎 или карточку «Анализ данных» — тогда Quanta посчитает кластеры по-настоящему (k-means) и построит график.</span>';
+                    attachExport(loadingEl, answer, 'quanta-cluster');
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                }
+            }
+
+            window.startVoiceInput = function() {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    showToast('Голосовой ввод не поддерживается в этом браузере');
+                    return;
+                }
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'ru-RU';
+                recognition.interimResults = false;
+                const btn = document.getElementById('voiceBtn');
+                btn.style.color = 'var(--danger)';
+                showToast('Слушаю...');
+                recognition.start();
+                recognition.onresult = (e) => {
+                    const transcript = e.results[0][0].transcript;
+                    const input = document.getElementById('mainInput');
+                    input.value = (input.value ? input.value + ' ' : '') + transcript;
+                };
+                recognition.onerror = () => showToast('Не удалось распознать речь');
+                recognition.onend = () => { btn.style.color = ''; };
+            }
+
+            window.triggerFileUpload = function() {
+                document.getElementById('fileInput').click();
+            }
+
+            document.getElementById('fileInput').addEventListener('change', async function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const ext = file.name.split('.').pop().toLowerCase();
+                e.target.value = '';
+
+                const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'];
+
+                if (imageExts.includes(ext) || file.type.startsWith('image/')) {
+                    const dataUrl = await fileToDataURL(file);
+                    setPendingImage(file, dataUrl);
+                    showToast('Фото прикреплено! Напишите подпись и нажмите Отправить');
+                } else if (['csv', 'xlsx', 'xls'].includes(ext)) {
+                    await handleSpreadsheet(file);
+                } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) {
+                    await handleDocument(file, ext);
+                } else {
+                    showToast('Формат файла не поддерживается');
+                }
+            });
+
+            function fileToDataURL(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
                 });
             }
-            return assignments;
-        }
 
-        let _lastChartCache = null;
-        function renderClusterChart(canvasId, points, clusters, cx, cy, reuse) {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) return;
-            if (points) _lastChartCache = { points, clusters, cx, cy };
-            const data = _lastChartCache;
-            if (!data) return;
-            const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'];
-            const datasets = [...new Set(data.clusters)].map(cl => ({
-                label: 'Кластер ' + (cl + 1),
-                data: data.points.filter((_, i) => data.clusters[i] === cl).map(p => ({ x: p[0], y: p[1] })),
-                backgroundColor: colors[cl % colors.length]
-            }));
-            new Chart(canvas, {
-                type: 'scatter',
-                data: { datasets },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: data.cx, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#262626' } },
-                        y: { title: { display: true, text: data.cy, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#262626' } }
-                    },
-                    plugins: { legend: { labels: { color: '#e8e8e8' } } }
+            async function extractTextFromFile(file, ext) {
+                if (ext === 'txt' || ext === 'md') {
+                    return await file.text();
                 }
-            });
-        }
-
-        // Enter to send
-        document.getElementById('mainInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
+                if (ext === 'pdf') {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = '[https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js](https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js)';
+                    const buf = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+                    let full = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        full += content.items.map(it => it.str).join(' ') + '\n';
+                    }
+                    return full;
+                }
+                if (ext === 'docx') {
+                    const buf = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer: buf });
+                    return result.value;
+                }
+                return '';
             }
-        });
 
-        // Smooth scroll
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            async function handleDocument(file, ext) {
+                openWorkspace('Анализ документа: ' + file.name);
+                addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
+                const loadingEl = addLoading('Читаю файл...');
+                try {
+                    let content = await extractTextFromFile(file, ext);
+                    if (!content || !content.trim()) throw new Error('Не удалось извлечь текст из файла');
+                    content = content.trim().slice(0, 12000);
+                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
+                    const answer = await askAI('Проанализируй документ и дай структурированную сводку: основная тема, ключевые пункты, важные факты и цифры. Содержимое документа:\n\n' + content, { model: MODELS.deep });
+                    loadingEl.innerHTML = renderText(answer);
+                    attachExport(loadingEl, answer, 'quanta-document');
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                }
+            }
+
+            async function handleSpreadsheet(file) {
+                openWorkspace('Анализ таблицы: ' + file.name);
+                addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
+                const loadingEl = addLoading('Читаю таблицу...');
+                try {
+                    let rows = [];
+                    if (file.name.toLowerCase().endsWith('.csv')) {
+                        const text = await file.text();
+                        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
+                        rows = parsed.data;
+                    } else {
+                        const buf = await file.arrayBuffer();
+                        const wb = XLSX.read(buf, { type: 'array' });
+                        const sheet = wb.Sheets[wb.SheetNames[0]];
+                        rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+                    }
+                    if (!rows.length) throw new Error('Таблица пуста или не распознана');
+
+                    const columns = Object.keys(rows[0]);
+                    const numericCols = columns.filter(c => rows.every(r => r[c] === null || r[c] === '' || typeof r[c] === 'number'));
+
+                    const stats = {};
+                    numericCols.forEach(c => {
+                        const vals = rows.map(r => r[c]).filter(v => typeof v === 'number');
+                        if (!vals.length) return;
+                        const sum = vals.reduce((a, b) => a + b, 0);
+                        const mean = sum / vals.length;
+                        const sorted = [...vals].sort((a, b) => a - b);
+                        stats[c] = {
+                            count: vals.length,
+                            mean: mean.toFixed(2),
+                            min: Math.min(...vals),
+                            max: Math.max(...vals),
+                            median: sorted[Math.floor(sorted.length / 2)]
+                        };
+                    });
+
+                    let statsHtml = '<b>Строк:</b> ' + rows.length + ' • <b>Столбцов:</b> ' + columns.length + '<br><br>';
+                    statsHtml += '<table><tr><th>Колонка</th><th>Среднее</th><th>Мин</th><th>Медиана</th><th>Макс</th></tr>';
+                    Object.entries(stats).forEach(([c, s]) => {
+                        statsHtml += '<tr><td>' + escapeHtml(c) + '</td><td>' + s.mean + '</td><td>' + s.min + '</td><td>' + s.median + '</td><td>' + s.max + '</td></tr>';
+                    });
+                    statsHtml += '</table>';
+
+                    let chartHtml = '';
+                    if (numericCols.length >= 2) {
+                        const [cx, cy] = numericCols;
+                        const points = rows.map(r => [r[cx], r[cy]]).filter(p => typeof p[0] === 'number' && typeof p[1] === 'number');
+                        const k = Math.min(3, points.length);
+                        const clusters = kMeans(points, k);
+                        const canvasId = 'chart_' + Date.now();
+                        chartHtml = '<canvas id="' + canvasId + '" height="220"></canvas>';
+                        loadingEl.innerHTML = statsHtml + '<br>' + chartHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
+                        setTimeout(() => renderClusterChart(canvasId, points, clusters, cx, cy), 50);
+                    } else {
+                        loadingEl.innerHTML = statsHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
+                    }
+
+                    const summaryPrompt = 'Вот статистика по таблице (' + rows.length + ' строк): ' + JSON.stringify(stats) + '. Дай 3-4 содержательных инсайта на русском языке простым языком, без markdown-таблиц.';
+                    const insights = await askAI(summaryPrompt, { model: MODELS.deep });
+                    const finalHtml = statsHtml + (chartHtml ? '<br>' + chartHtml : '') + '<br><b>Инсайты от AI:</b><br>' + renderText(insights);
+                    loadingEl.innerHTML = finalHtml;
+                    if (chartHtml) setTimeout(() => renderClusterChart(loadingEl.querySelector('canvas').id, null, null, null, null, true), 60);
+                    attachExport(loadingEl, insights, 'quanta-table-insights');
+
+                    const xlsxBtn = document.createElement('button');
+                    xlsxBtn.className = 'ws-download';
+                    xlsxBtn.style.cssText = 'border:none;cursor:pointer;background:#16a34a;margin-top:8px;';
+                    xlsxBtn.textContent = '📊 Скачать Excel со статистикой';
+                    xlsxBtn.onclick = () => downloadStatsXlsx(rows, stats, 'quanta-analysis');
+                    loadingEl.appendChild(xlsxBtn);
+                } catch (e) {
+                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+                }
+            }
+
+            function downloadStatsXlsx(rows, stats, filenameBase) {
+                try {
+                    const wb = XLSX.utils.book_new();
+                    const wsData = XLSX.utils.json_to_sheet(rows);
+                    XLSX.utils.book_append_sheet(wb, wsData, 'Данные');
+                    const statsRows = Object.entries(stats).map(([col, s]) => ({ Колонка: col, Среднее: s.mean, Мин: s.min, Медиана: s.median, Макс: s.max, Кол_во: s.count }));
+                    const wsStats = XLSX.utils.json_to_sheet(statsRows);
+                    XLSX.utils.book_append_sheet(wb, wsStats, 'Статистика');
+                    XLSX.writeFile(wb, filenameBase + '.xlsx');
+                } catch (e) {
+                    showToast('Не удалось создать Excel-файл: ' + e.message);
+                }
+            }
+
+            function kMeans(points, k) {
+                let centroids = points.slice(0, k).map(p => [...p]);
+                let assignments = new Array(points.length).fill(0);
+                for (let iter = 0; iter < 15; iter++) {
+                    assignments = points.map(p => {
+                        let best = 0, bestDist = Infinity;
+                        centroids.forEach((c, i) => {
+                            const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2;
+                            if (d < bestDist) { bestDist = d; best = i; }
+                        });
+                        return best;
+                    });
+                    centroids = centroids.map((c, i) => {
+                        const members = points.filter((_, idx) => assignments[idx] === i);
+                        if (!members.length) return c;
+                        const mx = members.reduce((a, p) => a + p[0], 0) / members.length;
+                        const my = members.reduce((a, p) => a + p[1], 0) / members.length;
+                        return [mx, my];
+                    });
+                }
+                return assignments;
+            }
+
+            let _lastChartCache = null;
+            function renderClusterChart(canvasId, points, clusters, cx, cy, reuse) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                if (points) _lastChartCache = { points, clusters, cx, cy };
+                const data = _lastChartCache;
+                if (!data) return;
+                const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'];
+                const datasets = [...new Set(data.clusters)].map(cl => ({
+                    label: 'Кластер ' + (cl + 1),
+                    data: data.points.filter((_, i) => data.clusters[i] === cl).map(p => ({ x: p[0], y: p[1] })),
+                    backgroundColor: colors[cl % colors.length]
+                }));
+                new Chart(canvas, {
+                    type: 'scatter',
+                    data: { datasets },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { title: { display: true, text: data.cx, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#262626' } },
+                            y: { title: { display: true, text: data.cy, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#262626' } }
+                        },
+                        plugins: { legend: { labels: { color: '#e8e8e8' } } }
+                    }
+                });
+            }
+
+            // Enter to send
+            document.getElementById('mainInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    window.handleSend();
                 }
             });
-        });
 
-        // Intersection observer
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
+            // Smooth scroll
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
             });
-        }, { threshold: 0.1 });
 
-        document.querySelectorAll('.feature-card, .step').forEach(el => {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(20px)';
-            el.style.transition = 'all 0.6s ease-out';
-            observer.observe(el);
+            // Intersection observer
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.feature-card, .step').forEach(el => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(20px)';
+                el.style.transition = 'all 0.6s ease-out';
+                observer.observe(el);
+            });
         });
     </script>
 </body>
