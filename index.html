@@ -9,7 +9,7 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://blazepointt.github.io/quanta/">
 
-    <!-- Open Graph -->
+    <!-- Open Graph (Telegram, VK, Discord) -->
     <meta property="og:locale" content="ru_RU">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Quanta AI">
@@ -17,6 +17,12 @@
     <meta property="og:description" content="Чат с нейросетью, анализ документов, картинок и таблиц, генерация презентаций — бесплатно, без регистрации.">
     <meta property="og:url" content="https://blazepointt.github.io/quanta/">
     <meta property="og:image" content="https://blazepointt.github.io/quanta/og-preview.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Quanta — AI-платформа в браузере">
+    <meta name="twitter:description" content="Чат с нейросетью, анализ документов и таблиц, генерация изображений и презентаций прямо в браузере.">
+    <meta name="twitter:image" content="https://blazepointt.github.io/quanta/og-preview.png">
 
     <!-- Schema.org JSON-LD -->
     <script type="application/ld+json">
@@ -28,7 +34,11 @@
       "description": "Бесплатная браузерная платформа искусственного интеллекта для анализа документов, кода, таблиц и изображений.",
       "applicationCategory": "Productivity",
       "operatingSystem": "All",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
     }
     </script>
 
@@ -54,7 +64,12 @@
             --danger: #ef4444;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* --- Жесткий контроль переполнения --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body, main {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -73,16 +88,30 @@
             overflow-x: auto;
         }
 
-        img[alt="Preview"]:not([src]) { display: none; }
+        /* Скрываем картинку до тех пор, пока JS не добавит src */
+        img[alt="Preview"]:not([src]) {
+            display: none;
+        }
 
+        /* Background particles */
         .particles {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 0; opacity: 0.4;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.4;
         }
 
         .particle {
-            position: absolute; width: 2px; height: 2px; background: var(--accent);
-            border-radius: 50%; animation: float 20s infinite linear;
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
         }
 
         @keyframes float {
@@ -92,133 +121,677 @@
             100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
         }
 
+        /* Header */
         header {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-            padding: 16px 32px; display: flex; justify-content: space-between; align-items: center;
-            background: rgba(13, 13, 13, 0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(13, 13, 13, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
         }
 
-        .logo { display: flex; align-items: center; gap: 12px; font-size: 1.5rem; font-weight: 700; color: var(--text-primary); text-decoration: none; }
-        .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), #8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; }
-        .nav-links { display: flex; gap: 8px; align-items: center; }
-        .nav-link { padding: 8px 16px; border-radius: 8px; color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
-        .nav-link:hover { color: var(--text-primary); background: var(--bg-hover); }
-        .nav-link.active { color: var(--text-primary); background: var(--bg-card); }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
 
-        .github-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; background: var(--bg-card); color: var(--text-primary); text-decoration: none; font-size: 0.9rem; font-weight: 500; border: 1px solid var(--border); transition: all 0.2s; cursor: pointer; }
-        .github-btn:hover { background: var(--bg-hover); border-color: var(--border-light); }
-        .header-actions { display: flex; align-items: center; gap: 10px; }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
 
-        #puterAuthBtn.puter-signed-in { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.4); color: #4ade80; }
+        .nav-links {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
 
-        main { position: relative; z-index: 1; padding-top: 80px; }
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
 
-        .hero { min-height: calc(100vh - 80px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
-        .hero-logo { font-size: 4rem; font-weight: 700; letter-spacing: -2px; margin-bottom: 8px; background: linear-gradient(135deg, #fff 0%, #888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .hero-subtitle { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 40px; font-weight: 400; }
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
 
-        .input-container { width: 100%; max-width: 700px; margin-bottom: 24px; }
-        .input-wrapper { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; transition: all 0.3s; }
-        .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .nav-link.active {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
 
-        .image-preview-bar { display: none; align-items: center; gap: 12px; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; text-align: left; }
-        .image-preview-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); }
-        .image-preview-info { flex: 1; min-width: 0; }
-        .image-preview-name { font-size: 0.85rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .image-preview-hint { font-size: 0.75rem; color: var(--text-secondary); }
-        .image-preview-remove { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 1.1rem; line-height: 1; }
-        .image-preview-remove:hover { color: var(--danger); }
+        .github-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
 
-        .input-textarea { width: 100%; background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 1rem; font-family: inherit; resize: none; min-height: 60px; max-height: 200px; }
-        .input-textarea::placeholder { color: var(--text-muted); }
-        .input-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-        .input-left { display: flex; gap: 8px; }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-        .icon-btn { width: 36px; height: 36px; border-radius: 8px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-        .send-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--text-primary); border: none; color: var(--bg-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .send-btn:hover { transform: scale(1.05); background: #fff; }
+        #puterAuthBtn.puter-signed-in {
+            background: rgba(34, 197, 94, 0.12);
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #4ade80;
+        }
 
-        .mode-selector { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: transparent; border: none; color: var(--text-secondary); font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
-        .mode-selector:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .github-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-light);
+        }
 
-        .quick-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 40px; }
-        .quick-action { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 0.9rem; cursor: pointer; transition: all 0.2s; text-decoration: none; }
-        .quick-action:hover { background: var(--bg-hover); border-color: var(--border-light); color: var(--text-primary); transform: translateY(-1px); }
-        .quick-action.active { background: var(--bg-hover); border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); color: var(--text-primary); transform: translateY(-1px); }
-        .quick-action svg { width: 18px; height: 18px; }
+        /* Main content */
+        main {
+            position: relative;
+            z-index: 1;
+            padding-top: 80px;
+        }
 
-        .features { padding: 80px 20px; max-width: 1200px; margin: 0 auto; }
-        .section-title { font-size: 2rem; font-weight: 700; text-align: center; margin-bottom: 12px; }
-        .section-subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 48px; }
-        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .feature-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; transition: all 0.3s; cursor: pointer; }
-        .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); }
-        .feature-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 1.5rem; }
-        .feature-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
-        .feature-card p { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; }
+        /* Hero section */
+        .hero {
+            min-height: calc(100vh - 80px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
 
-        .stats { padding: 60px 20px; background: var(--bg-secondary); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; max-width: 900px; margin: 0 auto; text-align: center; }
-        .stat-value { font-size: 2.5rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
-        .stat-label { color: var(--text-secondary); font-size: 0.9rem; }
+        .hero-logo {
+            font-size: 4rem;
+            font-weight: 700;
+            letter-spacing: -2px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #fff 0%, #888 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-        .how-it-works { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
-        .steps { display: flex; flex-direction: column; gap: 32px; }
-        .step { display: flex; gap: 24px; align-items: flex-start; padding: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
-        .step-number { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; flex-shrink: 0; }
-        .step-content h3 { font-size: 1.1rem; margin-bottom: 6px; }
-        .step-content p { color: var(--text-secondary); font-size: 0.9rem; }
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
 
-        footer { padding: 40px 20px; text-align: center; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
-        footer a { color: var(--text-secondary); text-decoration: none; }
-        footer a:hover { color: var(--text-primary); }
+        /* Input area */
+        .input-container {
+            width: 100%;
+            max-width: 700px;
+            margin-bottom: 24px;
+        }
 
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .input-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .image-preview-bar {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .image-preview-thumb {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--border);
+        }
+
+        .image-preview-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .image-preview-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .image-preview-hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .image-preview-remove {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .image-preview-remove:hover {
+            color: var(--danger);
+        }
+
+        .input-textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            resize: none;
+            min-height: 60px;
+            max-height: 200px;
+        }
+
+        .input-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .input-left {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .send-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            border: none;
+            color: var(--bg-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            background: #fff;
+        }
+
+        .mode-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-selector:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* Quick actions */
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .quick-action:hover {
+            background: var(--bg-hover);
+            border-color: var(--border-light);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        /* Активное состояние тумблеров */
+        .quick-action.active {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .quick-action svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Features section */
+        .features {
+            padding: 80px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* Stats section */
+        .stats {
+            padding: 60px 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 32px;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* How it works */
+        .how-it-works {
+            padding: 80px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .step {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            padding: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+        }
+
+        .step-content p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 20px;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .animate-in { animation: fadeInUp 0.6s ease-out forwards; }
         .delay-1 { animation-delay: 0.1s; }
         .delay-2 { animation-delay: 0.2s; }
         .delay-3 { animation-delay: 0.3s; }
 
+        /* Responsive */
         @media (max-width: 768px) {
-            header { padding: 12px 16px; } .nav-links { display: none; }
+            header { padding: 12px 16px; }
+            .nav-links { display: none; }
             .github-btn span, .github-btn:not(#puterAuthBtn) { font-size: 0; }
-            .github-btn svg { margin: 0; } #puterAuthBtn span { display: none; }
-            .github-btn { padding: 8px 10px; } .hero-logo { font-size: 2.5rem; }
+            .github-btn svg { margin: 0; }
+            #puterAuthBtn span { display: none; }
+            .github-btn { padding: 8px 10px; }
+            .hero-logo { font-size: 2.5rem; }
             .features-grid { grid-template-columns: 1fr; }
             .step { flex-direction: column; text-align: center; }
             .step-number { margin: 0 auto; }
         }
 
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-primary); }
         ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-        pre { background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.5; }
-        code { font-family: 'JetBrains Mono', monospace; background: var(--bg-input); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+        pre {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
 
-        .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; color: var(--text-primary); font-size: 0.9rem; z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
-        .toast.show { transform: translateY(0); opacity: 1; }
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-input);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
 
-        .workspace { width: 100%; max-width: 700px; margin: 0 auto 32px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; text-align: left; overflow: hidden; }
-        .workspace-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); }
-        .workspace-body { padding: 18px; max-height: 60vh; overflow-y: auto; }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
 
-        .msg { margin-bottom: 16px; display: flex; flex-direction: column; gap: 4px; }
-        .msg-role { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .workspace {
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto 32px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            text-align: left;
+            overflow: hidden;
+        }
+
+        .workspace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .workspace-body {
+            padding: 18px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .msg {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .msg-role {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         .msg-user .msg-role { color: var(--accent-hover); }
-        .msg-content { font-size: 0.95rem; white-space: pre-wrap; word-wrap: break-word; }
-        .msg-content img { max-width: 100%; border-radius: 10px; margin-top: 8px; }
-        .msg-content table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin-top: 8px; }
-        .msg-content th, .msg-content td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
 
-        .ws-download { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; font-size: 0.85rem; font-weight: 500; }
+        .msg-content {
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .msg-content img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-top: 8px;
+        }
+
+        .msg-content table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+
+        .msg-content th, .msg-content td {
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            text-align: left;
+        }
+
+        .ws-download {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: var(--accent);
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
         .ws-download:hover { background: var(--accent-hover); }
 
-        .ws-loading { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.9rem; }
-        .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .ws-loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -271,10 +844,11 @@
 
                     <textarea 
                         class="input-textarea" 
-                        placeholder="Опишите задачу, задайте вопрос, напишите «нарисуй ...» или «создай презентацию...»"
+                        placeholder="Опишите задачу, задайте вопрос или добавьте фото..."
                         id="mainInput"
                         rows="3"
                     ></textarea>
+                    
                     <div class="input-actions">
                         <div class="input-left">
                             <button class="icon-btn" title="Загрузить файл или фото" onclick="triggerFileUpload()">
@@ -282,6 +856,13 @@
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                     <polyline points="17 8 12 3 7 8"/>
                                     <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </button>
+                            <button class="icon-btn" title="Сгенерировать ИИ-картинку" onclick="triggerImageGen()">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
                                 </svg>
                             </button>
                             <button class="icon-btn" id="voiceBtn" title="Голосовой ввод" onclick="startVoiceInput()">
@@ -316,56 +897,27 @@
 
             <div class="quick-actions animate-in delay-3">
                 <button class="quick-action" onclick="runQuickAction('cluster', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                     Кластер
                 </button>
                 <button class="quick-action" onclick="runQuickAction('slides', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2"/>
-                        <line x1="8" y1="21" x2="16" y2="21"/>
-                        <line x1="12" y1="17" x2="12" y2="21"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                     Слайды
                 </button>
                 <button class="quick-action" onclick="runQuickAction('research', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                        <line x1="11" y1="8" x2="11" y2="14"/>
-                        <line x1="8" y1="11" x2="14" y2="11"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                     Глубокое исследование
                 </button>
                 <button class="quick-action" onclick="runQuickAction('website', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2"/>
-                        <line x1="2" y1="8" x2="22" y2="8"/>
-                        <line x1="6" y1="12" x2="6" y2="12"/>
-                        <line x1="10" y1="12" x2="10" y2="12"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="10" y1="12" x2="10" y2="12"/></svg>
                     Сайты
                 </button>
-                <button class="quick-action" onclick="setActiveQuickAction(this); triggerFileUpload();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10 9 9 9 8 9"/>
-                    </svg>
+                <button class="quick-action" onclick="if(setActiveQuickAction(this)) triggerFileUpload();">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                     Документы
                 </button>
                 <button class="quick-action" onclick="runQuickAction('table', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/>
-                        <line x1="3" y1="9" x2="21" y2="9"/>
-                        <line x1="3" y1="15" x2="21" y2="15"/>
-                        <line x1="9" y1="3" x2="9" y2="21"/>
-                        <line x1="15" y1="3" x2="15" y2="21"/>
-                    </svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
                     Таблицы
                 </button>
             </div>
@@ -396,7 +948,7 @@
                     <h3>Анализ документов</h3>
                     <p>Загружайте PDF, DOCX, TXT файлы. AI извлечёт ключевую информацию, ответит на вопросы по содержимому.</p>
                 </div>
-                <div class="feature-card" onclick="runQuickAction('image', null)">
+                <div class="feature-card" onclick="triggerImageGen()">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎨</div>
                     <h3>Генерация изображений</h3>
                     <p>Создавайте уникальные изображения по текстовому описанию. Подходит для иллюстраций, дизайна и визуализации идей.</p>
@@ -561,10 +1113,10 @@
                 showToast('Выберите «Сохранить как PDF»');
             }
 
-            // --- УЛЬТРА РЕЖИМ (CLAUDE 3.5 SONNET) ---
-            const MODELS = { quick: 'gpt-4o-mini', deep: 'gpt-4o', ultra: 'claude-3-5-sonnet' };
+            // --- УЛЬТРА РЕЖИМ (CLAUDE 3 OPUS) ---
+            const MODELS = { quick: 'gpt-4o-mini', deep: 'gpt-4o', ultra: 'claude-3-opus' };
             let currentMode = 'quick';
-            const modeNames = { quick: 'Быстрый', deep: 'Глубокий', ultra: 'Ультра' };
+            const modeNames = { quick: 'Быстрый', deep: 'Глубокий', ultra: 'Ультра (Claude 3 Opus)' };
 
             window.toggleModel = function() {
                 if (currentMode === 'quick') { currentMode = 'deep'; }
@@ -697,12 +1249,26 @@
                 document.getElementById('imagePreviewThumb').removeAttribute('src');
             }
 
+            // Функция-тумблер
             window.setActiveQuickAction = function(btn) {
+                const isActive = btn && btn.classList.contains('active');
                 document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
-                if (btn) btn.classList.add('active');
+                if (btn && !isActive) {
+                    btn.classList.add('active');
+                    return true;
+                }
+                return false;
             }
 
-            // --- ГЛАВНЫЙ ОБРАБОТЧИК ---
+            window.triggerImageGen = function() {
+                const input = document.getElementById('mainInput');
+                if (!input.value.toLowerCase().startsWith('нарисуй')) {
+                    input.value = 'Нарисуй ' + input.value;
+                }
+                input.focus();
+                showToast('Напишите, что нужно нарисовать, и нажмите Enter!');
+            }
+
             window.handleSend = async function() {
                 const input = document.getElementById('mainInput');
                 const text = input.value.trim();
@@ -725,20 +1291,21 @@
 
                 if (!text) return showToast('Введите запрос');
 
-                // ТРИГГЕР ПРЕЗЕНТАЦИЙ
                 if (textLower.includes('презентаци') || textLower.includes('слайды')) {
                     const slidesBtn = Array.from(document.querySelectorAll('.quick-action')).find(el => el.textContent.includes('Слайды'));
-                    setActiveQuickAction(slidesBtn); return handleSlides(text);
+                    document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
+                    if(slidesBtn) slidesBtn.classList.add('active');
+                    return handleSlides(text);
                 }
 
-                // ТРИГГЕР КАРТИНОК (ЖЕСТКО DALL-E-3)
                 if (textLower.startsWith('нарисуй') || textLower.startsWith('сгенерируй') || textLower.startsWith('сделай фото') || textLower.startsWith('создай фото')) {
                     openWorkspace('Генерация изображений');
                     addMessage('user', renderText(text)); input.value = '';
                     const loadingEl = addLoading('🎨 Рисую...');
                     try {
                         maybeShowPuterHint();
-                        const imgEl = await withTimeout(puter.ai.txt2img(text, { model: 'dall-e-3' }), 45000, 'Рисование');
+                        // Puter сам подберет лучшую модель для генерации картинок
+                        const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Рисование');
                         const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
                         if (!src) throw new Error('Не получена картинка');
                         loadingEl.innerHTML = `<img src="${src}" alt="Art" style="width:100%; border-radius:12px; margin-top:8px;"><br><a class="ws-download" href="${src}" download="quanta-art.png" target="_blank">💾 Скачать</a>`;
@@ -746,19 +1313,28 @@
                     return;
                 }
 
-                // ОБЫЧНЫЙ ЧАТ
                 openWorkspace('Чат с Quanta');
                 addMessage('user', renderText(text)); input.value = '';
                 const loadingEl = addLoading('Генерирую...');
                 try {
-                    const systemPrompt = "Внимание: Отвечай профессионально. Если пишешь код, используй markdown-блоки с указанием языка (например ```javascript). Без воды.";
-                    const answer = await askAI(systemPrompt + "\n\nЗапрос:\n" + text, { useHistory: true });
+                    // Новый системный промпт без ограничений
+                    const systemPrompt = "Ты — Senior-разработчик. Отвечай максимально профессионально, пиши код ПОЛНОСТЬЮ, без сокращений, заглушек и лимитов. Если пишешь код, используй markdown-блоки с указанием языка.";
+                    let finalPrompt = text;
+                    if (currentMode === 'ultra') {
+                        finalPrompt = systemPrompt + "\n\nЗапрос:\n" + text;
+                    }
+                    const answer = await askAI(finalPrompt, { useHistory: true });
                     loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-chat');
                 } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             window.runQuickAction = async function(kind, btnElement) {
-                setActiveQuickAction(btnElement);
+                const isActivated = setActiveQuickAction(btnElement);
+                if (!isActivated) {
+                    document.getElementById('mainInput').value = '';
+                    document.getElementById('mainInput').placeholder = 'Опишите задачу, задайте вопрос...';
+                    return; 
+                }
                 const input = document.getElementById('mainInput');
                 const text = input.value.trim();
 
@@ -766,8 +1342,12 @@
                 if (kind === 'slides') return void handleSlides(text);
                 if (kind === 'research') return void handleResearch(text);
                 if (kind === 'website') return void handleWebsite(text);
-                if (kind === 'image') return void handleImage(text);
-                if (kind === 'code') return void handleGenericMode(text, 'code', 'Помощь в кодинге', 'Ты senior-разработчик. Пиши код в блоках ```. Запрос: ');
+                if (kind === 'image') {
+                    input.value = "Нарисуй " + text;
+                    input.focus();
+                    return;
+                }
+                if (kind === 'code') return void handleGenericMode(text, 'code', 'Помощь в кодинге', 'Ты senior-разработчик. Пиши полный код в блоках ```. Запрос: ');
                 if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод', 'Переведи на русский/английский: ');
                 if (kind === 'table') return void triggerFileUpload();
             }
@@ -778,18 +1358,6 @@
                 const loadingEl = addLoading('Обрабатываю...');
                 try { const answer = await askAI(sys + text, { model: MODELS.ultra }); loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-' + kind); } 
                 catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
-            }
-
-            async function handleImage(text) {
-                if (!text) { showToast('Опишите изображение'); document.getElementById('mainInput').focus(); return; }
-                openWorkspace('Генерация изображений'); addMessage('user', renderText(text)); document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('🎨 Рисую...');
-                try {
-                    maybeShowPuterHint();
-                    const imgEl = await withTimeout(puter.ai.txt2img(text, { model: 'dall-e-3' }), 45000, 'Рисование');
-                    const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
-                    loadingEl.innerHTML = `<img src="${src}" alt="Art" style="width:100%; border-radius:12px; margin-top:8px;"><br><a class="ws-download" href="${src}" download="quanta-art.png" target="_blank">💾 Скачать</a>`;
-                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             async function handleResearch(text) {
@@ -822,7 +1390,7 @@
                 openWorkspace('Анализ сайта'); addMessage('user', renderText(url)); document.getElementById('mainInput').value = '';
                 const loadingEl = addLoading('Загружаю...');
                 try {
-                    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+                    const proxyUrl = '[https://api.allorigins.win/raw?url=](https://api.allorigins.win/raw?url=)' + encodeURIComponent(url);
                     const controller = new AbortController(); const t = setTimeout(() => controller.abort(), 20000);
                     const res = await fetch(proxyUrl, { signal: controller.signal }); clearTimeout(t);
                     if (!res.ok) throw new Error('Сайт недоступен (код ' + res.status + ')');
@@ -898,7 +1466,7 @@
             async function extractTextFromFile(file, ext) {
                 if (ext === 'txt' || ext === 'md') return await file.text();
                 if (ext === 'pdf') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = '[https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js](https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js)';
                     const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
                     let full = ''; for (let i = 1; i <= pdf.numPages; i++) full += (await (await pdf.getPage(i)).getTextContent()).items.map(it => it.str).join(' ') + '\n';
                     return full;
@@ -919,7 +1487,6 @@
                 } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
-            // --- ВОССТАНОВЛЕННЫЙ БЛОК ТАБЛИЦ (ГРАФИКИ, K-MEANS, EXCEL EXPORT) ---
             async function handleSpreadsheet(file) {
                 openWorkspace('Анализ таблицы: ' + file.name);
                 addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
@@ -935,7 +1502,7 @@
                     if (!rows.length) throw new Error('Таблица пуста или не распознана');
 
                     const columns = Object.keys(rows[0]);
-                    const numericCols = columns.filter(c => rows.every(r => r[c] === null || r[c] === '' || typeof r[c] === 'number'));
+                    const numericCols = columns.filter(c => rows.every(r => typeof r[c] === 'number' || r[c] == null));
 
                     const stats = {};
                     numericCols.forEach(c => {
