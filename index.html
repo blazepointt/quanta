@@ -9,7 +9,7 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://blazepointt.github.io/quanta/">
 
-    <!-- Open Graph (Telegram, VK, Discord) -->
+    <!-- Open Graph -->
     <meta property="og:locale" content="ru_RU">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Quanta AI">
@@ -17,12 +17,6 @@
     <meta property="og:description" content="Чат с нейросетью, анализ документов, картинок и таблиц, генерация презентаций — бесплатно, без регистрации.">
     <meta property="og:url" content="https://blazepointt.github.io/quanta/">
     <meta property="og:image" content="https://blazepointt.github.io/quanta/og-preview.png">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Quanta — AI-платформа в браузере">
-    <meta name="twitter:description" content="Чат с нейросетью, анализ документов и таблиц, генерация изображений и презентаций прямо в браузере.">
-    <meta name="twitter:image" content="https://blazepointt.github.io/quanta/og-preview.png">
 
     <!-- Schema.org JSON-LD -->
     <script type="application/ld+json">
@@ -34,11 +28,7 @@
       "description": "Бесплатная браузерная платформа искусственного интеллекта для анализа документов, кода, таблиц и изображений.",
       "applicationCategory": "Productivity",
       "operatingSystem": "All",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      }
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
     }
     </script>
 
@@ -64,12 +54,7 @@
             --danger: #ef4444;
         }
 
-        /* --- Vibe Coder Fixes: Жесткий контроль переполнения --- */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body, main {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -88,31 +73,16 @@
             overflow-x: auto;
         }
 
-        /* Скрываем картинку до тех пор, пока JS не добавит src */
-        img[alt="Preview"]:not([src]) {
-            display: none;
-        }
-        /* ----------------------------------------------------- */
+        img[alt="Preview"]:not([src]) { display: none; }
 
-        /* Background particles */
         .particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            opacity: 0.4;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0; opacity: 0.4;
         }
 
         .particle {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: var(--accent);
-            border-radius: 50%;
-            animation: float 20s infinite linear;
+            position: absolute; width: 2px; height: 2px; background: var(--accent);
+            border-radius: 50%; animation: float 20s infinite linear;
         }
 
         @keyframes float {
@@ -122,670 +92,133 @@
             100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
         }
 
-        /* Header */
         header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 100;
-            padding: 16px 32px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(13, 13, 13, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            padding: 16px 32px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(13, 13, 13, 0.8); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
         }
 
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            text-decoration: none;
-        }
+        .logo { display: flex; align-items: center; gap: 12px; font-size: 1.5rem; font-weight: 700; color: var(--text-primary); text-decoration: none; }
+        .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), #8b5cf6); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; }
+        .nav-links { display: flex; gap: 8px; align-items: center; }
+        .nav-link { padding: 8px 16px; border-radius: 8px; color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; }
+        .nav-link:hover { color: var(--text-primary); background: var(--bg-hover); }
+        .nav-link.active { color: var(--text-primary); background: var(--bg-card); }
 
-        .logo-icon {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, var(--accent), #8b5cf6);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            font-weight: 700;
-        }
+        .github-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 8px; background: var(--bg-card); color: var(--text-primary); text-decoration: none; font-size: 0.9rem; font-weight: 500; border: 1px solid var(--border); transition: all 0.2s; cursor: pointer; }
+        .github-btn:hover { background: var(--bg-hover); border-color: var(--border-light); }
+        .header-actions { display: flex; align-items: center; gap: 10px; }
 
-        .nav-links {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
+        #puterAuthBtn.puter-signed-in { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.4); color: #4ade80; }
 
-        .nav-link {
-            padding: 8px 16px;
-            border-radius: 8px;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
+        main { position: relative; z-index: 1; padding-top: 80px; }
 
-        .nav-link:hover {
-            color: var(--text-primary);
-            background: var(--bg-hover);
-        }
+        .hero { min-height: calc(100vh - 80px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+        .hero-logo { font-size: 4rem; font-weight: 700; letter-spacing: -2px; margin-bottom: 8px; background: linear-gradient(135deg, #fff 0%, #888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero-subtitle { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 40px; font-weight: 400; }
 
-        .nav-link.active {
-            color: var(--text-primary);
-            background: var(--bg-card);
-        }
+        .input-container { width: 100%; max-width: 700px; margin-bottom: 24px; }
+        .input-wrapper { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; transition: all 0.3s; }
+        .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 
-        .github-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: var(--bg-card);
-            color: var(--text-primary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            border: 1px solid var(--border);
-            transition: all 0.2s;
-            cursor: pointer;
-        }
+        .image-preview-bar { display: none; align-items: center; gap: 12px; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; text-align: left; }
+        .image-preview-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); }
+        .image-preview-info { flex: 1; min-width: 0; }
+        .image-preview-name { font-size: 0.85rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .image-preview-hint { font-size: 0.75rem; color: var(--text-secondary); }
+        .image-preview-remove { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 1.1rem; line-height: 1; }
+        .image-preview-remove:hover { color: var(--danger); }
 
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .input-textarea { width: 100%; background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 1rem; font-family: inherit; resize: none; min-height: 60px; max-height: 200px; }
+        .input-textarea::placeholder { color: var(--text-muted); }
+        .input-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+        .input-left { display: flex; gap: 8px; }
 
-        #puterAuthBtn.puter-signed-in {
-            background: rgba(34, 197, 94, 0.12);
-            border-color: rgba(34, 197, 94, 0.4);
-            color: #4ade80;
-        }
+        .icon-btn { width: 36px; height: 36px; border-radius: 8px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .send-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--text-primary); border: none; color: var(--bg-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .send-btn:hover { transform: scale(1.05); background: #fff; }
 
-        .github-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--border-light);
-        }
+        .mode-selector { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: transparent; border: none; color: var(--text-secondary); font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+        .mode-selector:hover { background: var(--bg-hover); color: var(--text-primary); }
 
-        /* Main content */
-        main {
-            position: relative;
-            z-index: 1;
-            padding-top: 80px;
-        }
+        .quick-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 40px; }
+        .quick-action { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); font-size: 0.9rem; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+        .quick-action:hover { background: var(--bg-hover); border-color: var(--border-light); color: var(--text-primary); transform: translateY(-1px); }
+        .quick-action.active { background: var(--bg-hover); border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); color: var(--text-primary); transform: translateY(-1px); }
+        .quick-action svg { width: 18px; height: 18px; }
 
-        /* Hero section */
-        .hero {
-            min-height: calc(100vh - 80px);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
-            text-align: center;
-        }
+        .features { padding: 80px 20px; max-width: 1200px; margin: 0 auto; }
+        .section-title { font-size: 2rem; font-weight: 700; text-align: center; margin-bottom: 12px; }
+        .section-subtitle { text-align: center; color: var(--text-secondary); margin-bottom: 48px; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .feature-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; transition: all 0.3s; cursor: pointer; }
+        .feature-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); }
+        .feature-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 1.5rem; }
+        .feature-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+        .feature-card p { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; }
 
-        .hero-logo {
-            font-size: 4rem;
-            font-weight: 700;
-            letter-spacing: -2px;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #fff 0%, #888 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+        .stats { padding: 60px 20px; background: var(--bg-secondary); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; max-width: 900px; margin: 0 auto; text-align: center; }
+        .stat-value { font-size: 2.5rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+        .stat-label { color: var(--text-secondary); font-size: 0.9rem; }
 
-        .hero-subtitle {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            margin-bottom: 40px;
-            font-weight: 400;
-        }
+        .how-it-works { padding: 80px 20px; max-width: 1000px; margin: 0 auto; }
+        .steps { display: flex; flex-direction: column; gap: 32px; }
+        .step { display: flex; gap: 24px; align-items: flex-start; padding: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; }
+        .step-number { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; flex-shrink: 0; }
+        .step-content h3 { font-size: 1.1rem; margin-bottom: 6px; }
+        .step-content p { color: var(--text-secondary); font-size: 0.9rem; }
 
-        /* Input area */
-        .input-container {
-            width: 100%;
-            max-width: 700px;
-            margin-bottom: 24px;
-        }
+        footer { padding: 40px 20px; text-align: center; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+        footer a { color: var(--text-secondary); text-decoration: none; }
+        footer a:hover { color: var(--text-primary); }
 
-        .input-wrapper {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 16px;
-            transition: all 0.3s;
-        }
-
-        .input-wrapper:focus-within {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-glow);
-        }
-
-        /* Плашка превью прикрепленного изображения */
-        .image-preview-bar {
-            display: none;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 12px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            margin-bottom: 12px;
-            text-align: left;
-        }
-
-        .image-preview-thumb {
-            width: 48px;
-            height: 48px;
-            border-radius: 8px;
-            object-fit: cover;
-            border: 1px solid var(--border);
-        }
-
-        .image-preview-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .image-preview-name {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .image-preview-hint {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .image-preview-remove {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 4px;
-            font-size: 1.1rem;
-            line-height: 1;
-        }
-
-        .image-preview-remove:hover {
-            color: var(--danger);
-        }
-
-        .input-textarea {
-            width: 100%;
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--text-primary);
-            font-size: 1rem;
-            font-family: inherit;
-            resize: none;
-            min-height: 60px;
-            max-height: 200px;
-        }
-
-        .input-textarea::placeholder {
-            color: var(--text-muted);
-        }
-
-        .input-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid var(--border);
-        }
-
-        .input-left {
-            display: flex;
-            gap: 8px;
-        }
-
-        .icon-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .icon-btn:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-
-        .send-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--text-primary);
-            border: none;
-            color: var(--bg-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .send-btn:hover {
-            transform: scale(1.05);
-            background: #fff;
-        }
-
-        /* Mode selector */
-        .mode-selector {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 8px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .mode-selector:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-
-        /* Quick actions */
-        .quick-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 40px;
-        }
-
-        .quick-action {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 18px;
-            border-radius: 10px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-
-        .quick-action:hover {
-            background: var(--bg-hover);
-            border-color: var(--border-light);
-            color: var(--text-primary);
-            transform: translateY(-1px);
-        }
-
-        .quick-action svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        /* Features section */
-        .features {
-            padding: 80px 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .section-title {
-            font-size: 2rem;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 12px;
-        }
-
-        .section-subtitle {
-            text-align: center;
-            color: var(--text-secondary);
-            margin-bottom: 48px;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .feature-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 28px;
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-
-        .feature-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-            font-size: 1.5rem;
-        }
-
-        .feature-card h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .feature-card p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        /* Stats section */
-        .stats {
-            padding: 60px 20px;
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 32px;
-            max-width: 900px;
-            margin: 0 auto;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 8px;
-        }
-
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        /* How it works */
-        .how-it-works {
-            padding: 80px 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .steps {
-            display: flex;
-            flex-direction: column;
-            gap: 32px;
-        }
-
-        .step {
-            display: flex;
-            gap: 24px;
-            align-items: flex-start;
-            padding: 24px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-        }
-
-        .step-number {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), #8b5cf6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-
-        .step-content h3 {
-            font-size: 1.1rem;
-            margin-bottom: 6px;
-        }
-
-        .step-content p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        /* Footer */
-        footer {
-            padding: 40px 20px;
-            text-align: center;
-            border-top: 1px solid var(--border);
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        footer a {
-            color: var(--text-secondary);
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            color: var(--text-primary);
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-in { animation: fadeInUp 0.6s ease-out forwards; }
         .delay-1 { animation-delay: 0.1s; }
         .delay-2 { animation-delay: 0.2s; }
         .delay-3 { animation-delay: 0.3s; }
 
-        /* Responsive */
         @media (max-width: 768px) {
-            header { padding: 12px 16px; }
-            .nav-links { display: none; }
+            header { padding: 12px 16px; } .nav-links { display: none; }
             .github-btn span, .github-btn:not(#puterAuthBtn) { font-size: 0; }
-            .github-btn svg { margin: 0; }
-            #puterAuthBtn span { display: none; }
-            .github-btn { padding: 8px 10px; }
-            .hero-logo { font-size: 2.5rem; }
+            .github-btn svg { margin: 0; } #puterAuthBtn span { display: none; }
+            .github-btn { padding: 8px 10px; } .hero-logo { font-size: 2.5rem; }
             .features-grid { grid-template-columns: 1fr; }
             .step { flex-direction: column; text-align: center; }
             .step-number { margin: 0 auto; }
         }
 
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-primary); }
         ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-        pre {
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            overflow-x: auto;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            line-height: 1.5;
-        }
+        pre { background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.5; }
+        code { font-family: 'JetBrains Mono', monospace; background: var(--bg-input); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
 
-        code {
-            font-family: 'JetBrains Mono', monospace;
-            background: var(--bg-input);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-        }
+        .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; color: var(--text-primary); font-size: 0.9rem; z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
+        .toast.show { transform: translateY(0); opacity: 1; }
 
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            padding: 12px 20px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            z-index: 1000;
-            transform: translateY(100px);
-            opacity: 0;
-            transition: all 0.3s;
-        }
+        .workspace { width: 100%; max-width: 700px; margin: 0 auto 32px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; text-align: left; overflow: hidden; }
+        .workspace-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); }
+        .workspace-body { padding: 18px; max-height: 60vh; overflow-y: auto; }
 
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .workspace {
-            width: 100%;
-            max-width: 700px;
-            margin: 0 auto 32px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            text-align: left;
-            overflow: hidden;
-        }
-
-        .workspace-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .workspace-body {
-            padding: 18px;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-
-        .msg {
-            margin-bottom: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .msg-role {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
+        .msg { margin-bottom: 16px; display: flex; flex-direction: column; gap: 4px; }
+        .msg-role { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         .msg-user .msg-role { color: var(--accent-hover); }
+        .msg-content { font-size: 0.95rem; white-space: pre-wrap; word-wrap: break-word; }
+        .msg-content img { max-width: 100%; border-radius: 10px; margin-top: 8px; }
+        .msg-content table { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin-top: 8px; }
+        .msg-content th, .msg-content td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
 
-        .msg-content {
-            font-size: 0.95rem;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .msg-content img {
-            max-width: 100%;
-            border-radius: 10px;
-            margin-top: 8px;
-        }
-
-        .msg-content table {
-            border-collapse: collapse;
-            width: 100%;
-            font-size: 0.85rem;
-            margin-top: 8px;
-        }
-
-        .msg-content th, .msg-content td {
-            border: 1px solid var(--border);
-            padding: 6px 10px;
-            text-align: left;
-        }
-
-        .ws-download {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            background: var(--accent);
-            color: #fff;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
+        .ws-download { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; font-size: 0.85rem; font-weight: 500; }
         .ws-download:hover { background: var(--accent-hover); }
 
-        .ws-loading {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        .ws-loading { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.9rem; }
+        .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -827,7 +260,6 @@
 
             <div class="input-container animate-in delay-2">
                 <div class="input-wrapper">
-                    <!-- Превью фото с подписью, пустой src убран для чистоты консоли -->
                     <div class="image-preview-bar" id="imagePreviewBar">
                         <img id="imagePreviewThumb" class="image-preview-thumb" alt="Preview">
                         <div class="image-preview-info">
@@ -839,7 +271,7 @@
 
                     <textarea 
                         class="input-textarea" 
-                        placeholder="Опишите задачу, задайте вопрос, напишите «нарисуй ...» или добавьте фото..."
+                        placeholder="Опишите задачу, задайте вопрос, напишите «нарисуй ...» или «создай презентацию...»"
                         id="mainInput"
                         rows="3"
                     ></textarea>
@@ -883,14 +315,14 @@
             </div>
 
             <div class="quick-actions animate-in delay-3">
-                <button class="quick-action" onclick="runQuickAction('cluster')">
+                <button class="quick-action" onclick="runQuickAction('cluster', this)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                     </svg>
                     Кластер
                 </button>
-                <button class="quick-action" onclick="runQuickAction('slides')">
+                <button class="quick-action" onclick="runQuickAction('slides', this)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="2" y="3" width="20" height="14" rx="2"/>
                         <line x1="8" y1="21" x2="16" y2="21"/>
@@ -898,7 +330,7 @@
                     </svg>
                     Слайды
                 </button>
-                <button class="quick-action" onclick="runQuickAction('research')">
+                <button class="quick-action" onclick="runQuickAction('research', this)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -907,7 +339,7 @@
                     </svg>
                     Глубокое исследование
                 </button>
-                <button class="quick-action" onclick="runQuickAction('website')">
+                <button class="quick-action" onclick="runQuickAction('website', this)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="2" y="3" width="20" height="14" rx="2"/>
                         <line x1="2" y1="8" x2="22" y2="8"/>
@@ -916,7 +348,7 @@
                     </svg>
                     Сайты
                 </button>
-                <button class="quick-action" onclick="triggerFileUpload()">
+                <button class="quick-action" onclick="setActiveQuickAction(this); triggerFileUpload();">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
@@ -926,7 +358,7 @@
                     </svg>
                     Документы
                 </button>
-                <button class="quick-action" onclick="runQuickAction('table')">
+                <button class="quick-action" onclick="runQuickAction('table', this)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="18" height="18" rx="2"/>
                         <line x1="3" y1="9" x2="21" y2="9"/>
@@ -964,7 +396,7 @@
                     <h3>Анализ документов</h3>
                     <p>Загружайте PDF, DOCX, TXT файлы. AI извлечёт ключевую информацию, ответит на вопросы по содержимому.</p>
                 </div>
-                <div class="feature-card" onclick="runQuickAction('image')">
+                <div class="feature-card" onclick="runQuickAction('image', null)">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎨</div>
                     <h3>Генерация изображений</h3>
                     <p>Создавайте уникальные изображения по текстовому описанию. Подходит для иллюстраций, дизайна и визуализации идей.</p>
@@ -974,27 +406,27 @@
                     <h3>Анализ данных</h3>
                     <p>Загружайте CSV и Excel файлы. Стройте графики, получайте статистические инсайты, прогнозируйте тренды.</p>
                 </div>
-                <div class="feature-card" onclick="runQuickAction('research')">
+                <div class="feature-card" onclick="runQuickAction('research', null)">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">🔬</div>
                     <h3>Deep Research</h3>
                     <p>Глубокое исследование любой темы. AI соберёт информацию из множества источников и представит структурированный отчёт.</p>
                 </div>
-                <div class="feature-card" onclick="runQuickAction('slides')">
+                <div class="feature-card" onclick="runQuickAction('slides', null)">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">📽️</div>
                     <h3>Генерация презентаций</h3>
                     <p>Превращайте текст в профессиональные слайды. Выбирайте темы оформления, добавляйте диаграммы и изображения.</p>
                 </div>
-                <div class="feature-card" onclick="runQuickAction('website')">
+                <div class="feature-card" onclick="runQuickAction('website', null)">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">🌐</div>
                     <h3>Веб-скрапинг</h3>
                     <p>Анализируйте любые веб-страницы. Извлекайте текст, изображения, структурированные данные — всё автоматически.</p>
                 </div>
-                <div class="feature-card" onclick="runQuickAction('code')">
+                <div class="feature-card" onclick="runQuickAction('code', null)">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">💻</div>
                     <h3>Помощь в кодинге</h3>
                     <p>Пишет, объясняет и отлаживает код на 50+ языках программирования. От Python до Rust, от JavaScript до Go.</p>
                 </div>
-                <div class="feature-card" onclick="runQuickAction('translate')">
+                <div class="feature-card" onclick="runQuickAction('translate', null)">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">🌍</div>
                     <h3>Умный перевод</h3>
                     <p>Перевод с сохранением контекста, стиля и терминологии. Поддержка 100+ языков, включая редкие и технические.</p>
@@ -1004,22 +436,10 @@
 
         <section class="stats" id="stats">
             <div class="stats-grid">
-                <div>
-                    <div class="stat-value">50+</div>
-                    <div class="stat-label">Языков программирования</div>
-                </div>
-                <div>
-                    <div class="stat-value">100+</div>
-                    <div class="stat-label">Языков перевода</div>
-                </div>
-                <div>
-                    <div class="stat-value">9</div>
-                    <div class="stat-label">Модулей AI</div>
-                </div>
-                <div>
-                    <div class="stat-value">∞</div>
-                    <div class="stat-label">Возможностей</div>
-                </div>
+                <div><div class="stat-value">50+</div><div class="stat-label">Языков программирования</div></div>
+                <div><div class="stat-value">100+</div><div class="stat-label">Языков перевода</div></div>
+                <div><div class="stat-value">9</div><div class="stat-label">Модулей AI</div></div>
+                <div><div class="stat-value">∞</div><div class="stat-label">Возможностей</div></div>
             </div>
         </section>
 
@@ -1058,26 +478,20 @@
     </footer>
 
     <div class="toast" id="toast"></div>
-
     <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,image/*">
 
-    <!-- Puter.js (бесплатный AI без бэкенда) -->
+    <!-- Библиотеки -->
     <script src="https://js.puter.com/v2/"></script>
-    <!-- Парсинг документов и таблиц -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Графики -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <!-- Презентации .pptx -->
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
     <script>
-        // Изолируем логику запуска для безопасности (паттерн DOMContentLoaded)
         document.addEventListener('DOMContentLoaded', () => {
-            // Состояние прикрепленного изображения
-            window.pendingImage = null; // { file, dataUrl, name }
+            window.pendingImage = null;
 
             function createParticles() {
                 const container = document.getElementById('particles');
@@ -1099,17 +513,10 @@
                 setTimeout(() => toast.classList.remove('show'), 3000);
             }
 
-            // ============================================================
-            //  ЭКСПОРТ ФАЙЛОВ (.txt, .doc Word, PDF)
-            // ============================================================
+            // Экспорт
             let _exportRegistry = {};
             let _exportCounter = 0;
-
-            function registerExport(text) {
-                const id = 'exp' + (_exportCounter++);
-                _exportRegistry[id] = text;
-                return id;
-            }
+            function registerExport(text) { const id = 'exp' + (_exportCounter++); _exportRegistry[id] = text; return id; }
 
             window.attachExport = function(el, text, filenameBase) {
                 if (!text || !el) return;
@@ -1125,7 +532,7 @@
 
             window.exportFile = function(id, type, filenameBase) {
                 const text = _exportRegistry[id];
-                if (!text) { showToast('Текст для экспорта не найден'); return; }
+                if (!text) { showToast('Не найдено'); return; }
                 if (type === 'txt') downloadTxt(text, filenameBase + '.txt');
                 if (type === 'doc') downloadDoc(text, filenameBase + '.doc');
                 if (type === 'pdf') downloadPdfViaPrint(text, filenameBase);
@@ -1134,60 +541,34 @@
             function triggerDownload(blob, filename) {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                a.href = url; a.download = filename; document.body.appendChild(a);
+                a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
             }
 
-            function downloadTxt(text, filename) {
-                triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filename);
-            }
+            function downloadTxt(text, filename) { triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filename); }
 
             function downloadDoc(text, filename) {
                 const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
-                const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
-                    '<head><meta charset="utf-8"><title>Export</title></head><body>' + body + '</body></html>';
+                const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Export</title></head><body>' + body + '</body></html>';
                 triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filename);
             }
 
             function downloadPdfViaPrint(text, filenameBase) {
                 const win = window.open('', '_blank');
-                if (!win) { showToast('Разрешите всплывающие окна для сохранения PDF'); return; }
-                win.document.write(
-                    '<html><head><meta charset="utf-8"><title>' + escapeHtml(filenameBase) + '</title>' +
-                    '<style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;white-space:pre-wrap;color:#111;}</style>' +
-                    '</head><body>' + escapeHtml(text) + '</body></html>'
-                );
-                win.document.close();
-                win.focus();
-                setTimeout(() => win.print(), 350);
-                showToast('В открывшемся окне выберите «Сохранить как PDF»');
+                if (!win) return showToast('Разрешите всплывающие окна');
+                win.document.write('<html><head><meta charset="utf-8"><title>' + escapeHtml(filenameBase) + '</title><style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;white-space:pre-wrap;color:#111;}</style></head><body>' + escapeHtml(text) + '</body></html>');
+                win.document.close(); win.focus(); setTimeout(() => win.print(), 350);
+                showToast('Выберите «Сохранить как PDF»');
             }
 
-            // ============================================================
-            //  AI ENGINE (Puter.js)
-            // ============================================================
-            
-            // --- УЛЬТРА РЕЖИМ (GEMINI 3.1 PRO) ---
-            const MODELS = { 
-                quick: 'gpt-4o-mini', 
-                deep: 'gpt-4o', 
-                ultra: 'google/gemini-3.1-pro' 
-            };
+            // --- УЛЬТРА РЕЖИМ (CLAUDE 3.5 SONNET) ---
+            const MODELS = { quick: 'gpt-4o-mini', deep: 'gpt-4o', ultra: 'claude-3-5-sonnet' };
             let currentMode = 'quick';
-            const modeNames = { 
-                quick: 'Быстрый', 
-                deep: 'Глубокий', 
-                ultra: 'Ультра (Gemini 3.1)' 
-            };
+            const modeNames = { quick: 'Быстрый', deep: 'Глубокий', ultra: 'Ультра' };
 
             window.toggleModel = function() {
-                if (currentMode === 'quick') {
-                    currentMode = 'deep';
-                } else if (currentMode === 'deep') {
+                if (currentMode === 'quick') { currentMode = 'deep'; }
+                else if (currentMode === 'deep') {
                     currentMode = 'ultra';
                     document.getElementById('modeLabel').style.color = '#8b5cf6';
                     document.getElementById('modeLabel').style.fontWeight = 'bold';
@@ -1208,48 +589,30 @@
                 if (typeof puter === 'undefined') return;
                 try {
                     const signedIn = await puter.auth.isSignedIn();
-                    if (signedIn) {
-                        btn.classList.add('puter-signed-in');
-                        label.textContent = 'Puter подключён';
-                    } else {
-                        btn.classList.remove('puter-signed-in');
-                        label.textContent = 'Войти в Puter';
-                    }
+                    if (signedIn) { btn.classList.add('puter-signed-in'); label.textContent = 'Puter подключён'; }
+                    else { btn.classList.remove('puter-signed-in'); label.textContent = 'Войти в Puter'; }
                 } catch (e) { }
             }
 
             window.handlePuterAuthClick = async function() {
-                if (typeof puter === 'undefined') {
-                    showToast('AI-движок ещё не загрузился, подождите пару секунд');
-                    return;
-                }
+                if (typeof puter === 'undefined') return showToast('AI ещё не загрузился');
                 try {
-                    const signedIn = await puter.auth.isSignedIn();
-                    if (signedIn) {
-                        showToast('Puter уже подключён — можно пользоваться AI');
-                        return;
-                    }
-                    await puter.auth.signIn();
-                    showToast('Готово! Puter подключён, AI заработает');
-                } catch (e) {
-                    showToast('Вход не завершён — попробуйте ещё раз');
-                } finally {
-                    refreshPuterAuthUI();
-                }
+                    if (await puter.auth.isSignedIn()) return showToast('Уже подключён');
+                    await puter.auth.signIn(); showToast('Готово! AI работает');
+                } catch (e) { showToast('Вход не завершён'); } finally { refreshPuterAuthUI(); }
             }
-
             setTimeout(refreshPuterAuthUI, 800);
 
             window.openWorkspace = function(title) {
                 const ws = document.getElementById('workspace');
                 document.getElementById('workspaceTitle').textContent = title || 'Quanta AI';
-                ws.style.display = 'block';
-                ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                ws.style.display = 'block'; ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
             window.closeWorkspace = function() {
                 document.getElementById('workspace').style.display = 'none';
                 document.getElementById('workspaceBody').innerHTML = '';
+                document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
             }
 
             function addMessage(role, contentHtml) {
@@ -1257,9 +620,7 @@
                 const div = document.createElement('div');
                 div.className = 'msg msg-' + role;
                 div.innerHTML = '<div class="msg-role">' + (role === 'user' ? 'Вы' : 'Quanta') + '</div><div class="msg-content">' + contentHtml + '</div>';
-                body.appendChild(div);
-                body.scrollTop = body.scrollHeight;
-                return div.querySelector('.msg-content');
+                body.appendChild(div); body.scrollTop = body.scrollHeight; return div.querySelector('.msg-content');
             }
 
             function addLoading(label) {
@@ -1268,31 +629,24 @@
                 return el;
             }
 
-            function escapeHtml(str) {
-                return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-            }
+            function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-            // --- УМНЫЙ РЕНДЕР КОДА СО СКАЧИВАНИЕМ ---
+            // Умный рендер кода (Кнопка скачивания)
             let codeCounter = 0;
             function renderText(text) {
                 let safe = escapeHtml(text);
-                
                 safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
                     const id = 'code_' + (++codeCounter);
                     const ext = lang || 'txt';
                     return `<div style="position:relative; margin-top:12px; margin-bottom:12px;">
                               <div style="background:#262626; color:#888; font-size:0.75rem; padding:6px 12px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
                                  <span style="text-transform:uppercase; font-weight:bold;">${ext}</span>
-                                 <button onclick="downloadCodeBlock('${id}', '${ext}')" style="background:#6366f1; border:none; color:#fff; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:0.75rem;">
-                                    💾 Сохранить файл
-                                 </button>
+                                 <button onclick="downloadCodeBlock('${id}', '${ext}')" style="background:#6366f1; border:none; color:#fff; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:0.75rem;">💾 Сохранить файл</button>
                               </div>
                               <pre style="border-radius:0 0 10px 10px; margin-top:0; border-top:none;"><code id="${id}">${code.trim()}</code></pre>
                             </div>`;
                 });
-                
-                safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-                return safe;
+                safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return safe;
             }
 
             window.downloadCodeBlock = function(id, ext) {
@@ -1307,52 +661,33 @@
             function withTimeout(promise, ms, label) {
                 let timer;
                 const timeout = new Promise((_, reject) => {
-                    timer = setTimeout(() => reject(new Error(
-                        (label || 'Запрос') + ' не ответил за ' + Math.round(ms / 1000) + ' сек. ' +
-                        'Проверьте авторизацию в Puter или блокировщики всплывающих окон.'
-                    )), ms);
+                    timer = setTimeout(() => reject(new Error((label || 'Запрос') + ' не ответил за ' + Math.round(ms / 1000) + ' сек.')), ms);
                 });
                 return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
             }
 
             let _puterHintShown = false;
-            function maybeShowPuterHint() {
-                if (_puterHintShown) return;
-                _puterHintShown = true;
-                showToast('Может открыться окно входа Puter — это бесплатно');
-            }
+            function maybeShowPuterHint() { if (!_puterHintShown) { _puterHintShown = true; showToast('Может открыться окно входа Puter'); } }
 
             let chatHistory = [];
             window.resetChatHistory = function() { chatHistory = []; }
 
             async function askAI(prompt, opts = {}) {
-                if (typeof puter === 'undefined') {
-                    throw new Error('AI-движок не загрузился (проверьте интернет или adblock)');
-                }
+                if (typeof puter === 'undefined') throw new Error('AI не загрузился');
                 maybeShowPuterHint();
                 const model = opts.model || MODELS[currentMode];
-                const payload = opts.useHistory
-                    ? [...chatHistory, { role: 'user', content: prompt }]
-                    : prompt;
+                const payload = opts.useHistory ? [...chatHistory, { role: 'user', content: prompt }] : prompt;
                 const response = await withTimeout(puter.ai.chat(payload, { model }), 40000, 'Чат');
-                const answer = typeof response === 'string'
-                    ? response
-                    : (response?.message?.content || response?.text || JSON.stringify(response));
-                if (opts.useHistory) {
-                    chatHistory.push({ role: 'user', content: prompt });
-                    chatHistory.push({ role: 'assistant', content: answer });
-                    if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-                }
+                const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
+                if (opts.useHistory) { chatHistory.push({ role: 'user', content: prompt }); chatHistory.push({ role: 'assistant', content: answer }); if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20); }
                 return answer;
             }
 
-            // ---------- Управление прикрепленным изображением ----------
             function setPendingImage(file, dataUrl) {
                 window.pendingImage = { file, dataUrl, name: file.name };
                 document.getElementById('imagePreviewThumb').src = dataUrl;
                 document.getElementById('imagePreviewName').textContent = file.name;
                 document.getElementById('imagePreviewBar').style.display = 'flex';
-                document.getElementById('mainInput').placeholder = 'Задайте вопрос или добавьте подпись к этому фото...';
                 document.getElementById('mainInput').focus();
             }
 
@@ -1360,10 +695,14 @@
                 window.pendingImage = null;
                 document.getElementById('imagePreviewBar').style.display = 'none';
                 document.getElementById('imagePreviewThumb').removeAttribute('src');
-                document.getElementById('mainInput').placeholder = 'Опишите задачу или задайте вопрос...';
             }
 
-            // ---------- Отправка (Чат или Фото с подписью) ----------
+            window.setActiveQuickAction = function(btn) {
+                document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
+                if (btn) btn.classList.add('active');
+            }
+
+            // --- ГЛАВНЫЙ ОБРАБОТЧИК ---
             window.handleSend = async function() {
                 const input = document.getElementById('mainInput');
                 const text = input.value.trim();
@@ -1371,67 +710,55 @@
 
                 if (window.pendingImage) {
                     const imgData = window.pendingImage;
-                    removePendingImage();
-                    input.value = '';
-
-                    openWorkspace('Анализ фото: ' + imgData.name);
-                    const userCaption = text || 'Подробно опиши, что изображено на картинке, важные детали и контекст.';
-                    addMessage('user', `<img src="${imgData.dataUrl}" style="max-height:180px;margin-bottom:6px;"><br>${renderText(text ? '💬 Подпись: ' + text : '(без подписи, общий анализ)')}`);
-
-                    const loadingEl = addLoading('Анализирую изображение...');
+                    removePendingImage(); input.value = '';
+                    openWorkspace('Анализ фото');
+                    addMessage('user', `<img src="${imgData.dataUrl}" style="max-height:180px;margin-bottom:6px;"><br>${renderText(text ? '💬 ' + text : '(анализ)')}`);
+                    const loadingEl = addLoading('Анализирую...');
                     try {
-                        if (typeof puter === 'undefined') throw new Error('AI-движок не загрузился');
                         maybeShowPuterHint();
-                        const response = await withTimeout(puter.ai.chat(userCaption, imgData.dataUrl, false, { model: MODELS.deep }), 45000, 'Анализ фото');
-                        const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
+                        const answer = await askAI(text || 'Опиши фото', { model: MODELS.ultra });
                         loadingEl.innerHTML = renderText(answer);
-                        attachExport(loadingEl, answer, 'quanta-photo-analysis');
-                    } catch (e) {
-                        loadingEl.innerHTML = '⚠️ Ошибка анализа фото: ' + escapeHtml(e.message);
-                    }
+                        attachExport(loadingEl, answer, 'quanta-photo');
+                    } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
                     return;
                 }
 
-                if (!text) {
-                    showToast('Введите запрос или прикрепите фото');
-                    return;
-                }
-                
-                openWorkspace('Чат с Quanta AI');
-                addMessage('user', renderText(text));
-                input.value = '';
+                if (!text) return showToast('Введите запрос');
 
-                // --- АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ КАРТИНОК В ЧАТЕ ---
-                if (textLower.startsWith('нарисуй') || textLower.startsWith('сгенерируй') || textLower.startsWith('создай фото') || textLower.startsWith('сделай фото')) {
-                    const loadingEl = addLoading('🎨 Рисую изображение...');
+                // ТРИГГЕР ПРЕЗЕНТАЦИЙ
+                if (textLower.includes('презентаци') || textLower.includes('слайды')) {
+                    const slidesBtn = Array.from(document.querySelectorAll('.quick-action')).find(el => el.textContent.includes('Слайды'));
+                    setActiveQuickAction(slidesBtn); return handleSlides(text);
+                }
+
+                // ТРИГГЕР КАРТИНОК (ЖЕСТКО DALL-E-3)
+                if (textLower.startsWith('нарисуй') || textLower.startsWith('сгенерируй') || textLower.startsWith('сделай фото') || textLower.startsWith('создай фото')) {
+                    openWorkspace('Генерация изображений');
+                    addMessage('user', renderText(text)); input.value = '';
+                    const loadingEl = addLoading('🎨 Рисую...');
                     try {
                         maybeShowPuterHint();
-                        const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация изображения');
+                        const imgEl = await withTimeout(puter.ai.txt2img(text, { model: 'dall-e-3' }), 45000, 'Рисование');
                         const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
-                        if (!src) throw new Error('Не удалось получить изображение');
-                        loadingEl.innerHTML = `<img src="${src}" alt="Generated Art" style="width:100%; border-radius:12px; margin-top:8px;">
-                                               <br><a class="ws-download" href="${src}" download="quanta-art.png" target="_blank">💾 Скачать картинку</a>`;
-                    } catch (e) {
-                        loadingEl.innerHTML = '⚠️ Ошибка генерации: ' + escapeHtml(e.message);
-                    }
+                        if (!src) throw new Error('Не получена картинка');
+                        loadingEl.innerHTML = `<img src="${src}" alt="Art" style="width:100%; border-radius:12px; margin-top:8px;"><br><a class="ws-download" href="${src}" download="quanta-art.png" target="_blank">💾 Скачать</a>`;
+                    } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
                     return;
                 }
 
-                // --- УМНЫЙ ЧАТ (SENIOR DEVELOPER) ---
-                const loadingEl = addLoading('Генерирую ответ...');
+                // ОБЫЧНЫЙ ЧАТ
+                openWorkspace('Чат с Quanta');
+                addMessage('user', renderText(text)); input.value = '';
+                const loadingEl = addLoading('Генерирую...');
                 try {
-                    const systemPrompt = "Внимание: Отвечай максимально профессионально и точно. Если пишешь код, всегда используй markdown-блоки с указанием языка (например ```javascript). Выдавай готовые решения без лишней воды.";
-                    const smartPrompt = systemPrompt + "\n\nЗапрос пользователя:\n" + text;
-                    const answer = await askAI(smartPrompt, { useHistory: true });
-                    loadingEl.innerHTML = renderText(answer);
-                    attachExport(loadingEl, answer, 'quanta-chat');
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-                }
+                    const systemPrompt = "Внимание: Отвечай профессионально. Если пишешь код, используй markdown-блоки с указанием языка (например ```javascript). Без воды.";
+                    const answer = await askAI(systemPrompt + "\n\nЗапрос:\n" + text, { useHistory: true });
+                    loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-chat');
+                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
-            // ---------- Быстрые действия ----------
-            window.runQuickAction = async function(kind) {
+            window.runQuickAction = async function(kind, btnElement) {
+                setActiveQuickAction(btnElement);
                 const input = document.getElementById('mainInput');
                 const text = input.value.trim();
 
@@ -1440,281 +767,159 @@
                 if (kind === 'research') return void handleResearch(text);
                 if (kind === 'website') return void handleWebsite(text);
                 if (kind === 'image') return void handleImage(text);
-                if (kind === 'code') return void handleGenericMode(text, 'code', 'Помощь в кодинге',
-                    'Ты опытный senior-разработчик. Отвечай с примерами кода в блоках ```, объясняй кратко и по делу. Запрос пользователя: ');
-                if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод',
-                    'Ты профессиональный переводчик. Определи язык текста и переведи его на русский (если текст на русском — переведи на английский), сохраняя стиль и терминологию. Сначала укажи направление перевода, затем сам перевод. Текст: ');
+                if (kind === 'code') return void handleGenericMode(text, 'code', 'Помощь в кодинге', 'Ты senior-разработчик. Пиши код в блоках ```. Запрос: ');
+                if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод', 'Переведи на русский/английский: ');
                 if (kind === 'table') return void triggerFileUpload();
             }
 
-            async function handleGenericMode(text, kind, title, systemPrefix) {
-                if (!text) {
-                    showToast('Сначала введите текст в поле запроса');
-                    document.getElementById('mainInput').focus();
-                    return;
-                }
-                openWorkspace(title);
-                addMessage('user', renderText(text));
-                document.getElementById('mainInput').value = '';
+            async function handleGenericMode(text, kind, title, sys) {
+                if (!text) { showToast('Введите текст'); document.getElementById('mainInput').focus(); return; }
+                openWorkspace(title); addMessage('user', renderText(text)); document.getElementById('mainInput').value = '';
                 const loadingEl = addLoading('Обрабатываю...');
-                try {
-                    const answer = await askAI(systemPrefix + text);
-                    loadingEl.innerHTML = renderText(answer);
-                    attachExport(loadingEl, answer, 'quanta-' + kind);
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-                }
+                try { const answer = await askAI(sys + text, { model: MODELS.ultra }); loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-' + kind); } 
+                catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             async function handleImage(text) {
-                if (!text) {
-                    showToast('Опишите изображение в поле запроса');
-                    document.getElementById('mainInput').focus();
-                    return;
-                }
-                openWorkspace('Генерация изображений');
-                addMessage('user', renderText(text));
-                document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Рисую изображение...');
+                if (!text) { showToast('Опишите изображение'); document.getElementById('mainInput').focus(); return; }
+                openWorkspace('Генерация изображений'); addMessage('user', renderText(text)); document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('🎨 Рисую...');
                 try {
                     maybeShowPuterHint();
-                    const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация изображения');
+                    const imgEl = await withTimeout(puter.ai.txt2img(text, { model: 'dall-e-3' }), 45000, 'Рисование');
                     const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
-                    if (!src) throw new Error('Не удалось получить изображение');
-                    loadingEl.innerHTML = `<img src="${src}" alt="Generated"><br><a class="ws-download" href="${src}" download="quanta-image.png" target="_blank">Скачать</a>`;
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка генерации: ' + escapeHtml(e.message);
-                }
+                    loadingEl.innerHTML = `<img src="${src}" alt="Art" style="width:100%; border-radius:12px; margin-top:8px;"><br><a class="ws-download" href="${src}" download="quanta-art.png" target="_blank">💾 Скачать</a>`;
+                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             async function handleResearch(text) {
-                if (!text) {
-                    showToast('Введите тему исследования в поле запроса');
-                    document.getElementById('mainInput').focus();
-                    return;
-                }
-                openWorkspace('Deep Research');
-                addMessage('user', renderText(text));
-                document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Разбиваю тему на подзадачи...');
+                if (!text) { showToast('Введите тему'); document.getElementById('mainInput').focus(); return; }
+                openWorkspace('Deep Research'); addMessage('user', renderText(text)); document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Разбиваю тему...');
                 try {
-                    const planRaw = await askAI(
-                        'Разбей следующую тему на 4 ключевых подвопроса для глубокого исследования. Ответь ТОЛЬКО списком подвопросов, каждый с новой строки, без нумерации и пояснений. Тема: ' + text,
-                        { model: MODELS.deep }
-                    );
-                    const subquestions = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
-                    let report = '<b>План исследования:</b><br>' + subquestions.map(q => '• ' + escapeHtml(q)).join('<br>') + '<br><br>';
-                    let reportPlain = 'План исследования:\n' + subquestions.map(q => '• ' + q).join('\n') + '\n\n';
-                    loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
+                    const planRaw = await askAI('Разбей тему на 4 вопроса. Только список. Тема: ' + text, { model: MODELS.ultra });
+                    const subqs = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
+                    let report = '<b>План:</b><br>' + subqs.map(q => '• ' + escapeHtml(q)).join('<br>') + '<br><br>';
+                    let reportPlain = 'План:\n' + subqs.join('\n') + '\n\n';
+                    loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую...</div>';
 
-                    for (const q of subquestions) {
-                        const answer = await askAI('Кратко (3-5 предложений) ответь на вопрос в контексте темы "' + text + '": ' + q, { model: MODELS.deep });
+                    for (const q of subqs) {
+                        const answer = await askAI('Ответь на вопрос в контексте "' + text + '": ' + q, { model: MODELS.ultra });
                         report += '<b>' + escapeHtml(q) + '</b><br>' + renderText(answer) + '<br><br>';
                         reportPlain += q + '\n' + answer + '\n\n';
-                        loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую подтемы...</div>';
+                        loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую...</div>';
                     }
-
-                    const summary = await askAI('На основе темы "' + text + '" напиши краткое заключение исследования (4-6 предложений), обобщающее ключевые выводы.', { model: MODELS.deep });
+                    const summary = await askAI('Напиши заключение. Тема: ' + text, { model: MODELS.ultra });
                     report += '<b>Заключение</b><br>' + renderText(summary);
                     reportPlain += 'Заключение\n' + summary;
-                    loadingEl.innerHTML = report + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Отчёт составлен на основе знаний модели, без живого поиска в интернете — на статичном сайте без сервера это ограничение.</div>';
-                    attachExport(loadingEl, reportPlain, 'quanta-research');
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-                }
+                    loadingEl.innerHTML = report; attachExport(loadingEl, reportPlain, 'quanta-research');
+                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             async function handleWebsite(text) {
                 let url = text;
-                if (!url || !/^https?:\/\//i.test(url)) {
-                    url = prompt('Введите URL сайта для анализа (например https://example.com):', text || 'https://');
-                    if (!url) return;
-                }
-                openWorkspace('Анализ сайта');
-                addMessage('user', renderText(url));
-                document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Загружаю страницу...');
+                if (!url || !/^https?:\/\//i.test(url)) { url = prompt('Введите URL:', text || 'https://'); if (!url) return; }
+                openWorkspace('Анализ сайта'); addMessage('user', renderText(url)); document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Загружаю...');
                 try {
-                    // --- ИСПРАВЛЕН БАГ СО ССЫЛКОЙ ---
                     const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-                    const controller = new AbortController();
-                    const t = setTimeout(() => controller.abort(), 20000);
-                    const res = await fetch(proxyUrl, { signal: controller.signal });
-                    clearTimeout(t);
-                    if (!res.ok) throw new Error('Не удалось загрузить страницу (код ' + res.status + ')');
-                    const html = await res.text();
-                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const controller = new AbortController(); const t = setTimeout(() => controller.abort(), 20000);
+                    const res = await fetch(proxyUrl, { signal: controller.signal }); clearTimeout(t);
+                    if (!res.ok) throw new Error('Сайт недоступен (код ' + res.status + ')');
+                    const html = await res.text(); const doc = new DOMParser().parseFromString(html, 'text/html');
                     doc.querySelectorAll('script,style,noscript').forEach(el => el.remove());
-                    let text2 = doc.body ? doc.body.innerText : html;
-                    text2 = text2.replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000);
-                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
-                    const answer = await askAI('Проанализируй содержимое сайта и дай структурированную сводку: о чём сайт, ключевые темы, важные факты. Содержимое:\n\n' + text2, { model: MODELS.deep });
-                    loadingEl.innerHTML = renderText(answer) + '<div style="margin-top:12px; font-size:0.8rem; color:var(--text-muted);">⚠ Загрузка через публичный CORS-прокси — некоторые сайты могут быть недоступны.</div>';
-                    attachExport(loadingEl, answer, 'quanta-website');
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Прокси может быть временно недоступен или сайт блокирует доступ.</span>';
-                }
+                    const text2 = (doc.body ? doc.body.innerText : html).replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000);
+                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую...</div>';
+                    const answer = await askAI('Сделай сводку сайта. Текст:\n\n' + text2, { model: MODELS.ultra });
+                    loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-site');
+                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             async function handleSlides(text) {
-                if (!text) {
-                    showToast('Опишите тему презентации в поле запроса');
-                    document.getElementById('mainInput').focus();
-                    return;
-                }
-                openWorkspace('Генерация презентации');
-                addMessage('user', renderText(text));
-                document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Придумываю структуру слайдов...');
+                if (!text) { showToast('Опишите тему'); document.getElementById('mainInput').focus(); return; }
+                openWorkspace('Генерация презентации'); addMessage('user', renderText(text)); document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Формирую структуру...');
                 try {
-                    const raw = await askAI(
-                        'Создай план презентации на тему "' + text + '" из 6 слайдов. ' +
-                        'Ответь СТРОГО в формате JSON без пояснений и без markdown-разметки. Пример структуры:\n' +
-                        '{"title":"...","slides":[{"title":"...","bullets":["...","...","..."]}]}',
-                        { model: MODELS.deep }
-                    );
-                    
-                    // --- ИСПРАВЛЕН БАГ ПАРСИНГА JSON ---
+                    const raw = await askAI('Создай план презентации "' + text + '" из 6 слайдов. СТРОГО JSON: {"title":"...","slides":[{"title":"...","bullets":["..."]}]}', { model: MODELS.ultra });
                     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) throw new Error('AI не вернул корректный JSON');
+                    if (!jsonMatch) throw new Error('Сбой генерации структуры JSON');
                     const data = JSON.parse(jsonMatch[0]);
 
                     const pptx = new PptxGenJS();
-                    const titleSlide = pptx.addSlide();
-                    titleSlide.background = { color: '0D0D0D' };
+                    const titleSlide = pptx.addSlide(); titleSlide.background = { color: '0D0D0D' };
                     titleSlide.addText(data.title || text, { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 36, bold: true, color: 'FFFFFF', align: 'center' });
 
                     (data.slides || []).forEach(s => {
-                        const slide = pptx.addSlide();
-                        slide.background = { color: '141414' };
+                        const slide = pptx.addSlide(); slide.background = { color: '141414' };
                         slide.addText(s.title || '', { x: 0.5, y: 0.4, w: 9, h: 0.8, fontSize: 24, bold: true, color: '818CF8' });
                         slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: true, breakLine: true } })), { x: 0.5, y: 1.4, w: 9, h: 4, fontSize: 16, color: 'E8E8E8' });
                     });
 
-                    // --- ИСПРАВЛЕН БАГ ВЫВОДА ФАЙЛА ---
                     const blob = await pptx.write({ outputType: 'blob' });
                     const url = URL.createObjectURL(blob);
-                    loadingEl.innerHTML = '✅ Презентация готова: <b>' + escapeHtml(data.title || text) + '</b> (' + (data.slides || []).length + ' слайдов)<br><a class="ws-download" href="' + url + '" download="presentation.pptx">Скачать .pptx</a>';
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-                }
+                    loadingEl.innerHTML = `✅ Презентация готова: <b>${escapeHtml(data.title || text)}</b><br><a class="ws-download" href="${url}" download="presentation.pptx">💾 Скачать .pptx</a>`;
+                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             async function handleClusterAnalysis(text) {
-                openWorkspace('Кластерный анализ');
-                addMessage('user', renderText(text || '(без загруженных данных)'));
-                document.getElementById('mainInput').value = '';
+                openWorkspace('Кластерный анализ'); addMessage('user', renderText(text || '(без данных)')); document.getElementById('mainInput').value = '';
                 const loadingEl = addLoading('Анализирую...');
                 try {
-                    const prompt = text
-                        ? 'Опиши, как провести кластерный анализ для следующей задачи, и предложи вероятное число кластеров и их характеристики: ' + text
-                        : 'Объясни кратко, что такое кластерный анализ и для каких задач его применяют, с 2 примерами. Также предложи загрузить CSV с числовыми данными для реального анализа.';
-                    const answer = await askAI(prompt, { model: MODELS.deep });
-                    loadingEl.innerHTML = renderText(answer) + '<br><span style="font-size:0.85rem;color:var(--text-muted);">Загрузите CSV/Excel через кнопку 📎 или карточку «Анализ данных» — тогда Quanta посчитает кластеры по-настоящему (k-means) и построит график.</span>';
-                    attachExport(loadingEl, answer, 'quanta-cluster');
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-                }
+                    const prompt = text ? 'Опиши кластеризацию для: ' + text : 'Объясни кластерный анализ. Предложи загрузить CSV.';
+                    const answer = await askAI(prompt, { model: MODELS.ultra });
+                    loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-cluster');
+                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             window.startVoiceInput = function() {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    showToast('Голосовой ввод не поддерживается в этом браузере');
-                    return;
-                }
-                const recognition = new SpeechRecognition();
-                recognition.lang = 'ru-RU';
-                recognition.interimResults = false;
-                const btn = document.getElementById('voiceBtn');
-                btn.style.color = 'var(--danger)';
-                showToast('Слушаю...');
+                if (!SpeechRecognition) return showToast('Не поддерживается');
+                const recognition = new SpeechRecognition(); recognition.lang = 'ru-RU'; recognition.interimResults = false;
+                const btn = document.getElementById('voiceBtn'); btn.style.color = 'var(--danger)'; showToast('Слушаю...');
                 recognition.start();
-                recognition.onresult = (e) => {
-                    const transcript = e.results[0][0].transcript;
-                    const input = document.getElementById('mainInput');
-                    input.value = (input.value ? input.value + ' ' : '') + transcript;
-                };
-                recognition.onerror = () => showToast('Не удалось распознать речь');
-                recognition.onend = () => { btn.style.color = ''; };
+                recognition.onresult = (e) => { document.getElementById('mainInput').value += (document.getElementById('mainInput').value ? ' ' : '') + e.results[0][0].transcript; };
+                recognition.onerror = () => showToast('Ошибка голоса'); recognition.onend = () => { btn.style.color = ''; };
             }
 
-            window.triggerFileUpload = function() {
-                document.getElementById('fileInput').click();
-            }
+            window.triggerFileUpload = function() { document.getElementById('fileInput').click(); }
 
             document.getElementById('fileInput').addEventListener('change', async function (e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                const ext = file.name.split('.').pop().toLowerCase();
-                e.target.value = '';
-
-                const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'];
-
-                if (imageExts.includes(ext) || file.type.startsWith('image/')) {
-                    const dataUrl = await fileToDataURL(file);
-                    setPendingImage(file, dataUrl);
-                    showToast('Фото прикреплено! Напишите подпись и нажмите Отправить');
-                } else if (['csv', 'xlsx', 'xls'].includes(ext)) {
-                    await handleSpreadsheet(file);
-                } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) {
-                    await handleDocument(file, ext);
-                } else {
-                    showToast('Формат файла не поддерживается');
-                }
+                const file = e.target.files[0]; if (!file) return;
+                const ext = file.name.split('.').pop().toLowerCase(); e.target.value = '';
+                if (['png', 'jpg', 'jpeg', 'webp'].includes(ext) || file.type.startsWith('image/')) {
+                    const dataUrl = await fileToDataURL(file); setPendingImage(file, dataUrl); showToast('Фото прикреплено');
+                } else if (['csv', 'xlsx'].includes(ext)) { await handleSpreadsheet(file);
+                } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) { await handleDocument(file, ext);
+                } else { showToast('Формат не поддерживается'); }
             });
 
-            function fileToDataURL(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-            }
+            function fileToDataURL(file) { return new Promise((r, j) => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.onerror = j; reader.readAsDataURL(file); }); }
 
             async function extractTextFromFile(file, ext) {
-                if (ext === 'txt' || ext === 'md') {
-                    return await file.text();
-                }
+                if (ext === 'txt' || ext === 'md') return await file.text();
                 if (ext === 'pdf') {
-                    // --- ИСПРАВЛЕН БАГ СО ССЫЛКОЙ ---
                     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                    const buf = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-                    let full = '';
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const content = await page.getTextContent();
-                        full += content.items.map(it => it.str).join(' ') + '\n';
-                    }
+                    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                    let full = ''; for (let i = 1; i <= pdf.numPages; i++) full += (await (await pdf.getPage(i)).getTextContent()).items.map(it => it.str).join(' ') + '\n';
                     return full;
                 }
-                if (ext === 'docx') {
-                    const buf = await file.arrayBuffer();
-                    const result = await mammoth.extractRawText({ arrayBuffer: buf });
-                    return result.value;
-                }
+                if (ext === 'docx') return (await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value;
                 return '';
             }
 
             async function handleDocument(file, ext) {
-                openWorkspace('Анализ документа: ' + file.name);
-                addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
-                const loadingEl = addLoading('Читаю файл...');
+                openWorkspace('Анализ документа'); addMessage('user', 'Файл: ' + escapeHtml(file.name));
+                const loadingEl = addLoading('Читаю...');
                 try {
-                    let content = await extractTextFromFile(file, ext);
-                    if (!content || !content.trim()) throw new Error('Не удалось извлечь текст из файла');
-                    content = content.trim().slice(0, 12000);
-                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержимое...</div>';
-                    const answer = await askAI('Проанализируй документ и дай структурированную сводку: основная тема, ключевые пункты, важные факты и цифры. Содержимое документа:\n\n' + content, { model: MODELS.deep });
-                    loadingEl.innerHTML = renderText(answer);
-                    attachExport(loadingEl, answer, 'quanta-document');
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-                }
+                    let content = (await extractTextFromFile(file, ext)).trim().slice(0, 12000);
+                    if (!content) throw new Error('Пусто');
+                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую...</div>';
+                    const answer = await askAI('Сделай сводку документа:\n' + content, { model: MODELS.ultra });
+                    loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-doc');
+                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
+            // --- ВОССТАНОВЛЕННЫЙ БЛОК ТАБЛИЦ (ГРАФИКИ, K-MEANS, EXCEL EXPORT) ---
             async function handleSpreadsheet(file) {
                 openWorkspace('Анализ таблицы: ' + file.name);
                 addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
@@ -1722,14 +927,10 @@
                 try {
                     let rows = [];
                     if (file.name.toLowerCase().endsWith('.csv')) {
-                        const text = await file.text();
-                        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: true });
-                        rows = parsed.data;
+                        rows = Papa.parse(await file.text(), { header: true, skipEmptyLines: true, dynamicTyping: true }).data;
                     } else {
-                        const buf = await file.arrayBuffer();
-                        const wb = XLSX.read(buf, { type: 'array' });
-                        const sheet = wb.Sheets[wb.SheetNames[0]];
-                        rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+                        const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+                        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
                     }
                     if (!rows.length) throw new Error('Таблица пуста или не распознана');
 
@@ -1744,65 +945,49 @@
                         const mean = sum / vals.length;
                         const sorted = [...vals].sort((a, b) => a - b);
                         stats[c] = {
-                            count: vals.length,
-                            mean: mean.toFixed(2),
-                            min: Math.min(...vals),
-                            max: Math.max(...vals),
-                            median: sorted[Math.floor(sorted.length / 2)]
+                            count: vals.length, mean: mean.toFixed(2), min: Math.min(...vals),
+                            max: Math.max(...vals), median: sorted[Math.floor(sorted.length / 2)]
                         };
                     });
 
                     let statsHtml = '<b>Строк:</b> ' + rows.length + ' • <b>Столбцов:</b> ' + columns.length + '<br><br>';
-                    statsHtml += '<table><tr><th>Колонка</th><th>Среднее</th><th>Мин</th><th>Медиана</th><th>Макс</th></tr>';
-                    Object.entries(stats).forEach(([c, s]) => {
-                        statsHtml += '<tr><td>' + escapeHtml(c) + '</td><td>' + s.mean + '</td><td>' + s.min + '</td><td>' + s.median + '</td><td>' + s.max + '</td></tr>';
-                    });
+                    statsHtml += '<table><tr><th>Колонка</th><th>Ср.</th><th>Мин</th><th>Медиана</th><th>Макс</th></tr>';
+                    Object.entries(stats).forEach(([c, s]) => { statsHtml += `<tr><td>${escapeHtml(c)}</td><td>${s.mean}</td><td>${s.min}</td><td>${s.median}</td><td>${s.max}</td></tr>`; });
                     statsHtml += '</table>';
 
                     let chartHtml = '';
                     if (numericCols.length >= 2) {
                         const [cx, cy] = numericCols;
                         const points = rows.map(r => [r[cx], r[cy]]).filter(p => typeof p[0] === 'number' && typeof p[1] === 'number');
-                        const k = Math.min(3, points.length);
-                        const clusters = kMeans(points, k);
+                        const clusters = kMeans(points, Math.min(3, points.length));
                         const canvasId = 'chart_' + Date.now();
-                        chartHtml = '<canvas id="' + canvasId + '" height="220"></canvas>';
+                        chartHtml = `<canvas id="${canvasId}" height="220"></canvas>`;
                         loadingEl.innerHTML = statsHtml + '<br>' + chartHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
                         setTimeout(() => renderClusterChart(canvasId, points, clusters, cx, cy), 50);
                     } else {
                         loadingEl.innerHTML = statsHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
                     }
 
-                    const summaryPrompt = 'Вот статистика по таблице (' + rows.length + ' строк): ' + JSON.stringify(stats) + '. Дай 3-4 содержательных инсайта на русском языке простым языком, без markdown-таблиц.';
-                    const insights = await askAI(summaryPrompt, { model: MODELS.deep });
-                    const finalHtml = statsHtml + (chartHtml ? '<br>' + chartHtml : '') + '<br><b>Инсайты от AI:</b><br>' + renderText(insights);
-                    loadingEl.innerHTML = finalHtml;
+                    const insights = await askAI('Статистика (' + rows.length + ' строк): ' + JSON.stringify(stats) + '. Дай 3-4 инсайта.', { model: MODELS.ultra });
+                    loadingEl.innerHTML = statsHtml + (chartHtml ? '<br>' + chartHtml : '') + '<br><b>Инсайты:</b><br>' + renderText(insights);
                     if (chartHtml) setTimeout(() => renderClusterChart(loadingEl.querySelector('canvas').id, null, null, null, null, true), 60);
-                    attachExport(loadingEl, insights, 'quanta-table-insights');
-
+                    
                     const xlsxBtn = document.createElement('button');
-                    xlsxBtn.className = 'ws-download';
-                    xlsxBtn.style.cssText = 'border:none;cursor:pointer;background:#16a34a;margin-top:8px;';
+                    xlsxBtn.className = 'ws-download'; xlsxBtn.style.cssText = 'border:none;cursor:pointer;background:#16a34a;margin-top:8px;';
                     xlsxBtn.textContent = '📊 Скачать Excel со статистикой';
                     xlsxBtn.onclick = () => downloadStatsXlsx(rows, stats, 'quanta-analysis');
                     loadingEl.appendChild(xlsxBtn);
-                } catch (e) {
-                    loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
-                }
+                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
             function downloadStatsXlsx(rows, stats, filenameBase) {
                 try {
                     const wb = XLSX.utils.book_new();
-                    const wsData = XLSX.utils.json_to_sheet(rows);
-                    XLSX.utils.book_append_sheet(wb, wsData, 'Данные');
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Данные');
                     const statsRows = Object.entries(stats).map(([col, s]) => ({ Колонка: col, Среднее: s.mean, Мин: s.min, Медиана: s.median, Макс: s.max, Кол_во: s.count }));
-                    const wsStats = XLSX.utils.json_to_sheet(statsRows);
-                    XLSX.utils.book_append_sheet(wb, wsStats, 'Статистика');
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(statsRows), 'Статистика');
                     XLSX.writeFile(wb, filenameBase + '.xlsx');
-                } catch (e) {
-                    showToast('Не удалось создать Excel-файл: ' + e.message);
-                }
+                } catch (e) { showToast('Ошибка Excel: ' + e.message); }
             }
 
             function kMeans(points, k) {
@@ -1811,18 +996,12 @@
                 for (let iter = 0; iter < 15; iter++) {
                     assignments = points.map(p => {
                         let best = 0, bestDist = Infinity;
-                        centroids.forEach((c, i) => {
-                            const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2;
-                            if (d < bestDist) { bestDist = d; best = i; }
-                        });
+                        centroids.forEach((c, i) => { const d = (p[0]-c[0])**2 + (p[1]-c[1])**2; if(d<bestDist){ bestDist=d; best=i; }});
                         return best;
                     });
                     centroids = centroids.map((c, i) => {
-                        const members = points.filter((_, idx) => assignments[idx] === i);
-                        if (!members.length) return c;
-                        const mx = members.reduce((a, p) => a + p[0], 0) / members.length;
-                        const my = members.reduce((a, p) => a + p[1], 0) / members.length;
-                        return [mx, my];
+                        const m = points.filter((_, idx) => assignments[idx] === i);
+                        return m.length ? [m.reduce((a, p) => a+p[0], 0)/m.length, m.reduce((a, p) => a+p[1], 0)/m.length] : c;
                     });
                 }
                 return assignments;
@@ -1830,11 +1009,9 @@
 
             let _lastChartCache = null;
             function renderClusterChart(canvasId, points, clusters, cx, cy, reuse) {
-                const canvas = document.getElementById(canvasId);
-                if (!canvas) return;
+                const canvas = document.getElementById(canvasId); if (!canvas) return;
                 if (points) _lastChartCache = { points, clusters, cx, cy };
-                const data = _lastChartCache;
-                if (!data) return;
+                const data = _lastChartCache; if (!data) return;
                 const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'];
                 const datasets = [...new Set(data.clusters)].map(cl => ({
                     label: 'Кластер ' + (cl + 1),
@@ -1842,54 +1019,15 @@
                     backgroundColor: colors[cl % colors.length]
                 }));
                 new Chart(canvas, {
-                    type: 'scatter',
-                    data: { datasets },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            x: { title: { display: true, text: data.cx, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#262626' } },
-                            y: { title: { display: true, text: data.cy, color: '#888' }, ticks: { color: '#888' }, grid: { color: '#262626' } }
-                        },
-                        plugins: { legend: { labels: { color: '#e8e8e8' } } }
-                    }
+                    type: 'scatter', data: { datasets },
+                    options: { responsive: true, scales: { x: { title: { display: true, text: data.cx, color: '#888' }, ticks: { color: '#888' } }, y: { title: { display: true, text: data.cy, color: '#888' }, ticks: { color: '#888' } } }, plugins: { legend: { labels: { color: '#e8e8e8' } } } }
                 });
             }
 
-            // Enter to send
-            document.getElementById('mainInput').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    window.handleSend();
-                }
-            });
-
-            // Smooth scroll
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const target = document.querySelector(this.getAttribute('href'));
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                });
-            });
-
-            // Intersection observer
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.style.opacity = '1';
-                        entry.target.style.transform = 'translateY(0)';
-                    }
-                });
-            }, { threshold: 0.1 });
-
-            document.querySelectorAll('.feature-card, .step').forEach(el => {
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(20px)';
-                el.style.transition = 'all 0.6s ease-out';
-                observer.observe(el);
-            });
+            document.getElementById('mainInput').addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.handleSend(); }});
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventListener('click', function(e) { e.preventDefault(); const target = document.querySelector(this.getAttribute('href')); if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
+            const observer = new IntersectionObserver((entries) => { entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; }}); }, { threshold: 0.1 });
+            document.querySelectorAll('.feature-card, .step').forEach(el => { el.style.opacity = '0'; el.style.transform = 'translateY(20px)'; el.style.transition = 'all 0.6s ease-out'; observer.observe(el); });
         });
     </script>
 </body>
