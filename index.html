@@ -3,48 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quanta — AI для работы со знаниями</title>
-    <meta name="description" content="Quanta — бесплатная AI-платформа в браузере: чат с нейросетью, анализ документов и таблиц, генерация изображений и презентаций, deep research, перевод и код. Без регистрации и серверов.">
-    <meta name="keywords" content="quanta, quanta ai, ai платформа, нейросеть онлайн, чат с ии бесплатно, генерация изображений, анализ документов ai, deep research, vision ai">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://blazepointt.github.io/quanta/">
-
-    <!-- Open Graph (Telegram, VK, Discord) -->
-    <meta property="og:locale" content="ru_RU">
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Quanta AI">
-    <meta property="og:title" content="Quanta — AI-платформа в браузере">
-    <meta property="og:description" content="Чат с нейросетью, анализ документов, картинок и таблиц, генерация презентаций — бесплатно, без регистрации.">
-    <meta property="og:url" content="https://blazepointt.github.io/quanta/">
-    <meta property="og:image" content="https://blazepointt.github.io/quanta/og-preview.png">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Quanta — AI-платформа в браузере">
-    <meta name="twitter:description" content="Чат с нейросетью, анализ документов и таблиц, генерация изображений и презентаций прямо в браузере.">
-    <meta name="twitter:image" content="https://blazepointt.github.io/quanta/og-preview.png">
-
-    <!-- Schema.org JSON-LD -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "Quanta AI",
-      "url": "https://blazepointt.github.io/quanta/",
-      "description": "Бесплатная браузерная платформа искусственного интеллекта для анализа документов, кода, таблиц и изображений.",
-      "applicationCategory": "Productivity",
-      "operatingSystem": "All",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      }
-    }
-    </script>
-
+    <title>Quanta — AI для работы со знаниями (Ultimate Edition)</title>
+    <meta name="description" content="Quanta — бесплатная AI-платформа в браузере: чат с нейросетью, анализ документов и таблиц, генерация изображений и презентаций, deep research, перевод и код.">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Подсветка синтаксиса кода (Тема: Atom One Dark) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
     <style>
+        /* ==========================================================================
+           1. БАЗОВЫЕ ПЕРЕМЕННЫЕ И СБРОС (CORE VARIABLES & RESET)
+           ========================================================================== */
         :root {
             --bg-primary: #0d0d0d;
             --bg-secondary: #141414;
@@ -64,7 +35,6 @@
             --danger: #ef4444;
         }
 
-        /* --- Жесткий контроль переполнения --- */
         * {
             margin: 0;
             padding: 0;
@@ -81,19 +51,16 @@
             line-height: 1.6;
         }
         
-        pre, code, .ai-response-container, .msg-content {
-            white-space: pre-wrap;
+        /* Защита от переполнения блоков с контентом */
+        .msg-content {
+            white-space: normal;
             word-break: break-word;
             overflow-wrap: anywhere;
-            overflow-x: auto;
         }
 
-        /* Скрываем картинку до тех пор, пока JS не добавит src */
-        img[alt="Preview"]:not([src]) {
-            display: none;
-        }
-
-        /* Background particles */
+        /* ==========================================================================
+           2. АНИМАЦИИ И ФОН (ANIMATIONS & BACKGROUND)
+           ========================================================================== */
         .particles {
             position: fixed;
             top: 0;
@@ -121,12 +88,22 @@
             100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
         }
 
-        /* Header */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in { animation: fadeInUp 0.6s ease-out forwards; }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+
+        /* ==========================================================================
+           3. НАВИГАЦИЯ И ШАПКА (HEADER & NAVIGATION)
+           ========================================================================== */
         header {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             z-index: 100;
             padding: 16px 32px;
             display: flex;
@@ -138,675 +115,229 @@
         }
 
         .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            text-decoration: none;
+            display: flex; align-items: center; gap: 12px;
+            font-size: 1.5rem; font-weight: 700; color: var(--text-primary); text-decoration: none;
         }
 
         .logo-icon {
-            width: 36px;
-            height: 36px;
+            width: 36px; height: 36px;
             background: linear-gradient(135deg, var(--accent), #8b5cf6);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            font-weight: 700;
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; font-weight: 700;
         }
 
-        .nav-links {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
+        .nav-links { display: flex; gap: 8px; align-items: center; }
         .nav-link {
-            padding: 8px 16px;
-            border-radius: 8px;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.2s;
+            padding: 8px 16px; border-radius: 8px; color: var(--text-secondary);
+            text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
         }
+        .nav-link:hover { color: var(--text-primary); background: var(--bg-hover); }
 
-        .nav-link:hover {
-            color: var(--text-primary);
-            background: var(--bg-hover);
-        }
-
-        .nav-link.active {
-            color: var(--text-primary);
-            background: var(--bg-card);
-        }
-
+        .header-actions { display: flex; align-items: center; gap: 10px; }
         .github-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            background: var(--bg-card);
-            color: var(--text-primary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            border: 1px solid var(--border);
-            transition: all 0.2s;
-            cursor: pointer;
+            display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+            border-radius: 8px; background: var(--bg-card); color: var(--text-primary);
+            text-decoration: none; font-size: 0.9rem; font-weight: 500;
+            border: 1px solid var(--border); transition: all 0.2s; cursor: pointer;
         }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
+        .github-btn:hover { background: var(--bg-hover); border-color: var(--border-light); }
+        
         #puterAuthBtn.puter-signed-in {
-            background: rgba(34, 197, 94, 0.12);
-            border-color: rgba(34, 197, 94, 0.4);
-            color: #4ade80;
+            background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.4); color: #4ade80;
         }
 
-        .github-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--border-light);
-        }
+        /* ==========================================================================
+           4. ГЛАВНЫЙ ЭКРАН И ВВОД (HERO & INPUT AREA)
+           ========================================================================== */
+        main { position: relative; z-index: 1; padding-top: 80px; }
 
-        /* Main content */
-        main {
-            position: relative;
-            z-index: 1;
-            padding-top: 80px;
-        }
-
-        /* Hero section */
         .hero {
-            min-height: calc(100vh - 80px);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
-            text-align: center;
+            min-height: calc(100vh - 80px); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 40px 20px; text-align: center;
         }
 
         .hero-logo {
-            font-size: 4rem;
-            font-weight: 700;
-            letter-spacing: -2px;
-            margin-bottom: 8px;
+            font-size: 4rem; font-weight: 700; letter-spacing: -2px; margin-bottom: 8px;
             background: linear-gradient(135deg, #fff 0%, #888 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
 
-        .hero-subtitle {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            margin-bottom: 40px;
-            font-weight: 400;
-        }
+        .hero-subtitle { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 40px; font-weight: 400; }
 
-        /* Input area */
-        .input-container {
-            width: 100%;
-            max-width: 700px;
-            margin-bottom: 24px;
-        }
-
+        .input-container { width: 100%; max-width: 700px; margin-bottom: 24px; }
+        
         .input-wrapper {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 16px;
-            transition: all 0.3s;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 16px; transition: all 0.3s;
         }
-
-        .input-wrapper:focus-within {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-glow);
-        }
-
-        .image-preview-bar {
-            display: none;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 12px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            margin-bottom: 12px;
-            text-align: left;
-        }
-
-        .image-preview-thumb {
-            width: 48px;
-            height: 48px;
-            border-radius: 8px;
-            object-fit: cover;
-            border: 1px solid var(--border);
-        }
-
-        .image-preview-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .image-preview-name {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .image-preview-hint {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        .image-preview-remove {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 4px;
-            font-size: 1.1rem;
-            line-height: 1;
-        }
-
-        .image-preview-remove:hover {
-            color: var(--danger);
-        }
+        .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
 
         .input-textarea {
-            width: 100%;
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--text-primary);
-            font-size: 1rem;
-            font-family: inherit;
-            resize: none;
-            min-height: 60px;
-            max-height: 200px;
+            width: 100%; background: transparent; border: none; outline: none;
+            color: var(--text-primary); font-size: 1rem; font-family: inherit;
+            resize: none; min-height: 60px; max-height: 200px;
         }
-
-        .input-textarea::placeholder {
-            color: var(--text-muted);
-        }
+        .input-textarea::placeholder { color: var(--text-muted); }
 
         .input-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
         }
 
-        .input-left {
-            display: flex;
-            gap: 8px;
-        }
-
+        .input-left { display: flex; gap: 8px; }
         .icon-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
+            width: 36px; height: 36px; border-radius: 8px; background: transparent; border: none;
+            color: var(--text-secondary); cursor: pointer; display: flex; align-items: center;
+            justify-content: center; transition: all 0.2s;
         }
-
-        .icon-btn:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-
+        .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        
         .send-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--text-primary);
-            border: none;
-            color: var(--bg-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
+            width: 36px; height: 36px; border-radius: 50%; background: var(--text-primary);
+            border: none; color: var(--bg-primary); cursor: pointer; display: flex;
+            align-items: center; justify-content: center; transition: all 0.2s;
         }
-
-        .send-btn:hover {
-            transform: scale(1.05);
-            background: #fff;
-        }
+        .send-btn:hover { transform: scale(1.05); background: #fff; }
 
         .mode-selector {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 8px;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+            border-radius: 8px; background: transparent; border: none; color: var(--text-secondary);
+            font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
         }
+        .mode-selector:hover { background: var(--bg-hover); color: var(--text-primary); }
 
-        .mode-selector:hover {
-            background: var(--bg-hover);
-            color: var(--text-primary);
+        /* ПРЕВЬЮ ИЗОБРАЖЕНИЙ */
+        .image-preview-bar {
+            display: none; align-items: center; gap: 12px; padding: 8px 12px;
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 10px; margin-bottom: 12px; text-align: left;
         }
+        img[alt="Preview"]:not([src]) { display: none; }
+        .image-preview-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); }
+        .image-preview-info { flex: 1; min-width: 0; }
+        .image-preview-name { font-size: 0.85rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .image-preview-hint { font-size: 0.75rem; color: var(--text-secondary); }
+        .image-preview-remove { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 1.1rem; line-height: 1; }
+        .image-preview-remove:hover { color: var(--danger); }
 
-        /* Quick actions */
-        .quick-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 40px;
-        }
-
+        /* БЫСТРЫЕ ДЕЙСТВИЯ */
+        .quick-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 40px; }
         .quick-action {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 18px;
-            border-radius: 10px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
+            display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px;
+            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+            font-size: 0.9rem; cursor: pointer; transition: all 0.2s; text-decoration: none;
         }
-
-        .quick-action:hover {
-            background: var(--bg-hover);
-            border-color: var(--border-light);
-            color: var(--text-primary);
-            transform: translateY(-1px);
-        }
-
-        /* Активное состояние тумблеров */
+        .quick-action:hover { background: var(--bg-hover); border-color: var(--border-light); color: var(--text-primary); transform: translateY(-1px); }
         .quick-action.active {
-            background: var(--bg-hover);
-            border-color: var(--accent);
-            box-shadow: 0 0 12px var(--accent-glow);
-            color: var(--text-primary);
-            transform: translateY(-1px);
+            background: var(--bg-hover); border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow); color: var(--text-primary); transform: translateY(-1px);
         }
+        .quick-action svg { width: 18px; height: 18px; }
 
-        .quick-action svg {
-            width: 18px;
-            height: 18px;
-        }
-
-        /* Features section */
-        .features {
-            padding: 80px 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .section-title {
-            font-size: 2rem;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 12px;
-        }
-
-        .section-subtitle {
-            text-align: center;
-            color: var(--text-secondary);
-            margin-bottom: 48px;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .feature-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 28px;
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-
-        .feature-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-            font-size: 1.5rem;
-        }
-
-        .feature-card h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .feature-card p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        /* Stats section */
-        .stats {
-            padding: 60px 20px;
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 32px;
-            max-width: 900px;
-            margin: 0 auto;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 8px;
-        }
-
-        .stat-label {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        /* How it works */
-        .how-it-works {
-            padding: 80px 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        .steps {
-            display: flex;
-            flex-direction: column;
-            gap: 32px;
-        }
-
-        .step {
-            display: flex;
-            gap: 24px;
-            align-items: flex-start;
-            padding: 24px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-        }
-
-        .step-number {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), #8b5cf6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-
-        .step-content h3 {
-            font-size: 1.1rem;
-            margin-bottom: 6px;
-        }
-
-        .step-content p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        /* Footer */
-        footer {
-            padding: 40px 20px;
-            text-align: center;
-            border-top: 1px solid var(--border);
-            color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        footer a {
-            color: var(--text-secondary);
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            color: var(--text-primary);
-        }
-
-        /* Animations */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-in { animation: fadeInUp 0.6s ease-out forwards; }
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-        .delay-3 { animation-delay: 0.3s; }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            header { padding: 12px 16px; }
-            .nav-links { display: none; }
-            .github-btn span, .github-btn:not(#puterAuthBtn) { font-size: 0; }
-            .github-btn svg { margin: 0; }
-            #puterAuthBtn span { display: none; }
-            .github-btn { padding: 8px 10px; }
-            .hero-logo { font-size: 2.5rem; }
-            .features-grid { grid-template-columns: 1fr; }
-            .step { flex-direction: column; text-align: center; }
-            .step-number { margin: 0 auto; }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-primary); }
-        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-
-        pre {
-            background: var(--bg-input);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            overflow-x: auto;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            line-height: 1.5;
-        }
-
-        code {
-            font-family: 'JetBrains Mono', monospace;
-            background: var(--bg-input);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            padding: 12px 20px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            z-index: 1000;
-            transform: translateY(100px);
-            opacity: 0;
-            transition: all 0.3s;
-        }
-
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
+        /* ==========================================================================
+           5. РАБОЧАЯ СРЕДА ЧАТА (WORKSPACE & MARKDOWN)
+           ========================================================================== */
         .workspace {
-            width: 100%;
-            max-width: 700px;
-            margin: 0 auto 32px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            text-align: left;
-            overflow: hidden;
+            width: 100%; max-width: 700px; margin: 0 auto 32px; background: var(--bg-card);
+            border: 1px solid var(--border); border-radius: 16px; text-align: left; overflow: hidden;
+            display: none; /* Изначально скрыт */
         }
 
         .workspace-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-secondary);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 18px; border-bottom: 1px solid var(--border);
+            font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);
         }
 
-        .workspace-body {
-            padding: 18px;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
+        .workspace-body { padding: 18px; max-height: 60vh; overflow-y: auto; scroll-behavior: smooth; }
 
-        .msg {
-            margin-bottom: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .msg-role {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
+        .msg { margin-bottom: 24px; display: flex; flex-direction: column; gap: 6px; }
+        .msg-role { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         .msg-user .msg-role { color: var(--accent-hover); }
-
-        .msg-content {
-            font-size: 0.95rem;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .msg-content img {
-            max-width: 100%;
-            border-radius: 10px;
-            margin-top: 8px;
-        }
-
+        
+        /* Стилизация контента Markdown */
+        .msg-content { font-size: 0.95rem; line-height: 1.6; color: var(--text-primary); }
+        .msg-content p { margin-bottom: 12px; }
+        .msg-content p:last-child { margin-bottom: 0; }
+        .msg-content ul, .msg-content ol { margin-bottom: 12px; padding-left: 20px; }
+        .msg-content li { margin-bottom: 4px; }
+        .msg-content h1, .msg-content h2, .msg-content h3 { margin-top: 16px; margin-bottom: 8px; color: #fff; }
+        
+        /* Таблицы Markdown */
         .msg-content table {
-            border-collapse: collapse;
-            width: 100%;
-            font-size: 0.85rem;
-            margin-top: 8px;
+            border-collapse: collapse; width: 100%; font-size: 0.85rem; margin: 12px 0;
+            background: var(--bg-input); border-radius: 8px; overflow: hidden;
         }
+        .msg-content th, .msg-content td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+        .msg-content th { background: var(--bg-hover); font-weight: 600; }
+        
+        /* Изображения внутри чата */
+        .msg-content img { max-width: 100%; border-radius: 10px; margin-top: 8px; border: 1px solid var(--border); }
 
-        .msg-content th, .msg-content td {
+        /* КОДОВЫЕ БЛОКИ (IDE ВНЕШНИЙ ВИД) */
+        .code-container {
+            margin: 12px 0;
+            border-radius: 10px;
+            overflow: hidden;
             border: 1px solid var(--border);
-            padding: 6px 10px;
-            text-align: left;
+            background: #282c34; /* Atom One Dark bg */
+        }
+        
+        .code-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #1e2227; padding: 6px 16px; font-size: 0.75rem; color: #abb2bf;
+            border-bottom: 1px solid #181a1f;
         }
 
-        .ws-download {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            background: var(--accent);
-            color: #fff;
-            text-decoration: none;
-            font-size: 0.85rem;
-            font-weight: 500;
+        .code-header .lang-badge { text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        
+        .code-header .code-actions { display: flex; gap: 8px; }
+        
+        .code-btn {
+            background: transparent; border: 1px solid #4b5263; color: #abb2bf;
+            padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
+            transition: all 0.2s; display: flex; align-items: center; gap: 4px;
         }
+        .code-btn:hover { background: #4b5263; color: #fff; }
+        .code-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .code-btn.primary:hover { background: var(--accent-hover); }
 
+        .code-container pre { margin: 0; padding: 16px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.5; }
+        .msg-content p > code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: var(--accent-hover); }
+
+        /* Элементы управления внутри чата */
+        .ws-download { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; font-size: 0.85rem; font-weight: 500; border: none; cursor: pointer; }
         .ws-download:hover { background: var(--accent-hover); }
-
-        .ws-loading {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
+        
+        .ws-loading { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.9rem; }
+        .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        
+        /* Уведомления */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+            color: var(--text-primary); font-size: 0.9rem; z-index: 1000;
+            transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
+        .toast.show { transform: translateY(0); opacity: 1; }
 
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        /* Скроллбары */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
     </style>
 </head>
 <body>
     <div class="particles" id="particles"></div>
 
+    <!-- ШАПКА -->
     <header>
         <a href="#" class="logo">
             <div class="logo-icon">Q</div>
             <span>Quanta</span>
         </a>
-        <nav class="nav-links">
-            <a href="#features" class="nav-link">Возможности</a>
-            <a href="#how-it-works" class="nav-link">Как работает</a>
-            <a href="#stats" class="nav-link">Статистика</a>
-        </nav>
         <div class="header-actions">
             <a href="https://github.com/blazepointt/quanta" target="_blank" class="github-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -828,37 +359,38 @@
         <section class="hero">
             <h1 class="hero-logo animate-in">QUANTA</h1>
             <p class="hero-subtitle animate-in delay-1">
-                AI-платформа для работы со знаниями, генерации контента и анализа данных
+                AI-платформа для работы со знаниями, генерации контента и разработки
             </p>
 
+            <!-- ОБЛАСТЬ ВВОДА -->
             <div class="input-container animate-in delay-2">
                 <div class="input-wrapper">
                     <div class="image-preview-bar" id="imagePreviewBar">
                         <img id="imagePreviewThumb" class="image-preview-thumb" alt="Preview">
                         <div class="image-preview-info">
                             <div class="image-preview-name" id="imagePreviewName">image.png</div>
-                            <div class="image-preview-hint">Напишите подпись к изображению ниже и нажмите Отправить</div>
+                            <div class="image-preview-hint">Напишите запрос к изображению и нажмите Отправить</div>
                         </div>
                         <button class="image-preview-remove" onclick="removePendingImage()" title="Удалить фото">✕</button>
                     </div>
 
                     <textarea 
                         class="input-textarea" 
-                        placeholder="Опишите задачу, задайте вопрос или добавьте фото..."
+                        placeholder="Опишите задачу, напишите код, попросите нарисовать или сделайте презентацию..."
                         id="mainInput"
                         rows="3"
                     ></textarea>
                     
                     <div class="input-actions">
                         <div class="input-left">
-                            <button class="icon-btn" title="Загрузить файл или фото" onclick="triggerFileUpload()">
+                            <button class="icon-btn" title="Загрузить документ или датасет" onclick="triggerFileUpload()">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                     <polyline points="17 8 12 3 7 8"/>
                                     <line x1="12" y1="3" x2="12" y2="15"/>
                                 </svg>
                             </button>
-                            <button class="icon-btn" title="Сгенерировать ИИ-картинку" onclick="triggerImageGen()">
+                            <button class="icon-btn" title="Сгенерировать ИИ-картинку (DALL-E 3)" onclick="triggerImageGen()">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                                     <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -875,7 +407,7 @@
                             </button>
                         </div>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <button class="mode-selector" onclick="toggleModel()">
+                            <button class="mode-selector" onclick="toggleModel()" title="Сменить модель ИИ">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                                 </svg>
@@ -884,7 +416,7 @@
                                     <polyline points="6 9 12 15 18 9"/>
                                 </svg>
                             </button>
-                            <button class="send-btn" onclick="handleSend()">
+                            <button class="send-btn" onclick="handleSend()" title="Отправить запрос (Enter)">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="22" y1="2" x2="11" y2="13"/>
                                     <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -895,6 +427,7 @@
                 </div>
             </div>
 
+            <!-- БЫСТРЫЕ ШАБЛОНЫ -->
             <div class="quick-actions animate-in delay-3">
                 <button class="quick-action" onclick="runQuickAction('cluster', this)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -922,129 +455,62 @@
                 </button>
             </div>
 
-            <div class="workspace" id="workspace" style="display:none;">
+            <!-- РАБОЧЕЕ ПРОСТРАНСТВО (ЧАТ) -->
+            <div class="workspace" id="workspace">
                 <div class="workspace-header">
                     <span id="workspaceTitle">Quanta AI</span>
                     <div style="display:flex; gap:6px;">
-                        <button class="icon-btn" onclick="resetChatHistory(); showToast('Начат новый диалог')" title="Новый диалог">🗑</button>
-                        <button class="icon-btn" onclick="closeWorkspace()" title="Закрыть">✕</button>
+                        <button class="icon-btn" onclick="clearHistoryUI()" title="Очистить историю чата">🗑</button>
+                        <button class="icon-btn" onclick="closeWorkspace()" title="Закрыть окно">✕</button>
                     </div>
                 </div>
-                <div class="workspace-body" id="workspaceBody"></div>
-            </div>
-        </section>
-
-        <section class="features" id="features">
-            <h2 class="section-title">Возможности Quanta</h2>
-            <p class="section-subtitle">Всё, что нужно для работы с информацией и создания контента</p>
-            <div class="features-grid">
-                <div class="feature-card" onclick="document.getElementById('mainInput').scrollIntoView({behavior:'smooth', block:'center'}); document.getElementById('mainInput').focus();">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">🤖</div>
-                    <h3>AI-ассистент</h3>
-                    <p>Умный чат-бот на базе современных языковых моделей. Отвечает на вопросы, пишет код, объясняет сложные темы простым языком.</p>
-                </div>
-                <div class="feature-card" onclick="triggerFileUpload()">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">📄</div>
-                    <h3>Анализ документов</h3>
-                    <p>Загружайте PDF, DOCX, TXT файлы. AI извлечёт ключевую информацию, ответит на вопросы по содержимому.</p>
-                </div>
-                <div class="feature-card" onclick="triggerImageGen()">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎨</div>
-                    <h3>Генерация изображений</h3>
-                    <p>Создавайте уникальные изображения по текстовому описанию. Подходит для иллюстраций, дизайна и визуализации идей.</p>
-                </div>
-                <div class="feature-card" onclick="triggerFileUpload()">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">📊</div>
-                    <h3>Анализ данных</h3>
-                    <p>Загружайте CSV и Excel файлы. Стройте графики, получайте статистические инсайты, прогнозируйте тренды.</p>
-                </div>
-                <div class="feature-card" onclick="runQuickAction('research', null)">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">🔬</div>
-                    <h3>Deep Research</h3>
-                    <p>Глубокое исследование любой темы. AI соберёт информацию из множества источников и представит структурированный отчёт.</p>
-                </div>
-                <div class="feature-card" onclick="runQuickAction('slides', null)">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">📽️</div>
-                    <h3>Генерация презентаций</h3>
-                    <p>Превращайте текст в профессиональные слайды. Выбирайте темы оформления, добавляйте диаграммы и изображения.</p>
-                </div>
-                <div class="feature-card" onclick="runQuickAction('website', null)">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">🌐</div>
-                    <h3>Веб-скрапинг</h3>
-                    <p>Анализируйте любые веб-страницы. Извлекайте текст, изображения, структурированные данные — всё автоматически.</p>
-                </div>
-                <div class="feature-card" onclick="runQuickAction('code', null)">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">💻</div>
-                    <h3>Помощь в кодинге</h3>
-                    <p>Пишет, объясняет и отлаживает код на 50+ языках программирования. От Python до Rust, от JavaScript до Go.</p>
-                </div>
-                <div class="feature-card" onclick="runQuickAction('translate', null)">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #f97316, #ea580c);">🌍</div>
-                    <h3>Умный перевод</h3>
-                    <p>Перевод с сохранением контекста, стиля и терминологии. Поддержка 100+ языков, включая редкие и технические.</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="stats" id="stats">
-            <div class="stats-grid">
-                <div><div class="stat-value">50+</div><div class="stat-label">Языков программирования</div></div>
-                <div><div class="stat-value">100+</div><div class="stat-label">Языков перевода</div></div>
-                <div><div class="stat-value">9</div><div class="stat-label">Модулей AI</div></div>
-                <div><div class="stat-value">∞</div><div class="stat-label">Возможностей</div></div>
-            </div>
-        </section>
-
-        <section class="how-it-works" id="how-it-works">
-            <h2 class="section-title">Как это работает</h2>
-            <p class="section-subtitle">Три простых шага к результату</p>
-            <div class="steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h3>Опишите задачу</h3>
-                        <p>Введите запрос в центральное поле или выберите один из быстрых шаблонов. Можно загрузить файл или указать URL.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h3>AI обрабатывает</h3>
-                        <p>Quanta анализирует запрос, выбирает оптимальные инструменты и модели, собирает данные из нужных источников.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h3>Получите результат</h3>
-                        <p>Готовый ответ, документ, презентация или анализ. Экспортируйте в любой формат или продолжите диалог.</p>
-                    </div>
+                <div class="workspace-body" id="workspaceBody">
+                    <!-- Сообщения будут появляться здесь -->
                 </div>
             </div>
         </section>
     </main>
 
-    <footer>
-        <p>Quanta — открытая AI-платформа. <a href="https://github.com/blazepointt/quanta" target="_blank">GitHub</a> • <a href="#">Документация</a> • <a href="#">API</a></p>
-        <p style="margin-top: 8px; font-size: 0.8rem;">Создано с ❤️ для людей. MIT License.</p>
-    </footer>
-
-    <div class="toast" id="toast"></div>
+    <!-- СКРЫТЫЙ ИНПУТ ДЛЯ ФАЙЛОВ -->
     <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,image/*">
+    <div class="toast" id="toast"></div>
 
-    <!-- Библиотеки -->
+    <!-- ==========================================================================
+         БИБЛИОТЕКИ И ЗАВИСИМОСТИ (CDN)
+         ========================================================================== -->
+    <!-- AI Движок (Бесплатный бэкенд) -->
     <script src="https://js.puter.com/v2/"></script>
+    
+    <!-- Парсинг документов -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Визуализация и Презентации -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
+    <!-- Профессиональный рендер Markdown и Кода (НОВОЕ) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <!-- ==========================================================================
+         ГЛАВНЫЙ JAVASCRIPT (ЛОГИКА ПРИЛОЖЕНИЯ)
+         ========================================================================== -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            window.pendingImage = null;
+            // Настройка Markdown парсера для красивого кода
+            marked.setOptions({
+                highlight: function(code, lang) {
+                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    return hljs.highlight(code, { language }).value;
+                },
+                breaks: true, // Поддержка обычных переносов строк
+                gfm: true     // GitHub Flavored Markdown
+            });
 
+            // 1. СОЗДАНИЕ ЧАСТИЦ НА ФОНЕ
             function createParticles() {
                 const container = document.getElementById('particles');
                 for (let i = 0; i < 50; i++) {
@@ -1058,36 +524,86 @@
             }
             createParticles();
 
+            // 2. УВЕДОМЛЕНИЯ (TOASTS)
             window.showToast = function(message) {
                 const toast = document.getElementById('toast');
                 toast.textContent = message;
                 toast.classList.add('show');
                 setTimeout(() => toast.classList.remove('show'), 3000);
             }
+// 3. ПАМЯТЬ ЧАТА (LOCAL STORAGE)
+            let chatHistory = JSON.parse(localStorage.getItem('quanta_chat_history')) || [];
+            
+            function saveHistory() {
+                localStorage.setItem('quanta_chat_history', JSON.stringify(chatHistory));
+            }
 
-            // Экспорт
+            window.clearHistoryUI = function() {
+                chatHistory = [];
+                saveHistory();
+                document.getElementById('workspaceBody').innerHTML = '';
+                showToast('История чата очищена');
+            }
+
+            // Восстановление UI при перезагрузке
+            function restoreUI() {
+                if (chatHistory.length > 0) {
+                    const ws = document.getElementById('workspace');
+                    ws.style.display = 'block';
+                    chatHistory.forEach(msg => {
+                        // Не рендерим системные промпты в UI
+                        if (msg.role === 'system') return;
+                        addMessage(msg.role === 'user' ? 'user' : 'ai', renderText(msg.content));
+                    });
+                    
+                    // Обновляем подсветку синтаксиса
+                    setTimeout(() => {
+                        document.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }, 500);
+                }
+            }
+
+            // 4. ЭКСПОРТ ФАЙЛОВ
             let _exportRegistry = {};
             let _exportCounter = 0;
-            function registerExport(text) { const id = 'exp' + (_exportCounter++); _exportRegistry[id] = text; return id; }
+            
+            function registerExport(text) { 
+                const id = 'exp' + (_exportCounter++); 
+                _exportRegistry[id] = text; 
+                return id; 
+            }
 
             window.attachExport = function(el, text, filenameBase) {
                 if (!text || !el) return;
                 const id = registerExport(text);
                 const bar = document.createElement('div');
-                bar.style.cssText = 'margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;';
-                bar.innerHTML =
-                    '<button class="ws-download" style="border:none;cursor:pointer;" onclick="exportFile(\'' + id + '\',\'txt\',\'' + filenameBase + '\')">📄 Скачать .txt</button>' +
-                    '<button class="ws-download" style="border:none;cursor:pointer;background:#2563eb;" onclick="exportFile(\'' + id + '\',\'doc\',\'' + filenameBase + '\')">📝 Скачать Word</button>' +
-                    '<button class="ws-download" style="border:none;cursor:pointer;background:#64748b;" onclick="exportFile(\'' + id + '\',\'pdf\',\'' + filenameBase + '\')">📕 Сохранить PDF</button>';
+                bar.style.cssText = 'margin-top:16px; padding-top:12px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap;';
+                bar.innerHTML = `
+                    <button class="ws-download" style="border:none;cursor:pointer;" onclick="exportFile('${id}','txt','${filenameBase}')">📄 TXT</button>
+                    <button class="ws-download" style="background:#2563eb;border:none;cursor:pointer;" onclick="exportFile('${id}','doc','${filenameBase}')">📝 Word</button>
+                    <button class="ws-download" style="background:#ef4444;border:none;cursor:pointer;" onclick="exportFile('${id}','pdf','${filenameBase}')">📕 PDF</button>
+                `;
                 el.appendChild(bar);
             }
 
             window.exportFile = function(id, type, filenameBase) {
                 const text = _exportRegistry[id];
-                if (!text) { showToast('Не найдено'); return; }
-                if (type === 'txt') downloadTxt(text, filenameBase + '.txt');
-                if (type === 'doc') downloadDoc(text, filenameBase + '.doc');
-                if (type === 'pdf') downloadPdfViaPrint(text, filenameBase);
+                if (!text) return showToast('Ошибка: текст не найден');
+                
+                if (type === 'txt') {
+                    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filenameBase + '.txt');
+                } else if (type === 'doc') {
+                    const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
+                    const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Export</title></head><body>' + body + '</body></html>';
+                    triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filenameBase + '.doc');
+                } else if (type === 'pdf') {
+                    const win = window.open('', '_blank');
+                    if (!win) return showToast('Снимите блокировку всплывающих окон');
+                    win.document.write('<html><head><meta charset="utf-8"><title>' + escapeHtml(filenameBase) + '</title><style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;white-space:pre-wrap;color:#111;}</style></head><body>' + escapeHtml(text) + '</body></html>');
+                    win.document.close(); win.focus(); setTimeout(() => win.print(), 350);
+                }
             }
 
             function triggerDownload(blob, filename) {
@@ -1097,73 +613,112 @@
                 a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
             }
 
-            function downloadTxt(text, filename) { triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filename); }
-
-            function downloadDoc(text, filename) {
-                const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
-                const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Export</title></head><body>' + body + '</body></html>';
-                triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filename);
-            }
-
-            function downloadPdfViaPrint(text, filenameBase) {
-                const win = window.open('', '_blank');
-                if (!win) return showToast('Разрешите всплывающие окна');
-                win.document.write('<html><head><meta charset="utf-8"><title>' + escapeHtml(filenameBase) + '</title><style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;white-space:pre-wrap;color:#111;}</style></head><body>' + escapeHtml(text) + '</body></html>');
-                win.document.close(); win.focus(); setTimeout(() => win.print(), 350);
-                showToast('Выберите «Сохранить как PDF»');
-            }
-
-            // --- УЛЬТРА РЕЖИМ (CLAUDE 3 OPUS) ---
-            const MODELS = { quick: 'gpt-4o-mini', deep: 'gpt-4o', ultra: 'claude-3-opus' };
+            // 5. AI ДВИЖОК И МОДЕЛИ
+            const MODELS = { 
+                quick: 'gpt-4o-mini', 
+                deep: 'gpt-4o', 
+                ultra: 'claude-3-opus' // Самая мощная модель без лимитов
+            };
             let currentMode = 'quick';
-            const modeNames = { quick: 'Быстрый', deep: 'Глубокий', ultra: 'Ультра (Claude 3 Opus)' };
+            const modeNames = { quick: 'Быстрый', deep: 'Глубокий', ultra: 'Ультра (Opus)' };
 
             window.toggleModel = function() {
-                if (currentMode === 'quick') { currentMode = 'deep'; }
-                else if (currentMode === 'deep') {
+                const label = document.getElementById('modeLabel');
+                if (currentMode === 'quick') { 
+                    currentMode = 'deep'; 
+                } else if (currentMode === 'deep') {
                     currentMode = 'ultra';
-                    document.getElementById('modeLabel').style.color = '#8b5cf6';
-                    document.getElementById('modeLabel').style.fontWeight = 'bold';
-                    document.getElementById('modeLabel').style.textShadow = '0 0 8px rgba(139, 92, 246, 0.5)';
+                    label.style.color = '#8b5cf6';
+                    label.style.fontWeight = 'bold';
+                    label.style.textShadow = '0 0 8px rgba(139, 92, 246, 0.5)';
                 } else {
                     currentMode = 'quick';
-                    document.getElementById('modeLabel').style.color = '';
-                    document.getElementById('modeLabel').style.fontWeight = '';
-                    document.getElementById('modeLabel').style.textShadow = '';
+                    label.style.color = '';
+                    label.style.fontWeight = '';
+                    label.style.textShadow = '';
                 }
-                document.getElementById('modeLabel').textContent = modeNames[currentMode];
-                showToast(`Активирован: ${modeNames[currentMode]} режим`);
+                label.textContent = modeNames[currentMode];
+                showToast(`Активирован: ${modeNames[currentMode]}`);
             }
 
+            // Авторизация Puter
             async function refreshPuterAuthUI() {
                 const btn = document.getElementById('puterAuthBtn');
                 const label = document.getElementById('puterAuthLabel');
                 if (typeof puter === 'undefined') return;
                 try {
-                    const signedIn = await puter.auth.isSignedIn();
-                    if (signedIn) { btn.classList.add('puter-signed-in'); label.textContent = 'Puter подключён'; }
-                    else { btn.classList.remove('puter-signed-in'); label.textContent = 'Войти в Puter'; }
-                } catch (e) { }
+                    if (await puter.auth.isSignedIn()) { 
+                        btn.classList.add('puter-signed-in'); 
+                        label.textContent = 'Puter подключён'; 
+                    } else { 
+                        btn.classList.remove('puter-signed-in'); 
+                        label.textContent = 'Войти в Puter'; 
+                    }
+                } catch (e) {}
             }
 
             window.handlePuterAuthClick = async function() {
-                if (typeof puter === 'undefined') return showToast('AI ещё не загрузился');
+                if (typeof puter === 'undefined') return showToast('Сеть недоступна');
                 try {
                     if (await puter.auth.isSignedIn()) return showToast('Уже подключён');
-                    await puter.auth.signIn(); showToast('Готово! AI работает');
-                } catch (e) { showToast('Вход не завершён'); } finally { refreshPuterAuthUI(); }
+                    await puter.auth.signIn(); 
+                    showToast('AI успешно активирован!');
+                } catch (e) { showToast('Отмена входа'); } 
+                finally { refreshPuterAuthUI(); }
             }
             setTimeout(refreshPuterAuthUI, 800);
 
+            let _puterHintShown = false;
+            function maybeShowPuterHint() { 
+                if (!_puterHintShown) { 
+                    _puterHintShown = true; 
+                    showToast('Разрешите всплывающее окно для Puter (это бесплатно)'); 
+                } 
+            }
+
+            function withTimeout(promise, ms, label) {
+                let timer;
+                const timeout = new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error(`${label} превысил таймаут ожидания (${Math.round(ms / 1000)} сек)`)), ms);
+                });
+                return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+            }
+
+            async function askAI(prompt, opts = {}) {
+                if (typeof puter === 'undefined') throw new Error('Шлюз Puter.js заблокирован. Отключите AdBlock.');
+                maybeShowPuterHint();
+                
+                const model = opts.model || MODELS[currentMode];
+                let payload;
+                
+                if (opts.useHistory) {
+                    payload = [...chatHistory, { role: 'user', content: prompt }];
+                } else {
+                    payload = prompt;
+                }
+
+                const response = await withTimeout(puter.ai.chat(payload, { model }), 45000, 'Ответ от нейросети');
+                const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
+                
+                if (opts.useHistory) {
+                    chatHistory.push({ role: 'user', content: prompt });
+                    chatHistory.push({ role: 'assistant', content: answer });
+                    if (chatHistory.length > 30) chatHistory = chatHistory.slice(-30); // Храним последние 30 сообщений
+                    saveHistory();
+                }
+                return answer;
+            }
+
+            // 6. УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ЧАТА И MARKDOWN
             window.openWorkspace = function(title) {
                 const ws = document.getElementById('workspace');
                 document.getElementById('workspaceTitle').textContent = title || 'Quanta AI';
-                ws.style.display = 'block'; ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                ws.style.display = 'block'; 
+                ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
             window.closeWorkspace = function() {
                 document.getElementById('workspace').style.display = 'none';
-                document.getElementById('workspaceBody').innerHTML = '';
                 document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
             }
 
@@ -1171,34 +726,59 @@
                 const body = document.getElementById('workspaceBody');
                 const div = document.createElement('div');
                 div.className = 'msg msg-' + role;
-                div.innerHTML = '<div class="msg-role">' + (role === 'user' ? 'Вы' : 'Quanta') + '</div><div class="msg-content">' + contentHtml + '</div>';
-                body.appendChild(div); body.scrollTop = body.scrollHeight; return div.querySelector('.msg-content');
+                div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Вы' : 'Quanta'}</div><div class="msg-content">${contentHtml}</div>`;
+                body.appendChild(div); 
+                body.scrollTop = body.scrollHeight; 
+                return div.querySelector('.msg-content');
             }
 
             function addLoading(label) {
-                const el = addMessage('ai', '');
-                el.innerHTML = '<div class="ws-loading"><div class="spinner"></div>' + (label || 'Думаю...') + '</div>';
-                return el;
+                return addMessage('ai', `<div class="ws-loading"><div class="spinner"></div>${label || 'Думаю...'}</div>`);
             }
 
-            function escapeHtml(str) { return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+            function escapeHtml(str) { 
+                return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); 
+            }
 
-            // Умный рендер кода (Кнопка скачивания)
+            // Профессиональный рендер: Сначала Markdown, потом обертки с кнопками
             let codeCounter = 0;
             function renderText(text) {
-                let safe = escapeHtml(text);
-                safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
+                // Используем мощь marked.js для парсинга
+                let html = marked.parse(text);
+                
+                // Ищем все блоки <pre><code class="language-xyz"> и добавляем красивую шапку IDE
+                html = html.replace(/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g, (match, lang, code) => {
                     const id = 'code_' + (++codeCounter);
                     const ext = lang || 'txt';
-                    return `<div style="position:relative; margin-top:12px; margin-bottom:12px;">
-                              <div style="background:#262626; color:#888; font-size:0.75rem; padding:6px 12px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
-                                 <span style="text-transform:uppercase; font-weight:bold;">${ext}</span>
-                                 <button onclick="downloadCodeBlock('${id}', '${ext}')" style="background:#6366f1; border:none; color:#fff; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:0.75rem;">💾 Сохранить файл</button>
-                              </div>
-                              <pre style="border-radius:0 0 10px 10px; margin-top:0; border-top:none;"><code id="${id}">${code.trim()}</code></pre>
-                            </div>`;
+                    return `
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="lang-badge">${ext}</span>
+                            <div class="code-actions">
+                                <button class="code-btn" onclick="navigator.clipboard.writeText(document.getElementById('${id}').innerText); showToast('Скопировано!')">📋 Копировать</button>
+                                <button class="code-btn primary" onclick="downloadCodeBlock('${id}', '${ext}')">💾 Скачать файл</button>
+                            </div>
+                        </div>
+                        <pre><code id="${id}" class="hljs language-${ext}">${code}</code></pre>
+                    </div>`;
                 });
-                safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); return safe;
+
+                // Обработка блоков кода без указания языка
+                html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, (match, code) => {
+                    const id = 'code_' + (++codeCounter);
+                    return `
+                    <div class="code-container">
+                        <div class="code-header">
+                            <span class="lang-badge">TEXT</span>
+                            <div class="code-actions">
+                                <button class="code-btn primary" onclick="downloadCodeBlock('${id}', 'txt')">💾 Сохранить</button>
+                            </div>
+                        </div>
+                        <pre><code id="${id}">${code}</code></pre>
+                    </div>`;
+                });
+
+                return html;
             }
 
             window.downloadCodeBlock = function(id, ext) {
@@ -1207,33 +787,11 @@
                 const code = codeEl.innerText || codeEl.textContent;
                 const filename = 'quanta_script.' + (ext === 'txt' ? 'txt' : ext);
                 triggerDownload(new Blob([code], { type: 'text/plain;charset=utf-8' }), filename);
-                showToast(`Файл ${filename} сохранен!`);
+                showToast(`Файл ${filename} успешно сохранен!`);
             }
 
-            function withTimeout(promise, ms, label) {
-                let timer;
-                const timeout = new Promise((_, reject) => {
-                    timer = setTimeout(() => reject(new Error((label || 'Запрос') + ' не ответил за ' + Math.round(ms / 1000) + ' сек.')), ms);
-                });
-                return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-            }
-
-            let _puterHintShown = false;
-            function maybeShowPuterHint() { if (!_puterHintShown) { _puterHintShown = true; showToast('Может открыться окно входа Puter'); } }
-
-            let chatHistory = [];
-            window.resetChatHistory = function() { chatHistory = []; }
-
-            async function askAI(prompt, opts = {}) {
-                if (typeof puter === 'undefined') throw new Error('AI не загрузился');
-                maybeShowPuterHint();
-                const model = opts.model || MODELS[currentMode];
-                const payload = opts.useHistory ? [...chatHistory, { role: 'user', content: prompt }] : prompt;
-                const response = await withTimeout(puter.ai.chat(payload, { model }), 40000, 'Чат');
-                const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
-                if (opts.useHistory) { chatHistory.push({ role: 'user', content: prompt }); chatHistory.push({ role: 'assistant', content: answer }); if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20); }
-                return answer;
-            }
+            // 7. ОБРАБОТКА ВВОДА И ТРИГГЕРЫ
+            window.pendingImage = null;
 
             function setPendingImage(file, dataUrl) {
                 window.pendingImage = { file, dataUrl, name: file.name };
@@ -1249,7 +807,6 @@
                 document.getElementById('imagePreviewThumb').removeAttribute('src');
             }
 
-            // Функция-тумблер
             window.setActiveQuickAction = function(btn) {
                 const isActive = btn && btn.classList.contains('active');
                 document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
@@ -1266,31 +823,36 @@
                     input.value = 'Нарисуй ' + input.value;
                 }
                 input.focus();
-                showToast('Напишите, что нужно нарисовать, и нажмите Enter!');
+                showToast('Напишите, что вы хотите увидеть!');
             }
 
+            // --- ОСНОВНАЯ ФУНКЦИЯ ОТПРАВКИ ---
             window.handleSend = async function() {
                 const input = document.getElementById('mainInput');
                 const text = input.value.trim();
                 const textLower = text.toLowerCase();
 
+                // Сценарий 1: Анализ фото
                 if (window.pendingImage) {
                     const imgData = window.pendingImage;
-                    removePendingImage(); input.value = '';
-                    openWorkspace('Анализ фото');
-                    addMessage('user', `<img src="${imgData.dataUrl}" style="max-height:180px;margin-bottom:6px;"><br>${renderText(text ? '💬 ' + text : '(анализ)')}`);
-                    const loadingEl = addLoading('Анализирую...');
+                    removePendingImage(); 
+                    input.value = '';
+                    openWorkspace('Vision AI');
+                    addMessage('user', `<img src="${imgData.dataUrl}" style="max-height:180px;margin-bottom:12px;"><br>${renderText(text ? text : 'Проанализируй это изображение')}`);
+                    
+                    const loadingEl = addLoading('Изучаю пиксели...');
                     try {
-                        maybeShowPuterHint();
-                        const answer = await askAI(text || 'Опиши фото', { model: MODELS.ultra });
-                        loadingEl.innerHTML = renderText(answer);
-                        attachExport(loadingEl, answer, 'quanta-photo');
-                    } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+                        const answer = await withTimeout(puter.ai.chat(text || 'Опиши детально это фото', imgData.dataUrl, false, { model: MODELS.ultra }), 45000, 'Vision AI');
+                        const resultText = typeof answer === 'string' ? answer : (answer?.message?.content || answer?.text);
+                        loadingEl.innerHTML = renderText(resultText);
+                        attachExport(loadingEl, resultText, 'quanta-vision');
+                    } catch (e) { loadingEl.innerHTML = `⚠️ <b>Критическая ошибка:</b> ${escapeHtml(e.message)}`; }
                     return;
                 }
 
-                if (!text) return showToast('Введите запрос');
+                if (!text) return showToast('Поле ввода пустое');
 
+                // Сценарий 2: Триггер Слайдов
                 if (textLower.includes('презентаци') || textLower.includes('слайды')) {
                     const slidesBtn = Array.from(document.querySelectorAll('.quick-action')).find(el => el.textContent.includes('Слайды'));
                     document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
@@ -1298,43 +860,60 @@
                     return handleSlides(text);
                 }
 
-                if (textLower.startsWith('нарисуй') || textLower.startsWith('сгенерируй') || textLower.startsWith('сделай фото') || textLower.startsWith('создай фото')) {
-                    openWorkspace('Генерация изображений');
-                    addMessage('user', renderText(text)); input.value = '';
-                    const loadingEl = addLoading('🎨 Рисую...');
+                // Сценарий 3: Триггер Генерации DALL-E 3
+                if (textLower.startsWith('нарисуй') || textLower.startsWith('сгенерируй') || textLower.startsWith('сделай фото')) {
+                    openWorkspace('Студия DALL-E 3');
+                    addMessage('user', renderText(text)); 
+                    input.value = '';
+                    const loadingEl = addLoading('🎨 Синтезирую изображение...');
                     try {
                         maybeShowPuterHint();
-                        // Puter сам подберет лучшую модель для генерации картинок
-                        const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Рисование');
+                        const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация DALL-E');
                         const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
-                        if (!src) throw new Error('Не получена картинка');
-                        loadingEl.innerHTML = `<img src="${src}" alt="Art" style="width:100%; border-radius:12px; margin-top:8px;"><br><a class="ws-download" href="${src}" download="quanta-art.png" target="_blank">💾 Скачать</a>`;
-                    } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+                        if (!src) throw new Error('API вернул пустой ответ');
+                        loadingEl.innerHTML = `
+                            <img src="${src}" alt="Generated Art" style="width:100%; max-width:512px; border-radius:12px; margin-top:8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                            <br>
+                            <a class="ws-download" href="${src}" download="quanta-art.png" target="_blank" style="margin-top:16px;">💾 Скачать оригинал</a>
+                        `;
+                    } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка генерации:</b> ${escapeHtml(e.message)}`; }
                     return;
                 }
 
+                // Сценарий 4: Обычный Чат (С памятью и кодом)
                 openWorkspace('Чат с Quanta');
-                addMessage('user', renderText(text)); input.value = '';
-                const loadingEl = addLoading('Генерирую...');
+                addMessage('user', renderText(text)); 
+                input.value = '';
+                
+                const loadingEl = addLoading('Формирую архитектуру ответа...');
                 try {
-                    // Новый системный промпт без ограничений
-                    const systemPrompt = "Ты — Senior-разработчик. Отвечай максимально профессионально, пиши код ПОЛНОСТЬЮ, без сокращений, заглушек и лимитов. Если пишешь код, используй markdown-блоки с указанием языка.";
+                    // Строгий промпт для Opus: никакого обрыва кода
+                    const systemPrompt = "Ты — элитный Senior AI. Твоя задача писать ИДЕАЛЬНЫЙ, ПОЛНЫЙ и РАБОЧИЙ код. Категорически запрещено использовать комментарии вроде '// ...остальной код...' или обрывать логику. Если пишешь код, выдавай его целиком от первой до последней строки в блоках markdown.";
                     let finalPrompt = text;
+                    
                     if (currentMode === 'ultra') {
-                        finalPrompt = systemPrompt + "\n\nЗапрос:\n" + text;
+                        finalPrompt = systemPrompt + "\n\nЗАДАЧА ОТ ПОЛЬЗОВАТЕЛЯ:\n" + text;
                     }
+                    
                     const answer = await askAI(finalPrompt, { useHistory: true });
-                    loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-chat');
-                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+                    loadingEl.innerHTML = renderText(answer); 
+                    attachExport(loadingEl, answer, 'quanta-response');
+                    
+                    // Обновляем подсветку синтаксиса в новых блоках
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+
+                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Системный сбой:</b> ${escapeHtml(e.message)}`; }
             }
 
+            // 8. БЫСТРЫЕ ДЕЙСТВИЯ (ШАБЛОНЫ)
             window.runQuickAction = async function(kind, btnElement) {
-                const isActivated = setActiveQuickAction(btnElement);
-                if (!isActivated) {
+                if (!setActiveQuickAction(btnElement)) {
                     document.getElementById('mainInput').value = '';
-                    document.getElementById('mainInput').placeholder = 'Опишите задачу, задайте вопрос...';
                     return; 
                 }
+
                 const input = document.getElementById('mainInput');
                 const text = input.value.trim();
 
@@ -1347,150 +926,225 @@
                     input.focus();
                     return;
                 }
-                if (kind === 'code') return void handleGenericMode(text, 'code', 'Помощь в кодинге', 'Ты senior-разработчик. Пиши полный код в блоках ```. Запрос: ');
-                if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод', 'Переведи на русский/английский: ');
+                if (kind === 'code') return void handleGenericMode(text, 'code', 'Режим Программирования', 'Ты Senior Engineer. Пиши полный, безошибочный код без сокращений в markdown-блоках. Запрос: ');
+                if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод', 'Переведи текст сохраняя форматирование: ');
                 if (kind === 'table') return void triggerFileUpload();
             }
 
             async function handleGenericMode(text, kind, title, sys) {
-                if (!text) { showToast('Введите текст'); document.getElementById('mainInput').focus(); return; }
-                openWorkspace(title); addMessage('user', renderText(text)); document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Обрабатываю...');
-                try { const answer = await askAI(sys + text, { model: MODELS.ultra }); loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-' + kind); } 
-                catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+                if (!text) { showToast('Сначала введите текст задачи'); document.getElementById('mainInput').focus(); return; }
+                openWorkspace(title); 
+                addMessage('user', renderText(text)); 
+                document.getElementById('mainInput').value = '';
+                
+                const loadingEl = addLoading('Запускаю алгоритмы...');
+                try { 
+                    const answer = await askAI(sys + text, { model: MODELS.ultra }); 
+                    loadingEl.innerHTML = renderText(answer); 
+                    attachExport(loadingEl, answer, `quanta-${kind}`); 
+                    document.querySelectorAll('pre code').forEach(hljs.highlightElement);
+                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка:</b> ${escapeHtml(e.message)}`; }
             }
 
             async function handleResearch(text) {
-                if (!text) { showToast('Введите тему'); document.getElementById('mainInput').focus(); return; }
-                openWorkspace('Deep Research'); addMessage('user', renderText(text)); document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Разбиваю тему...');
+                if (!text) { showToast('Введите тему для исследования'); document.getElementById('mainInput').focus(); return; }
+                openWorkspace('Глубокое исследование (Deep Research)'); 
+                addMessage('user', renderText(text)); 
+                document.getElementById('mainInput').value = '';
+                
+                const loadingEl = addLoading('Анализирую семантическое ядро темы...');
                 try {
-                    const planRaw = await askAI('Разбей тему на 4 вопроса. Только список. Тема: ' + text, { model: MODELS.ultra });
+                    const planRaw = await askAI(`Разбей тему на 4 ключевых вопроса для глубокого анализа. Ответь ТОЛЬКО нумерованным списком. Тема: ${text}`, { model: MODELS.ultra });
                     const subqs = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
-                    let report = '<b>План:</b><br>' + subqs.map(q => '• ' + escapeHtml(q)).join('<br>') + '<br><br>';
-                    let reportPlain = 'План:\n' + subqs.join('\n') + '\n\n';
-                    loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую...</div>';
+                    
+                    let report = `### План исследования:\n` + subqs.map((q, i) => `${i+1}. ${q}`).join('\n') + `\n\n---\n\n`;
+                    loadingEl.innerHTML = renderText(report) + '<div class="ws-loading"><div class="spinner"></div>Собираю данные по подтемам...</div>';
 
                     for (const q of subqs) {
-                        const answer = await askAI('Ответь на вопрос в контексте "' + text + '": ' + q, { model: MODELS.ultra });
-                        report += '<b>' + escapeHtml(q) + '</b><br>' + renderText(answer) + '<br><br>';
-                        reportPlain += q + '\n' + answer + '\n\n';
-                        loadingEl.innerHTML = report + '<div class="ws-loading"><div class="spinner"></div>Исследую...</div>';
+                        const answer = await askAI(`Развернуто ответь на вопрос в рамках темы "${text}": ${q}`, { model: MODELS.ultra });
+                        report += `### ${q}\n${answer}\n\n---\n\n`;
+                        loadingEl.innerHTML = renderText(report) + '<div class="ws-loading"><div class="spinner"></div>Собираю данные по подтемам...</div>';
                     }
-                    const summary = await askAI('Напиши заключение. Тема: ' + text, { model: MODELS.ultra });
-                    report += '<b>Заключение</b><br>' + renderText(summary);
-                    reportPlain += 'Заключение\n' + summary;
-                    loadingEl.innerHTML = report; attachExport(loadingEl, reportPlain, 'quanta-research');
-                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+                    
+                    const summary = await askAI(`Напиши мощное итоговое заключение на базе этого исследования. Тема: ${text}`, { model: MODELS.ultra });
+                    report += `### Заключение\n${summary}`;
+                    
+                    loadingEl.innerHTML = renderText(report); 
+                    attachExport(loadingEl, report, 'quanta-research');
+                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка:</b> ${escapeHtml(e.message)}`; }
             }
 
             async function handleWebsite(text) {
                 let url = text;
-                if (!url || !/^https?:\/\//i.test(url)) { url = prompt('Введите URL:', text || 'https://'); if (!url) return; }
-                openWorkspace('Анализ сайта'); addMessage('user', renderText(url)); document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Загружаю...');
+                if (!url || !/^https?:\/\//i.test(url)) { url = prompt('Вставьте валидный URL (https://...):', text || 'https://'); if (!url) return; }
+                openWorkspace('Веб-сканер'); 
+                addMessage('user', renderText(url)); 
+                document.getElementById('mainInput').value = '';
+                
+                const loadingEl = addLoading('Скрейпинг страницы...');
                 try {
-                    const proxyUrl = '[https://api.allorigins.win/raw?url=](https://api.allorigins.win/raw?url=)' + encodeURIComponent(url);
-                    const controller = new AbortController(); const t = setTimeout(() => controller.abort(), 20000);
-                    const res = await fetch(proxyUrl, { signal: controller.signal }); clearTimeout(t);
-                    if (!res.ok) throw new Error('Сайт недоступен (код ' + res.status + ')');
-                    const html = await res.text(); const doc = new DOMParser().parseFromString(html, 'text/html');
-                    doc.querySelectorAll('script,style,noscript').forEach(el => el.remove());
-                    const text2 = (doc.body ? doc.body.innerText : html).replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000);
-                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую...</div>';
-                    const answer = await askAI('Сделай сводку сайта. Текст:\n\n' + text2, { model: MODELS.ultra });
-                    loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-site');
-                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+                    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+                    const controller = new AbortController(); 
+                    const t = setTimeout(() => controller.abort(), 20000);
+                    
+                    const res = await fetch(proxyUrl, { signal: controller.signal }); 
+                    clearTimeout(t);
+                    if (!res.ok) throw new Error(`Сервер вернул статус ${res.status}`);
+                    
+                    const html = await res.text(); 
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    doc.querySelectorAll('script, style, noscript, svg, img, nav, footer').forEach(el => el.remove());
+                    
+                    const text2 = (doc.body ? doc.body.innerText : html).replace(/\n{3,}/g, '\n\n').trim().slice(0, 10000); // Берем до 10к символов
+                    
+                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализ семантики...</div>';
+                    const answer = await askAI(`Сделай подробную выжимку текста (основные тезисы, факты). Текст с сайта:\n\n${text2}`, { model: MODELS.ultra });
+                    
+                    loadingEl.innerHTML = renderText(answer); 
+                    attachExport(loadingEl, answer, 'quanta-web-summary');
+                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Сбой прокси:</b> ${escapeHtml(e.message)}`; }
             }
 
             async function handleSlides(text) {
-                if (!text) { showToast('Опишите тему'); document.getElementById('mainInput').focus(); return; }
-                openWorkspace('Генерация презентации'); addMessage('user', renderText(text)); document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Формирую структуру...');
+                if (!text) { showToast('Введите тему презентации'); document.getElementById('mainInput').focus(); return; }
+                openWorkspace('Генератор Слайдов PPTX'); 
+                addMessage('user', renderText(text)); 
+                document.getElementById('mainInput').value = '';
+                
+                const loadingEl = addLoading('Формирую структуру JSON (Model: Ultra)...');
                 try {
-                    const raw = await askAI('Создай план презентации "' + text + '" из 6 слайдов. СТРОГО JSON: {"title":"...","slides":[{"title":"...","bullets":["..."]}]}', { model: MODELS.ultra });
+                    const raw = await askAI(`Сгенерируй структуру презентации на тему "${text}". 
+ВЕРНИ ТОЛЬКО ЧИСТЫЙ JSON без markdown-кавычек. Формат:
+{
+  "title": "Название",
+  "slides": [
+    { "title": "Слайд 1", "bullets": ["Текст 1", "Текст 2", "Текст 3"] }
+  ]
+}
+Обязательно 6-8 слайдов. Никаких слов "Вот ваш JSON".`, { model: MODELS.ultra });
+                    
                     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) throw new Error('Сбой генерации структуры JSON');
+                    if (!jsonMatch) throw new Error('Нейросеть нарушила формат JSON');
                     const data = JSON.parse(jsonMatch[0]);
 
                     const pptx = new PptxGenJS();
-                    const titleSlide = pptx.addSlide(); titleSlide.background = { color: '0D0D0D' };
-                    titleSlide.addText(data.title || text, { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 36, bold: true, color: 'FFFFFF', align: 'center' });
+                    
+                    // Титульный слайд
+                    const titleSlide = pptx.addSlide(); 
+                    titleSlide.background = { color: '0A0A0A' };
+                    titleSlide.addText(data.title || text, { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 44, bold: true, color: 'FFFFFF', align: 'center' });
 
+                    // Контентные слайды
                     (data.slides || []).forEach(s => {
-                        const slide = pptx.addSlide(); slide.background = { color: '141414' };
-                        slide.addText(s.title || '', { x: 0.5, y: 0.4, w: 9, h: 0.8, fontSize: 24, bold: true, color: '818CF8' });
-                        slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: true, breakLine: true } })), { x: 0.5, y: 1.4, w: 9, h: 4, fontSize: 16, color: 'E8E8E8' });
+                        const slide = pptx.addSlide(); 
+                        slide.background = { color: '121212' };
+                        
+                        // Заголовок слайда с градиентным эффектом (фиолетовый)
+                        slide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 0.3, w: 9, h: 1, fill: '1E1E2E' });
+                        slide.addText(s.title || '', { x: 0.8, y: 0.4, w: 8.4, h: 0.8, fontSize: 28, bold: true, color: 'A78BFA' });
+                        
+                        // Буллиты
+                        slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: { type: 'number' }, breakLine: true } })), 
+                            { x: 0.8, y: 1.6, w: 8.4, h: 3.5, fontSize: 18, color: 'E2E8F0', lineSpacing: 32 }
+                        );
                     });
 
+                    // Безопасный экспорт blob
                     const blob = await pptx.write({ outputType: 'blob' });
                     const url = URL.createObjectURL(blob);
-                    loadingEl.innerHTML = `✅ Презентация готова: <b>${escapeHtml(data.title || text)}</b><br><a class="ws-download" href="${url}" download="presentation.pptx">💾 Скачать .pptx</a>`;
-                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+                    
+                    loadingEl.innerHTML = `
+                        <div style="background:var(--bg-input); padding:20px; border-radius:12px; border:1px solid var(--success); text-align:center;">
+                            <div style="font-size:3rem; margin-bottom:10px;">📊</div>
+                            <h3 style="color:var(--success); margin-bottom:8px;">Презентация успешно создана!</h3>
+                            <p style="color:var(--text-secondary); margin-bottom:16px;"><b>Тема:</b> ${escapeHtml(data.title || text)} (${(data.slides || []).length} слайдов)</p>
+                            <a class="ws-download" href="${url}" download="Quanta_${text.replace(/\s+/g, '_').substring(0,20)}.pptx" style="font-size:1rem; padding:12px 24px; background:var(--success);">📥 Скачать файл .PPTX</a>
+                        </div>
+                    `;
+                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка компиляции слайдов:</b> ${escapeHtml(e.message)}`; }
             }
 
-            async function handleClusterAnalysis(text) {
-                openWorkspace('Кластерный анализ'); addMessage('user', renderText(text || '(без данных)')); document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Анализирую...');
-                try {
-                    const prompt = text ? 'Опиши кластеризацию для: ' + text : 'Объясни кластерный анализ. Предложи загрузить CSV.';
-                    const answer = await askAI(prompt, { model: MODELS.ultra });
-                    loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-cluster');
-                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
-            }
-
-            window.startVoiceInput = function() {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) return showToast('Не поддерживается');
-                const recognition = new SpeechRecognition(); recognition.lang = 'ru-RU'; recognition.interimResults = false;
-                const btn = document.getElementById('voiceBtn'); btn.style.color = 'var(--danger)'; showToast('Слушаю...');
-                recognition.start();
-                recognition.onresult = (e) => { document.getElementById('mainInput').value += (document.getElementById('mainInput').value ? ' ' : '') + e.results[0][0].transcript; };
-                recognition.onerror = () => showToast('Ошибка голоса'); recognition.onend = () => { btn.style.color = ''; };
-            }
-
+            // 9. АНАЛИЗ ФАЙЛОВ И ТАБЛИЦ (РАСШИРЕННЫЙ)
             window.triggerFileUpload = function() { document.getElementById('fileInput').click(); }
 
             document.getElementById('fileInput').addEventListener('change', async function (e) {
-                const file = e.target.files[0]; if (!file) return;
-                const ext = file.name.split('.').pop().toLowerCase(); e.target.value = '';
-                if (['png', 'jpg', 'jpeg', 'webp'].includes(ext) || file.type.startsWith('image/')) {
-                    const dataUrl = await fileToDataURL(file); setPendingImage(file, dataUrl); showToast('Фото прикреплено');
-                } else if (['csv', 'xlsx'].includes(ext)) { await handleSpreadsheet(file);
-                } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) { await handleDocument(file, ext);
-                } else { showToast('Формат не поддерживается'); }
+                const file = e.target.files[0]; 
+                if (!file) return;
+                
+                const ext = file.name.split('.').pop().toLowerCase(); 
+                e.target.value = ''; // Сброс инпута
+                
+                const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+                
+                if (imageExts.includes(ext) || file.type.startsWith('image/')) {
+                    const dataUrl = await fileToDataURL(file); 
+                    setPendingImage(file, dataUrl); 
+                    showToast('Изображение готово к анализу');
+                } else if (['csv', 'xlsx'].includes(ext)) { 
+                    await handleSpreadsheet(file);
+                } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) { 
+                    await handleDocument(file, ext);
+                } else { 
+                    showToast('Критическая ошибка: неподдерживаемый формат'); 
+                }
             });
 
-            function fileToDataURL(file) { return new Promise((r, j) => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.onerror = j; reader.readAsDataURL(file); }); }
+            function fileToDataURL(file) { 
+                return new Promise((r, j) => { 
+                    const reader = new FileReader(); 
+                    reader.onload = () => r(reader.result); 
+                    reader.onerror = j; 
+                    reader.readAsDataURL(file); 
+                }); 
+            }
 
             async function extractTextFromFile(file, ext) {
                 if (ext === 'txt' || ext === 'md') return await file.text();
+                
                 if (ext === 'pdf') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = '[https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js](https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js)';
+                    // Используем стабильный CDN для PDF.js worker
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                     const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-                    let full = ''; for (let i = 1; i <= pdf.numPages; i++) full += (await (await pdf.getPage(i)).getTextContent()).items.map(it => it.str).join(' ') + '\n';
+                    let full = ''; 
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        full += content.items.map(it => it.str).join(' ') + '\n';
+                    }
                     return full;
                 }
-                if (ext === 'docx') return (await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value;
+                
+                if (ext === 'docx') {
+                    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+                    return result.value;
+                }
                 return '';
             }
 
             async function handleDocument(file, ext) {
-                openWorkspace('Анализ документа'); addMessage('user', 'Файл: ' + escapeHtml(file.name));
-                const loadingEl = addLoading('Читаю...');
+                openWorkspace('Doc Parser AI'); 
+                addMessage('user', `📄 Загружен документ: <b>${escapeHtml(file.name)}</b>`);
+                
+                const loadingEl = addLoading('Извлечение текста...');
                 try {
-                    let content = (await extractTextFromFile(file, ext)).trim().slice(0, 12000);
-                    if (!content) throw new Error('Пусто');
-                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую...</div>';
-                    const answer = await askAI('Сделай сводку документа:\n' + content, { model: MODELS.ultra });
-                    loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-doc');
-                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+                    let content = (await extractTextFromFile(file, ext)).trim().slice(0, 15000); // Берем до 15к символов
+                    if (!content) throw new Error('Документ пуст или защищен паролем');
+                    
+                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализ семантики...</div>';
+                    
+                    const prompt = `Проанализируй этот документ. Сделай структурированную выжимку:\n1. Главная мысль (2 предложения)\n2. Ключевые тезисы (списком)\n3. Важные цифры и факты (если есть).\n\nТекст:\n${content}`;
+                    const answer = await askAI(prompt, { model: MODELS.ultra });
+                    
+                    loadingEl.innerHTML = renderText(answer); 
+                    attachExport(loadingEl, answer, `Summary_${file.name}`);
+                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка парсера:</b> ${escapeHtml(e.message)}`; }
             }
 
             async function handleSpreadsheet(file) {
-                openWorkspace('Анализ таблицы: ' + file.name);
-                addMessage('user', 'Загружен файл: ' + escapeHtml(file.name));
-                const loadingEl = addLoading('Читаю таблицу...');
+                openWorkspace('Data Science Engine');
+                addMessage('user', `📊 Загружена таблица: <b>${escapeHtml(file.name)}</b>`);
+                const loadingEl = addLoading('Парсинг ячеек...');
+                
                 try {
                     let rows = [];
                     if (file.name.toLowerCase().endsWith('.csv')) {
@@ -1499,71 +1153,104 @@
                         const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
                         rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
                     }
-                    if (!rows.length) throw new Error('Таблица пуста или не распознана');
+                    if (!rows.length) throw new Error('Таблица не содержит данных');
 
+                    // Поиск числовых колонок для анализа
                     const columns = Object.keys(rows[0]);
                     const numericCols = columns.filter(c => rows.every(r => typeof r[c] === 'number' || r[c] == null));
 
+                    // Сбор статистики
                     const stats = {};
                     numericCols.forEach(c => {
                         const vals = rows.map(r => r[c]).filter(v => typeof v === 'number');
                         if (!vals.length) return;
                         const sum = vals.reduce((a, b) => a + b, 0);
-                        const mean = sum / vals.length;
                         const sorted = [...vals].sort((a, b) => a - b);
                         stats[c] = {
-                            count: vals.length, mean: mean.toFixed(2), min: Math.min(...vals),
-                            max: Math.max(...vals), median: sorted[Math.floor(sorted.length / 2)]
+                            count: vals.length, 
+                            mean: (sum / vals.length).toFixed(2), 
+                            min: sorted[0],
+                            max: sorted[sorted.length - 1], 
+                            median: sorted[Math.floor(sorted.length / 2)]
                         };
                     });
 
-                    let statsHtml = '<b>Строк:</b> ' + rows.length + ' • <b>Столбцов:</b> ' + columns.length + '<br><br>';
-                    statsHtml += '<table><tr><th>Колонка</th><th>Ср.</th><th>Мин</th><th>Медиана</th><th>Макс</th></tr>';
-                    Object.entries(stats).forEach(([c, s]) => { statsHtml += `<tr><td>${escapeHtml(c)}</td><td>${s.mean}</td><td>${s.min}</td><td>${s.median}</td><td>${s.max}</td></tr>`; });
+                    // Рендер таблицы статистики
+                    let statsHtml = `<p><b>Анализ размерности:</b> Строк: ${rows.length} | Столбцов: ${columns.length}</p><br>`;
+                    statsHtml += '<table><tr><th>Метрика</th><th>Среднее</th><th>Мин.</th><th>Медиана</th><th>Макс.</th></tr>';
+                    Object.entries(stats).forEach(([c, s]) => { 
+                        statsHtml += `<tr><td><b>${escapeHtml(c)}</b></td><td>${s.mean}</td><td>${s.min}</td><td>${s.median}</td><td>${s.max}</td></tr>`; 
+                    });
                     statsHtml += '</table>';
 
                     let chartHtml = '';
+                    
+                    // Если есть 2 числовые колонки - строим ML График (K-Means)
                     if (numericCols.length >= 2) {
                         const [cx, cy] = numericCols;
                         const points = rows.map(r => [r[cx], r[cy]]).filter(p => typeof p[0] === 'number' && typeof p[1] === 'number');
+                        
+                        // Алгоритм кластеризации
                         const clusters = kMeans(points, Math.min(3, points.length));
                         const canvasId = 'chart_' + Date.now();
-                        chartHtml = `<canvas id="${canvasId}" height="220"></canvas>`;
-                        loadingEl.innerHTML = statsHtml + '<br>' + chartHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
+                        
+                        chartHtml = `
+                            <div style="background:#1e1e1e; padding:16px; border-radius:12px; margin-top:16px;">
+                                <h4 style="margin-bottom:12px; color:#a78bfa;">ML Кластеризация (K-Means)</h4>
+                                <canvas id="${canvasId}" height="220"></canvas>
+                            </div>
+                        `;
+                        loadingEl.innerHTML = statsHtml + chartHtml + '<div class="ws-loading" style="margin-top:16px;"><div class="spinner"></div>Нейросеть ищет аномалии...</div>';
+                        
                         setTimeout(() => renderClusterChart(canvasId, points, clusters, cx, cy), 50);
                     } else {
-                        loadingEl.innerHTML = statsHtml + '<div class="ws-loading" style="margin-top:10px;"><div class="spinner"></div>AI формирует инсайты...</div>';
+                        loadingEl.innerHTML = statsHtml + '<div class="ws-loading" style="margin-top:16px;"><div class="spinner"></div>Нейросеть ищет инсайты...</div>';
                     }
 
-                    const insights = await askAI('Статистика (' + rows.length + ' строк): ' + JSON.stringify(stats) + '. Дай 3-4 инсайта.', { model: MODELS.ultra });
-                    loadingEl.innerHTML = statsHtml + (chartHtml ? '<br>' + chartHtml : '') + '<br><b>Инсайты:</b><br>' + renderText(insights);
+                    // Генерация ИИ-инсайтов
+                    const insightsPrompt = `Вот математическая статистика по датасету (${rows.length} строк): ${JSON.stringify(stats)}. Выведи 3 самых интересных закономерности или инсайта бизнес-языком.`;
+                    const insights = await askAI(insightsPrompt, { model: MODELS.ultra });
+                    
+                    loadingEl.innerHTML = statsHtml + chartHtml + '<br><h3>ИИ-Инсайты</h3>' + renderText(insights);
+                    
                     if (chartHtml) setTimeout(() => renderClusterChart(loadingEl.querySelector('canvas').id, null, null, null, null, true), 60);
                     
+                    // Кнопка экспорта XLSX
                     const xlsxBtn = document.createElement('button');
-                    xlsxBtn.className = 'ws-download'; xlsxBtn.style.cssText = 'border:none;cursor:pointer;background:#16a34a;margin-top:8px;';
-                    xlsxBtn.textContent = '📊 Скачать Excel со статистикой';
-                    xlsxBtn.onclick = () => downloadStatsXlsx(rows, stats, 'quanta-analysis');
+                    xlsxBtn.className = 'ws-download'; 
+                    xlsxBtn.style.cssText = 'border:none; cursor:pointer; background:#10b981; margin-top:16px; width:100%;';
+                    xlsxBtn.textContent = '📊 Выгрузить полный отчет в Excel (.xlsx)';
+                    xlsxBtn.onclick = () => downloadStatsXlsx(rows, stats, 'Quanta_Analytics');
                     loadingEl.appendChild(xlsxBtn);
-                } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
+
+                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Data Error:</b> ${escapeHtml(e.message)}`; }
             }
 
-            function downloadStatsXlsx(rows, stats, filenameBase) {
+            async function handleClusterAnalysis(text) {
+                openWorkspace('Менеджер Кластеров'); 
+                addMessage('user', renderText(text || 'Проведи кластерный анализ')); 
+                document.getElementById('mainInput').value = '';
+                const loadingEl = addLoading('Вычисляю...');
                 try {
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Данные');
-                    const statsRows = Object.entries(stats).map(([col, s]) => ({ Колонка: col, Среднее: s.mean, Мин: s.min, Медиана: s.median, Макс: s.max, Кол_во: s.count }));
-                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(statsRows), 'Статистика');
-                    XLSX.writeFile(wb, filenameBase + '.xlsx');
-                } catch (e) { showToast('Ошибка Excel: ' + e.message); }
+                    const prompt = text ? `Опиши процесс кластеризации (K-means) для задачи: ${text}. Укажи признаки.` : 'Объясни математику алгоритма K-means простыми словами и предложи пользователю загрузить Excel/CSV.';
+                    const answer = await askAI(prompt, { model: MODELS.ultra });
+                    loadingEl.innerHTML = renderText(answer); 
+                    attachExport(loadingEl, answer, 'quanta-cluster-logic');
+                } catch (e) { loadingEl.innerHTML = `⚠️ ${escapeHtml(e.message)}`; }
             }
 
+            // Математика K-Means
             function kMeans(points, k) {
                 let centroids = points.slice(0, k).map(p => [...p]);
                 let assignments = new Array(points.length).fill(0);
-                for (let iter = 0; iter < 15; iter++) {
+                
+                for (let iter = 0; iter < 20; iter++) {
                     assignments = points.map(p => {
                         let best = 0, bestDist = Infinity;
-                        centroids.forEach((c, i) => { const d = (p[0]-c[0])**2 + (p[1]-c[1])**2; if(d<bestDist){ bestDist=d; best=i; }});
+                        centroids.forEach((c, i) => { 
+                            const d = (p[0]-c[0])**2 + (p[1]-c[1])**2; 
+                            if(d < bestDist){ bestDist=d; best=i; }
+                        });
                         return best;
                     });
                     centroids = centroids.map((c, i) => {
@@ -1576,25 +1263,115 @@
 
             let _lastChartCache = null;
             function renderClusterChart(canvasId, points, clusters, cx, cy, reuse) {
-                const canvas = document.getElementById(canvasId); if (!canvas) return;
+                const canvas = document.getElementById(canvasId); 
+                if (!canvas) return;
+                
                 if (points) _lastChartCache = { points, clusters, cx, cy };
-                const data = _lastChartCache; if (!data) return;
-                const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4'];
+                const data = _lastChartCache; 
+                if (!data) return;
+                
+                // Киберпанк-цвета
+                const colors = ['#a78bfa', '#34d399', '#fbbf24', '#f87171', '#2dd4bf'];
                 const datasets = [...new Set(data.clusters)].map(cl => ({
-                    label: 'Кластер ' + (cl + 1),
+                    label: `Группа ${cl + 1}`,
                     data: data.points.filter((_, i) => data.clusters[i] === cl).map(p => ({ x: p[0], y: p[1] })),
-                    backgroundColor: colors[cl % colors.length]
+                    backgroundColor: colors[cl % colors.length],
+                    pointRadius: 5,
+                    pointHoverRadius: 8
                 }));
+                
                 new Chart(canvas, {
-                    type: 'scatter', data: { datasets },
-                    options: { responsive: true, scales: { x: { title: { display: true, text: data.cx, color: '#888' }, ticks: { color: '#888' } }, y: { title: { display: true, text: data.cy, color: '#888' }, ticks: { color: '#888' } } }, plugins: { legend: { labels: { color: '#e8e8e8' } } } }
+                    type: 'scatter', 
+                    data: { datasets },
+                    options: { 
+                        responsive: true, 
+                        scales: { 
+                            x: { title: { display: true, text: data.cx, color: '#9ca3af' }, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }, 
+                            y: { title: { display: true, text: data.cy, color: '#9ca3af' }, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } } 
+                        }, 
+                        plugins: { legend: { labels: { color: '#e5e7eb', font: { family: 'Inter' } } } } 
+                    }
                 });
             }
 
-            document.getElementById('mainInput').addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.handleSend(); }});
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventListener('click', function(e) { e.preventDefault(); const target = document.querySelector(this.getAttribute('href')); if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
-            const observer = new IntersectionObserver((entries) => { entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; }}); }, { threshold: 0.1 });
-            document.querySelectorAll('.feature-card, .step').forEach(el => { el.style.opacity = '0'; el.style.transform = 'translateY(20px)'; el.style.transition = 'all 0.6s ease-out'; observer.observe(el); });
+            function downloadStatsXlsx(rows, stats, filenameBase) {
+                try {
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Raw Data');
+                    
+                    const statsRows = Object.entries(stats).map(([col, s]) => ({ 
+                        Feature: col, Mean: s.mean, Min: s.min, Median: s.median, Max: s.max, Count: s.count 
+                    }));
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(statsRows), 'Statistics');
+                    XLSX.writeFile(wb, filenameBase + '.xlsx');
+                } catch (e) { showToast('Сбой экспорта: ' + e.message); }
+            }
+
+            // 10. ГОЛОСОВОЙ ВВОД
+            window.startVoiceInput = function() {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) return showToast('Браузер не поддерживает Web Speech API');
+                
+                const recognition = new SpeechRecognition(); 
+                recognition.lang = 'ru-RU'; 
+                recognition.interimResults = false;
+                
+                const btn = document.getElementById('voiceBtn'); 
+                btn.style.color = '#ef4444'; // Красный цвет записи
+                btn.style.transform = 'scale(1.1)';
+                showToast('Говорите...');
+                
+                recognition.start();
+                
+                recognition.onresult = (e) => { 
+                    const input = document.getElementById('mainInput');
+                    input.value += (input.value ? ' ' : '') + e.results[0][0].transcript; 
+                };
+                
+                recognition.onerror = () => showToast('Речь не распознана'); 
+                recognition.onend = () => { 
+                    btn.style.color = ''; 
+                    btn.style.transform = 'scale(1)'; 
+                };
+            }
+
+            // 11. ГЛОБАЛЬНЫЕ СЛУШАТЕЛИ И ИНИЦИАЛИЗАЦИЯ
+            document.getElementById('mainInput').addEventListener('keydown', function(e) { 
+                // Отправка по Enter (Shift+Enter для переноса строки)
+                if (e.key === 'Enter' && !e.shiftKey) { 
+                    e.preventDefault(); 
+                    window.handleSend(); 
+                }
+            });
+
+            // Плавный скролл к якорям
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => { 
+                anchor.addEventListener('click', function(e) { 
+                    e.preventDefault(); 
+                    const target = document.querySelector(this.getAttribute('href')); 
+                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
+                }); 
+            });
+
+            // Анимации при скролле
+            const observer = new IntersectionObserver((entries) => { 
+                entries.forEach(e => { 
+                    if (e.isIntersecting) { 
+                        e.target.style.opacity = '1'; 
+                        e.target.style.transform = 'translateY(0)'; 
+                    }
+                }); 
+            }, { threshold: 0.1 });
+            
+            document.querySelectorAll('.feature-card, .step').forEach(el => { 
+                el.style.opacity = '0'; 
+                el.style.transform = 'translateY(20px)'; 
+                el.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'; 
+                observer.observe(el); 
+            });
+
+            // Восстановление UI (память) при загрузке страницы
+            restoreUI();
         });
     </script>
 </body>
