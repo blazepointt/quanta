@@ -802,7 +802,6 @@
             <a href="#stats" class="nav-link">Статистика</a>
         </nav>
         <div class="header-actions">
-            <!-- Ссылка ведет прямо на репозиторий quanta -->
             <a href="https://github.com/blazepointt/quanta" target="_blank" class="github-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
@@ -840,7 +839,7 @@
 
                     <textarea 
                         class="input-textarea" 
-                        placeholder="Опишите задачу, задайте вопрос или добавьте фото с подписью..."
+                        placeholder="Опишите задачу, задайте вопрос, напишите «нарисуй ...» или добавьте фото..."
                         id="mainInput"
                         rows="3"
                     ></textarea>
@@ -963,7 +962,7 @@
                 <div class="feature-card" onclick="triggerFileUpload()">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #22c55e, #16a34a);">📄</div>
                     <h3>Анализ документов</h3>
-                    <p>Загружайте PDF, DOCX, TXT файлы. AI извлечёт ключевую информацию, создаст摘要, ответит на вопросы по содержимому.</p>
+                    <p>Загружайте PDF, DOCX, TXT файлы. AI извлечёт ключевую информацию, ответит на вопросы по содержимому.</p>
                 </div>
                 <div class="feature-card" onclick="runQuickAction('image')">
                     <div class="feature-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎨</div>
@@ -1171,13 +1170,36 @@
             // ============================================================
             //  AI ENGINE (Puter.js)
             // ============================================================
-            const MODELS = { quick: 'gpt-4o-mini', deep: 'gpt-4o' };
+            
+            // --- УЛЬТРА РЕЖИМ (GEMINI 3.1 PRO) ---
+            const MODELS = { 
+                quick: 'gpt-4o-mini', 
+                deep: 'gpt-4o', 
+                ultra: 'google/gemini-3.1-pro' 
+            };
             let currentMode = 'quick';
+            const modeNames = { 
+                quick: 'Быстрый', 
+                deep: 'Глубокий', 
+                ultra: 'Ультра (Gemini 3.1)' 
+            };
 
             window.toggleModel = function() {
-                currentMode = currentMode === 'quick' ? 'deep' : 'quick';
-                document.getElementById('modeLabel').textContent = currentMode === 'quick' ? 'Быстрый' : 'Глубокий';
-                showToast(currentMode === 'quick' ? 'Быстрый режим (gpt-4o-mini)' : 'Глубокий режим (gpt-4o)');
+                if (currentMode === 'quick') {
+                    currentMode = 'deep';
+                } else if (currentMode === 'deep') {
+                    currentMode = 'ultra';
+                    document.getElementById('modeLabel').style.color = '#8b5cf6';
+                    document.getElementById('modeLabel').style.fontWeight = 'bold';
+                    document.getElementById('modeLabel').style.textShadow = '0 0 8px rgba(139, 92, 246, 0.5)';
+                } else {
+                    currentMode = 'quick';
+                    document.getElementById('modeLabel').style.color = '';
+                    document.getElementById('modeLabel').style.fontWeight = '';
+                    document.getElementById('modeLabel').style.textShadow = '';
+                }
+                document.getElementById('modeLabel').textContent = modeNames[currentMode];
+                showToast(`Активирован: ${modeNames[currentMode]} режим`);
             }
 
             async function refreshPuterAuthUI() {
@@ -1250,11 +1272,36 @@
                 return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             }
 
+            // --- УМНЫЙ РЕНДЕР КОДА СО СКАЧИВАНИЕМ ---
+            let codeCounter = 0;
             function renderText(text) {
                 let safe = escapeHtml(text);
-                safe = safe.replace(/```([\s\S]*?)```/g, (m, code) => '<pre><code>' + code.trim() + '</code></pre>');
+                
+                safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
+                    const id = 'code_' + (++codeCounter);
+                    const ext = lang || 'txt';
+                    return `<div style="position:relative; margin-top:12px; margin-bottom:12px;">
+                              <div style="background:#262626; color:#888; font-size:0.75rem; padding:6px 12px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                                 <span style="text-transform:uppercase; font-weight:bold;">${ext}</span>
+                                 <button onclick="downloadCodeBlock('${id}', '${ext}')" style="background:#6366f1; border:none; color:#fff; padding:4px 10px; border-radius:6px; cursor:pointer; font-size:0.75rem;">
+                                    💾 Сохранить файл
+                                 </button>
+                              </div>
+                              <pre style="border-radius:0 0 10px 10px; margin-top:0; border-top:none;"><code id="${id}">${code.trim()}</code></pre>
+                            </div>`;
+                });
+                
                 safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
                 return safe;
+            }
+
+            window.downloadCodeBlock = function(id, ext) {
+                const codeEl = document.getElementById(id);
+                if(!codeEl) return;
+                const code = codeEl.innerText || codeEl.textContent;
+                const filename = 'quanta_script.' + (ext === 'txt' ? 'txt' : ext);
+                triggerDownload(new Blob([code], { type: 'text/plain;charset=utf-8' }), filename);
+                showToast(`Файл ${filename} сохранен!`);
             }
 
             function withTimeout(promise, ms, label) {
@@ -1320,6 +1367,7 @@
             window.handleSend = async function() {
                 const input = document.getElementById('mainInput');
                 const text = input.value.trim();
+                const textLower = text.toLowerCase();
 
                 if (window.pendingImage) {
                     const imgData = window.pendingImage;
@@ -1328,7 +1376,7 @@
 
                     openWorkspace('Анализ фото: ' + imgData.name);
                     const userCaption = text || 'Подробно опиши, что изображено на картинке, важные детали и контекст.';
-                    addMessage('user', '<img src="' + imgData.dataUrl + '" style="max-height:180px;margin-bottom:6px;"><br>' + renderText(text ? '💬 Подпись: ' + text : '(без подписи, общий анализ)'));
+                    addMessage('user', `<img src="${imgData.dataUrl}" style="max-height:180px;margin-bottom:6px;"><br>${renderText(text ? '💬 Подпись: ' + text : '(без подписи, общий анализ)')}`);
 
                     const loadingEl = addLoading('Анализирую изображение...');
                     try {
@@ -1348,12 +1396,33 @@
                     showToast('Введите запрос или прикрепите фото');
                     return;
                 }
+                
                 openWorkspace('Чат с Quanta AI');
                 addMessage('user', renderText(text));
                 input.value = '';
+
+                // --- АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ КАРТИНОК В ЧАТЕ ---
+                if (textLower.startsWith('нарисуй') || textLower.startsWith('сгенерируй') || textLower.startsWith('создай фото') || textLower.startsWith('сделай фото')) {
+                    const loadingEl = addLoading('🎨 Рисую изображение...');
+                    try {
+                        maybeShowPuterHint();
+                        const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация изображения');
+                        const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
+                        if (!src) throw new Error('Не удалось получить изображение');
+                        loadingEl.innerHTML = `<img src="${src}" alt="Generated Art" style="width:100%; border-radius:12px; margin-top:8px;">
+                                               <br><a class="ws-download" href="${src}" download="quanta-art.png" target="_blank">💾 Скачать картинку</a>`;
+                    } catch (e) {
+                        loadingEl.innerHTML = '⚠️ Ошибка генерации: ' + escapeHtml(e.message);
+                    }
+                    return;
+                }
+
+                // --- УМНЫЙ ЧАТ (SENIOR DEVELOPER) ---
                 const loadingEl = addLoading('Генерирую ответ...');
                 try {
-                    const answer = await askAI(text, { useHistory: true });
+                    const systemPrompt = "Внимание: Отвечай максимально профессионально и точно. Если пишешь код, всегда используй markdown-блоки с указанием языка (например ```javascript). Выдавай готовые решения без лишней воды.";
+                    const smartPrompt = systemPrompt + "\n\nЗапрос пользователя:\n" + text;
+                    const answer = await askAI(smartPrompt, { useHistory: true });
                     loadingEl.innerHTML = renderText(answer);
                     attachExport(loadingEl, answer, 'quanta-chat');
                 } catch (e) {
@@ -1412,7 +1481,7 @@
                     const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация изображения');
                     const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
                     if (!src) throw new Error('Не удалось получить изображение');
-                    loadingEl.innerHTML = '<img src="' + src + '" alt="Generated"><br><a class="ws-download" href="' + src + '" download="quanta-image.png" target="_blank">Скачать</a>';
+                    loadingEl.innerHTML = `<img src="${src}" alt="Generated"><br><a class="ws-download" href="${src}" download="quanta-image.png" target="_blank">Скачать</a>`;
                 } catch (e) {
                     loadingEl.innerHTML = '⚠️ Ошибка генерации: ' + escapeHtml(e.message);
                 }
@@ -1458,7 +1527,7 @@
             async function handleWebsite(text) {
                 let url = text;
                 if (!url || !/^https?:\/\//i.test(url)) {
-                    url = prompt('Введите URL сайта для анализа (например [https://example.com](https://example.com)):', text || 'https://');
+                    url = prompt('Введите URL сайта для анализа (например https://example.com):', text || 'https://');
                     if (!url) return;
                 }
                 openWorkspace('Анализ сайта');
@@ -1466,7 +1535,8 @@
                 document.getElementById('mainInput').value = '';
                 const loadingEl = addLoading('Загружаю страницу...');
                 try {
-                    const proxyUrl = '[https://api.allorigins.win/raw?url=](https://api.allorigins.win/raw?url=)' + encodeURIComponent(url);
+                    // --- ИСПРАВЛЕН БАГ СО ССЫЛКОЙ ---
+                    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
                     const controller = new AbortController();
                     const t = setTimeout(() => controller.abort(), 20000);
                     const res = await fetch(proxyUrl, { signal: controller.signal });
@@ -1499,12 +1569,15 @@
                 try {
                     const raw = await askAI(
                         'Создай план презентации на тему "' + text + '" из 6 слайдов. ' +
-                        'Ответь СТРОГО в формате JSON без пояснений и без markdown-разметки: ' +
+                        'Ответь СТРОГО в формате JSON без пояснений и без markdown-разметки. Пример структуры:\n' +
                         '{"title":"...","slides":[{"title":"...","bullets":["...","...","..."]}]}',
                         { model: MODELS.deep }
                     );
-                    const jsonStr = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
-                    const data = JSON.parse(jsonStr);
+                    
+                    // --- ИСПРАВЛЕН БАГ ПАРСИНГА JSON ---
+                    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error('AI не вернул корректный JSON');
+                    const data = JSON.parse(jsonMatch[0]);
 
                     const pptx = new PptxGenJS();
                     const titleSlide = pptx.addSlide();
@@ -1518,7 +1591,8 @@
                         slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: true, breakLine: true } })), { x: 0.5, y: 1.4, w: 9, h: 4, fontSize: 16, color: 'E8E8E8' });
                     });
 
-                    const blob = await pptx.write('blob');
+                    // --- ИСПРАВЛЕН БАГ ВЫВОДА ФАЙЛА ---
+                    const blob = await pptx.write({ outputType: 'blob' });
                     const url = URL.createObjectURL(blob);
                     loadingEl.innerHTML = '✅ Презентация готова: <b>' + escapeHtml(data.title || text) + '</b> (' + (data.slides || []).length + ' слайдов)<br><a class="ws-download" href="' + url + '" download="presentation.pptx">Скачать .pptx</a>';
                 } catch (e) {
@@ -1604,7 +1678,8 @@
                     return await file.text();
                 }
                 if (ext === 'pdf') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = '[https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js](https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js)';
+                    // --- ИСПРАВЛЕН БАГ СО ССЫЛКОЙ ---
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                     const buf = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
                     let full = '';
