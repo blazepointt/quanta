@@ -1030,7 +1030,7 @@
     </footer>
 
     <div class="toast" id="toast"></div>
-    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,image/*">
+    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.html,.htm,.js,.css,image/*">
 
     <!-- Библиотеки -->
     <script src="https://js.puter.com/v2/"></script>
@@ -1548,14 +1548,14 @@
                 if (['png', 'jpg', 'jpeg', 'webp'].includes(ext) || file.type.startsWith('image/')) {
                     const dataUrl = await fileToDataURL(file); setPendingImage(file, dataUrl); showToast('Фото прикреплено');
                 } else if (['csv', 'xlsx'].includes(ext)) { await handleSpreadsheet(file);
-                } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) { await handleDocument(file, ext);
+                } else if (['pdf', 'docx', 'txt', 'md', 'html', 'htm', 'js', 'css'].includes(ext)) { await handleDocument(file, ext);
                 } else { showToast('Формат не поддерживается'); }
             });
 
             function fileToDataURL(file) { return new Promise((r, j) => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.onerror = j; reader.readAsDataURL(file); }); }
 
             async function extractTextFromFile(file, ext) {
-                if (ext === 'txt' || ext === 'md') return await file.text();
+    if (['txt', 'md', 'html', 'htm', 'js', 'css'].includes(ext)) return await file.text();
                 if (ext === 'pdf') {
                     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                     const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
