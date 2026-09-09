@@ -3,775 +3,744 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quanta — AI для работы со знаниями (Ultimate Edition)</title>
-    <meta name="description" content="Quanta — бесплатная AI-платформа в браузере: чат с нейросетью, анализ документов и таблиц, генерация изображений и презентаций, deep research, перевод и код.">
+    <title>Quanta AI — Ultimate Edition</title>
+    <meta name="description" content="Quanta — AI-платформа: чат, анализ документов, генерация изображений, Data Science и код.">
     
+    <!-- Шрифты и Иконки -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
-    <!-- Подсветка синтаксиса кода (Тема: Atom One Dark) -->
+    <!-- Подсветка синтаксиса (Тема One Dark) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 
     <style>
-        /* ==========================================================================
-           1. БАЗОВЫЕ ПЕРЕМЕННЫЕ И СБРОС (CORE VARIABLES & RESET)
-           ========================================================================== */
+        /* ==========================================
+           1. ПЕРЕМЕННЫЕ И БАЗОВЫЙ СБРОС
+           ========================================== */
         :root {
-            --bg-primary: #0d0d0d;
-            --bg-secondary: #141414;
-            --bg-card: #1a1a1a;
-            --bg-input: #1e1e1e;
-            --bg-hover: #252525;
-            --text-primary: #e8e8e8;
-            --text-secondary: #888888;
-            --text-muted: #555555;
+            --bg-root: #09090b;
+            --bg-sidebar: #121214;
+            --bg-chat: #18181b;
+            --bg-input: #27272a;
+            --bg-hover: #3f3f46;
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
             --accent: #6366f1;
             --accent-hover: #818cf8;
-            --accent-glow: rgba(99, 102, 241, 0.3);
-            --border: #262626;
-            --border-light: #333333;
-            --success: #22c55e;
-            --warning: #f59e0b;
+            --border: #27272a;
+            --success: #10b981;
             --danger: #ef4444;
+            --warning: #f59e0b;
+            
+            --sidebar-width: 280px;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body, main {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            max-width: 100vw;
-            overflow-x: hidden;
-            line-height: 1.6;
-        }
-        
-        /* Защита от переполнения блоков с контентом */
-        .msg-content {
-            white-space: normal;
-            word-break: break-word;
-            overflow-wrap: anywhere;
-        }
-
-        /* ==========================================================================
-           2. АНИМАЦИИ И ФОН (ANIMATIONS & BACKGROUND)
-           ========================================================================== */
-        .particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            opacity: 0.4;
-        }
-
-        .particle {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: var(--accent);
-            border-radius: 50%;
-            animation: float 20s infinite linear;
-        }
-
-        @keyframes float {
-            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-in { animation: fadeInUp 0.6s ease-out forwards; }
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-        .delay-3 { animation-delay: 0.3s; }
-
-        /* ==========================================================================
-           3. НАВИГАЦИЯ И ШАПКА (HEADER & NAVIGATION)
-           ========================================================================== */
-        header {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 100;
-            padding: 16px 32px;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-root);
+            color: var(--text-main);
+            height: 100vh;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(13, 13, 13, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
+            overflow: hidden;
         }
 
-        .logo {
-            display: flex; align-items: center; gap: 12px;
-            font-size: 1.5rem; font-weight: 700; color: var(--text-primary); text-decoration: none;
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+        button { font-family: inherit; cursor: pointer; border: none; outline: none; background: none; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* ==========================================
+           2. БОКОВАЯ ПАНЕЛЬ (SIDEBAR)
+           ========================================== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.2rem;
         }
 
         .logo-icon {
-            width: 36px; height: 36px;
-            background: linear-gradient(135deg, var(--accent), #8b5cf6);
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem; font-weight: 700;
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1rem;
         }
 
-        .nav-links { display: flex; gap: 8px; align-items: center; }
-        .nav-link {
-            padding: 8px 16px; border-radius: 8px; color: var(--text-secondary);
-            text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
+        .new-chat-btn {
+            width: calc(100% - 40px);
+            margin: 20px auto;
+            padding: 12px;
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
         }
-        .nav-link:hover { color: var(--text-primary); background: var(--bg-hover); }
 
-        .header-actions { display: flex; align-items: center; gap: 10px; }
-        .github-btn {
-            display: flex; align-items: center; gap: 8px; padding: 8px 16px;
-            border-radius: 8px; background: var(--bg-card); color: var(--text-primary);
-            text-decoration: none; font-size: 0.9rem; font-weight: 500;
-            border: 1px solid var(--border); transition: all 0.2s; cursor: pointer;
+        .new-chat-btn:hover { background-color: var(--bg-hover); }
+
+        .chat-history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
-        .github-btn:hover { background: var(--bg-hover); border-color: var(--border-light); }
+
+        .history-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item:hover { background-color: var(--bg-input); color: var(--text-main); }
+        .history-item.active { background-color: var(--bg-input); color: var(--text-main); font-weight: 500; }
+
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .puter-status {
+            display: flex; align-items: center; gap: 8px; margin-top: 12px;
+            padding: 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.1);
+            color: var(--success); cursor: pointer;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .puter-status.offline {
+            background: rgba(239, 68, 68, 0.1); color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        /* ==========================================
+           3. ГЛАВНАЯ ОБЛАСТЬ (MAIN CONTENT)
+           ========================================== */
+        .main-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-chat);
+            position: relative;
+        }
+
+        /* Верхняя панель мобильная */
+        .mobile-header {
+            display: none;
+            padding: 16px 20px;
+            background: var(--bg-sidebar);
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Окно чата */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            scroll-behavior: smooth;
+        }
+
+        .chat-messages {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        /* Пустой экран (Hero) */
+        .empty-state {
+            margin-top: 10vh;
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+        }
         
-        #puterAuthBtn.puter-signed-in {
-            background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.4); color: #4ade80;
+        .empty-state h1 { font-size: 3rem; font-weight: 700; margin-bottom: 16px; background: linear-gradient(135deg, #fff, #a1a1aa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .empty-state p { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 40px; }
+
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
         }
 
-        /* ==========================================================================
-           4. ГЛАВНЫЙ ЭКРАН И ВВОД (HERO & INPUT AREA)
-           ========================================================================== */
-        main { position: relative; z-index: 1; padding-top: 80px; }
-
-        .hero {
-            min-height: calc(100vh - 80px); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; padding: 40px 20px; text-align: center;
+        .action-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
         }
+        .action-card:hover { border-color: var(--accent); background: var(--bg-hover); transform: translateY(-2px); }
+        .action-card svg { width: 20px; height: 20px; color: var(--accent); margin-bottom: 8px; }
+        .action-card span { display: block; font-size: 0.9rem; color: var(--text-main); font-weight: 500; }
 
-        .hero-logo {
-            font-size: 4rem; font-weight: 700; letter-spacing: -2px; margin-bottom: 8px;
-            background: linear-gradient(135deg, #fff 0%, #888 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-        }
-
-        .hero-subtitle { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 40px; font-weight: 400; }
-
-        .input-container { width: 100%; max-width: 700px; margin-bottom: 24px; }
+        /* ==========================================
+           4. СООБЩЕНИЯ (MESSAGES & MARKDOWN)
+           ========================================== */
+        .message-row { display: flex; gap: 16px; width: 100%; }
+        .message-avatar { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .avatar-user { background: var(--bg-hover); color: white; }
+        .avatar-ai { background: linear-gradient(135deg, var(--accent), #a855f7); color: white; }
         
-        .input-wrapper {
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 16px; padding: 16px; transition: all 0.3s;
-        }
-        .input-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .message-content { flex: 1; min-width: 0; padding-top: 6px; }
+        .message-name { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .markdown-body { font-size: 1rem; line-height: 1.6; color: var(--text-main); word-wrap: break-word; }
+        .markdown-body p { margin-bottom: 16px; }
+        .markdown-body p:last-child { margin-bottom: 0; }
+        .markdown-body ul, .markdown-body ol { margin-bottom: 16px; padding-left: 24px; }
+        .markdown-body li { margin-bottom: 6px; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { margin-top: 24px; margin-bottom: 12px; font-weight: 600; color: #fff; }
+        
+        .markdown-body img { max-width: 100%; border-radius: 12px; border: 1px solid var(--border); margin: 12px 0; }
+        .markdown-body table { width: 100%; border-collapse: collapse; margin: 16px 0; border-radius: 8px; overflow: hidden; }
+        .markdown-body th, .markdown-body td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+        .markdown-body th { background: var(--bg-input); font-weight: 600; }
 
-        .input-textarea {
+        /* Идеальный блок кода */
+        .code-block-wrapper { margin: 16px 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: #282c34; }
+        .code-block-header { display: flex; justify-content: space-between; align-items: center; background: #21252b; padding: 8px 16px; border-bottom: 1px solid #181a1f; }
+        .code-lang { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #abb2bf; text-transform: uppercase; }
+        .code-actions { display: flex; gap: 8px; }
+        .code-btn { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: #abb2bf; border: 1px solid #3e4451; transition: 0.2s; display: flex; align-items: center; gap: 4px; }
+        .code-btn:hover { background: #3e4451; color: white; }
+        .code-btn.download { background: var(--accent); border-color: var(--accent); color: white; }
+        .code-btn.download:hover { background: var(--accent-hover); }
+        .code-block-wrapper pre { margin: 0; padding: 16px; overflow-x: auto; }
+        .code-block-wrapper code { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; line-height: 1.5; }
+        
+        /* Инлайн код */
+        .markdown-body p code, .markdown-body li code { background: var(--bg-hover); padding: 3px 6px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: var(--accent-hover); }
+
+        .typing-indicator { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.9rem; }
+        .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ==========================================
+           5. ОБЛАСТЬ ВВОДА (INPUT ZONE)
+           ========================================== */
+        .input-zone {
+            padding: 20px;
+            background: linear-gradient(0deg, var(--bg-chat) 70%, transparent);
+            display: flex;
+            justify-content: center;
+            position: relative;
+        }
+
+        .input-box {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+        .input-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+        .attachment-preview {
+            display: none; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border);
+        }
+        .attachment-preview img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+        .attachment-info { flex: 1; font-size: 0.85rem; color: var(--text-main); }
+        .attachment-remove { color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; }
+        .attachment-remove:hover { color: var(--danger); background: var(--bg-hover); }
+
+        textarea {
             width: 100%; background: transparent; border: none; outline: none;
-            color: var(--text-primary); font-size: 1rem; font-family: inherit;
-            resize: none; min-height: 60px; max-height: 200px;
+            color: var(--text-main); font-family: inherit; font-size: 1rem;
+            resize: none; min-height: 24px; max-height: 200px; line-height: 1.5;
         }
-        .input-textarea::placeholder { color: var(--text-muted); }
+        textarea::placeholder { color: var(--text-muted); }
 
-        .input-actions {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
+        .input-controls {
+            display: flex; justify-content: space-between; align-items: center; margin-top: 10px;
         }
 
-        .input-left { display: flex; gap: 8px; }
-        .icon-btn {
-            width: 36px; height: 36px; border-radius: 8px; background: transparent; border: none;
-            color: var(--text-secondary); cursor: pointer; display: flex; align-items: center;
-            justify-content: center; transition: all 0.2s;
-        }
-        .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .control-group { display: flex; gap: 4px; align-items: center; }
         
+        .tool-btn {
+            width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted); transition: 0.2s;
+        }
+        .tool-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+        .tool-btn svg { width: 18px; height: 18px; }
+
+        .model-selector {
+            display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px;
+            color: var(--text-muted); font-size: 0.85rem; cursor: pointer; transition: 0.2s;
+        }
+        .model-selector:hover { background: var(--bg-hover); color: var(--text-main); }
+
         .send-btn {
-            width: 36px; height: 36px; border-radius: 50%; background: var(--text-primary);
-            border: none; color: var(--bg-primary); cursor: pointer; display: flex;
-            align-items: center; justify-content: center; transition: all 0.2s;
+            width: 36px; height: 36px; border-radius: 10px; background: var(--text-main); color: var(--bg-root);
+            display: flex; align-items: center; justify-content: center; transition: 0.2s;
         }
         .send-btn:hover { transform: scale(1.05); background: #fff; }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-        .mode-selector {
-            display: flex; align-items: center; gap: 6px; padding: 6px 12px;
-            border-radius: 8px; background: transparent; border: none; color: var(--text-secondary);
-            font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
-        }
-        .mode-selector:hover { background: var(--bg-hover); color: var(--text-primary); }
-
-        /* ПРЕВЬЮ ИЗОБРАЖЕНИЙ */
-        .image-preview-bar {
-            display: none; align-items: center; gap: 12px; padding: 8px 12px;
-            background: var(--bg-input); border: 1px solid var(--border);
-            border-radius: 10px; margin-bottom: 12px; text-align: left;
-        }
-        img[alt="Preview"]:not([src]) { display: none; }
-        .image-preview-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); }
-        .image-preview-info { flex: 1; min-width: 0; }
-        .image-preview-name { font-size: 0.85rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .image-preview-hint { font-size: 0.75rem; color: var(--text-secondary); }
-        .image-preview-remove { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 1.1rem; line-height: 1; }
-        .image-preview-remove:hover { color: var(--danger); }
-
-        /* БЫСТРЫЕ ДЕЙСТВИЯ */
-        .quick-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 40px; }
-        .quick-action {
-            display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px;
-            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
-            font-size: 0.9rem; cursor: pointer; transition: all 0.2s; text-decoration: none;
-        }
-        .quick-action:hover { background: var(--bg-hover); border-color: var(--border-light); color: var(--text-primary); transform: translateY(-1px); }
-        .quick-action.active {
-            background: var(--bg-hover); border-color: var(--accent);
-            box-shadow: 0 0 12px var(--accent-glow); color: var(--text-primary); transform: translateY(-1px);
-        }
-        .quick-action svg { width: 18px; height: 18px; }
-
-        /* ==========================================================================
-           5. РАБОЧАЯ СРЕДА ЧАТА (WORKSPACE & MARKDOWN)
-           ========================================================================== */
-        .workspace {
-            width: 100%; max-width: 700px; margin: 0 auto 32px; background: var(--bg-card);
-            border: 1px solid var(--border); border-radius: 16px; text-align: left; overflow: hidden;
-            display: none; /* Изначально скрыт */
-        }
-
-        .workspace-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 14px 18px; border-bottom: 1px solid var(--border);
-            font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);
-        }
-
-        .workspace-body { padding: 18px; max-height: 60vh; overflow-y: auto; scroll-behavior: smooth; }
-
-        .msg { margin-bottom: 24px; display: flex; flex-direction: column; gap: 6px; }
-        .msg-role { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .msg-user .msg-role { color: var(--accent-hover); }
-        
-        /* Стилизация контента Markdown */
-        .msg-content { font-size: 0.95rem; line-height: 1.6; color: var(--text-primary); }
-        .msg-content p { margin-bottom: 12px; }
-        .msg-content p:last-child { margin-bottom: 0; }
-        .msg-content ul, .msg-content ol { margin-bottom: 12px; padding-left: 20px; }
-        .msg-content li { margin-bottom: 4px; }
-        .msg-content h1, .msg-content h2, .msg-content h3 { margin-top: 16px; margin-bottom: 8px; color: #fff; }
-        
-        /* Таблицы Markdown */
-        .msg-content table {
-            border-collapse: collapse; width: 100%; font-size: 0.85rem; margin: 12px 0;
-            background: var(--bg-input); border-radius: 8px; overflow: hidden;
-        }
-        .msg-content th, .msg-content td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
-        .msg-content th { background: var(--bg-hover); font-weight: 600; }
-        
-        /* Изображения внутри чата */
-        .msg-content img { max-width: 100%; border-radius: 10px; margin-top: 8px; border: 1px solid var(--border); }
-
-        /* КОДОВЫЕ БЛОКИ (IDE ВНЕШНИЙ ВИД) */
-        .code-container {
-            margin: 12px 0;
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            background: #282c34; /* Atom One Dark bg */
-        }
-        
-        .code-header {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #1e2227; padding: 6px 16px; font-size: 0.75rem; color: #abb2bf;
-            border-bottom: 1px solid #181a1f;
-        }
-
-        .code-header .lang-badge { text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
-        
-        .code-header .code-actions { display: flex; gap: 8px; }
-        
-        .code-btn {
-            background: transparent; border: 1px solid #4b5263; color: #abb2bf;
-            padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
-            transition: all 0.2s; display: flex; align-items: center; gap: 4px;
-        }
-        .code-btn:hover { background: #4b5263; color: #fff; }
-        .code-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-        .code-btn.primary:hover { background: var(--accent-hover); }
-
-        .code-container pre { margin: 0; padding: 16px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.5; }
-        .msg-content p > code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.85em; color: var(--accent-hover); }
-
-        /* Элементы управления внутри чата */
-        .ws-download { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; font-size: 0.85rem; font-weight: 500; border: none; cursor: pointer; }
-        .ws-download:hover { background: var(--accent-hover); }
-        
-        .ws-loading { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.9rem; }
-        .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-        
-        /* Уведомления */
+        /* ==========================================
+           6. УТИЛИТЫ И МОБИЛЬНАЯ ВЕРСТКА
+           ========================================== */
         .toast {
-            position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-            color: var(--text-primary); font-size: 0.9rem; z-index: 1000;
-            transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: fixed; top: 24px; left: 50%; transform: translate(-50%, -100px);
+            background: var(--bg-sidebar); border: 1px solid var(--border); padding: 12px 24px;
+            border-radius: 50px; font-size: 0.9rem; color: var(--text-main); z-index: 1000;
+            opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px;
         }
-        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.show { transform: translate(-50%, 0); opacity: 1; }
 
-        /* Скроллбары */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-primary); }
-        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; transform: translateX(-100%); height: 100%; }
+            .sidebar.open { transform: translateX(0); }
+            .mobile-header { display: flex; }
+            .empty-state h1 { font-size: 2.2rem; }
+            .message-avatar { width: 28px; height: 28px; font-size: 1rem; }
+            .input-zone { padding: 12px; }
+        }
     </style>
 </head>
 <body>
-    <div class="particles" id="particles"></div>
 
-    <!-- ШАПКА -->
-    <header>
-        <a href="#" class="logo">
-            <div class="logo-icon">Q</div>
-            <span>Quanta</span>
-        </a>
-        <div class="header-actions">
-            <a href="https://github.com/blazepointt/quanta" target="_blank" class="github-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                </svg>
-                GitHub
-            </a>
-            <button class="github-btn" id="puterAuthBtn" onclick="handlePuterAuthClick()" title="Войти в Puter, чтобы заработал AI">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="8" r="4"/>
-                    <path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/>
-                </svg>
-                <span id="puterAuthLabel">Войти в Puter</span>
+    <!-- SIDEBAR: ИСТОРИЯ И НАСТРОЙКИ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-wrapper">
+                <div class="logo-icon">Q</div>
+                <span>Quanta Pro</span>
+            </div>
+            <button class="tool-btn d-md-none" onclick="toggleSidebar()" style="display: none;">✕</button>
+        </div>
+        
+        <button class="new-chat-btn" onclick="startNewChat()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Новый диалог
+        </button>
+
+        <div class="chat-history-list" id="chatHistoryList">
+            <!-- Список чатов генерируется через JS -->
+        </div>
+
+        <div class="sidebar-footer">
+            <p>Модули и Интеграции:</p>
+            <div class="puter-status offline" id="puterStatus" onclick="handlePuterAuth()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+                <span id="puterStatusText">Puter: Не подключен</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ГЛАВНАЯ ОБЛАСТЬ -->
+    <main class="main-view">
+        
+        <div class="mobile-header">
+            <button class="tool-btn" onclick="toggleSidebar()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <span style="font-weight: 600;">Quanta AI</span>
+            <button class="tool-btn" onclick="startNewChat()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
             </button>
         </div>
-    </header>
 
-    <main>
-        <section class="hero">
-            <h1 class="hero-logo animate-in">QUANTA</h1>
-            <p class="hero-subtitle animate-in delay-1">
-                AI-платформа для работы со знаниями, генерации контента и разработки
-            </p>
-
-            <!-- ОБЛАСТЬ ВВОДА -->
-            <div class="input-container animate-in delay-2">
-                <div class="input-wrapper">
-                    <div class="image-preview-bar" id="imagePreviewBar">
-                        <img id="imagePreviewThumb" class="image-preview-thumb" alt="Preview">
-                        <div class="image-preview-info">
-                            <div class="image-preview-name" id="imagePreviewName">image.png</div>
-                            <div class="image-preview-hint">Напишите запрос к изображению и нажмите Отправить</div>
-                        </div>
-                        <button class="image-preview-remove" onclick="removePendingImage()" title="Удалить фото">✕</button>
+        <div class="chat-container" id="chatContainer">
+            <!-- Стартовый экран (Hero) -->
+            <div class="empty-state" id="emptyState">
+                <div class="logo-icon" style="width: 56px; height: 56px; font-size: 2rem; margin: 0 auto 20px;">Q</div>
+                <h1>Чем я могу помочь?</h1>
+                <p>Пишите код, анализируйте таблицы, создавайте презентации или генерируйте изображения.</p>
+                
+                <div class="quick-actions-grid">
+                    <div class="action-card" onclick="insertPrompt('Напиши змейку на Python используя pygame. Выдай полный код.')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                        <span>Написать код</span>
                     </div>
-
-                    <textarea 
-                        class="input-textarea" 
-                        placeholder="Опишите задачу, напишите код, попросите нарисовать или сделайте презентацию..."
-                        id="mainInput"
-                        rows="3"
-                    ></textarea>
-                    
-                    <div class="input-actions">
-                        <div class="input-left">
-                            <button class="icon-btn" title="Загрузить документ или датасет" onclick="triggerFileUpload()">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/>
-                                    <line x1="12" y1="3" x2="12" y2="15"/>
-                                </svg>
-                            </button>
-                            <button class="icon-btn" title="Сгенерировать ИИ-картинку (DALL-E 3)" onclick="triggerImageGen()">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                                    <polyline points="21 15 16 10 5 21"/>
-                                </svg>
-                            </button>
-                            <button class="icon-btn" id="voiceBtn" title="Голосовой ввод" onclick="startVoiceInput()">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                    <line x1="12" y1="19" x2="12" y2="23"/>
-                                    <line x1="8" y1="23" x2="16" y2="23"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <button class="mode-selector" onclick="toggleModel()" title="Сменить модель ИИ">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                                </svg>
-                                <span id="modeLabel">Быстрый</span>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="6 9 12 15 18 9"/>
-                                </svg>
-                            </button>
-                            <button class="send-btn" onclick="handleSend()" title="Отправить запрос (Enter)">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="22" y1="2" x2="11" y2="13"/>
-                                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                                </svg>
-                            </button>
-                        </div>
+                    <div class="action-card" onclick="insertPrompt('Сделай подробную презентацию на тему «Колонизация Марса»')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        <span>Создать Слайды</span>
+                    </div>
+                    <div class="action-card" onclick="insertPrompt('Нарисуй киберпанк город будущего, неоновый свет, дождь, кинематографично')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                        <span>Сгенерировать Арт</span>
+                    </div>
+                    <div class="action-card" onclick="document.getElementById('fileInput').click()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        <span>Анализ Таблиц</span>
                     </div>
                 </div>
             </div>
 
-            <!-- БЫСТРЫЕ ШАБЛОНЫ -->
-            <div class="quick-actions animate-in delay-3">
-                <button class="quick-action" onclick="runQuickAction('cluster', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                    Кластер
-                </button>
-                <button class="quick-action" onclick="runQuickAction('slides', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                    Слайды
-                </button>
-                <button class="quick-action" onclick="runQuickAction('research', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
-                    Глубокое исследование
-                </button>
-                <button class="quick-action" onclick="runQuickAction('website', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="10" y1="12" x2="10" y2="12"/></svg>
-                    Сайты
-                </button>
-                <button class="quick-action" onclick="if(setActiveQuickAction(this)) triggerFileUpload();">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Документы
-                </button>
-                <button class="quick-action" onclick="runQuickAction('table', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-                    Таблицы
-                </button>
+            <!-- Область вывода сообщений -->
+            <div class="chat-messages" id="chatMessages" style="display: none;">
+                <!-- Динамические сообщения -->
             </div>
+        </div>
 
-            <!-- РАБОЧЕЕ ПРОСТРАНСТВО (ЧАТ) -->
-            <div class="workspace" id="workspace">
-                <div class="workspace-header">
-                    <span id="workspaceTitle">Quanta AI</span>
-                    <div style="display:flex; gap:6px;">
-                        <button class="icon-btn" onclick="clearHistoryUI()" title="Очистить историю чата">🗑</button>
-                        <button class="icon-btn" onclick="closeWorkspace()" title="Закрыть окно">✕</button>
+        <!-- Зона ввода внизу -->
+        <div class="input-zone">
+            <div class="input-box">
+                <!-- Превью файлов -->
+                <div class="attachment-preview" id="attachmentPreview">
+                    <img id="attachImg" src="" alt="File">
+                    <div class="attachment-info" id="attachName">file.png</div>
+                    <button class="attachment-remove" onclick="removeAttachment()">✕</button>
+                </div>
+
+                <textarea id="mainInput" placeholder="Отправьте сообщение Quanta..." rows="1"></textarea>
+                
+                <div class="input-controls">
+                    <div class="control-group">
+                        <button class="tool-btn" onclick="document.getElementById('fileInput').click()" title="Прикрепить документ (PDF, Excel, Фото)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                        </button>
+                        <button class="tool-btn" onclick="startVoiceInput()" id="voiceBtn" title="Голосовой ввод">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                        </button>
+                    </div>
+
+                    <div class="control-group">
+                        <button class="model-selector" onclick="toggleAIModel()" title="Выбрать интеллект">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                            <span id="modelIndicator">Быстрый (GPT-4o mini)</span>
+                        </button>
+                        <button class="send-btn" id="sendBtn" onclick="handleChatSubmit()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
                     </div>
                 </div>
-                <div class="workspace-body" id="workspaceBody">
-                    <!-- Сообщения будут появляться здесь -->
-                </div>
             </div>
-        </section>
+        </div>
     </main>
 
-    <!-- СКРЫТЫЙ ИНПУТ ДЛЯ ФАЙЛОВ -->
+    <!-- Скрытые элементы -->
     <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,image/*">
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toastBox">
+        <span id="toastIcon">ℹ️</span>
+        <span id="toastText">Уведомление</span>
+    </div>
 
-    <!-- ==========================================================================
-         БИБЛИОТЕКИ И ЗАВИСИМОСТИ (CDN)
-         ========================================================================== -->
-    <!-- AI Движок (Бесплатный бэкенд) -->
+    <!-- ==========================================
+         БИБЛИОТЕКИ CDN
+         ========================================== -->
     <script src="https://js.puter.com/v2/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     
-    <!-- Парсинг документов -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <!-- Визуализация и Презентации -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
-
-    <!-- Профессиональный рендер Markdown и Кода (НОВОЕ) -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-
-    <!-- ==========================================================================
-         ГЛАВНЫЙ JAVASCRIPT (ЛОГИКА ПРИЛОЖЕНИЯ)
+<!-- ==========================================================================
+         ГЛАВНЫЙ JAVASCRIPT (УЛЬТИМАТИВНАЯ ЛОГИКА)
          ========================================================================== -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Настройка Markdown парсера для красивого кода
+            
+            // ==========================================
+            // 1. ИНИЦИАЛИЗАЦИЯ И НАСТРОЙКИ
+            // ==========================================
+            
+            // Настройка парсера Markdown для красивого кода
             marked.setOptions({
                 highlight: function(code, lang) {
                     const language = hljs.getLanguage(lang) ? lang : 'plaintext';
                     return hljs.highlight(code, { language }).value;
                 },
-                breaks: true, // Поддержка обычных переносов строк
-                gfm: true     // GitHub Flavored Markdown
+                breaks: true,
+                gfm: true
             });
 
-            // 1. СОЗДАНИЕ ЧАСТИЦ НА ФОНЕ
-            function createParticles() {
+            // Генерация частиц на фоне
+            function initParticles() {
                 const container = document.getElementById('particles');
-                for (let i = 0; i < 50; i++) {
-                    const particle = document.createElement('div');
-                    particle.className = 'particle';
-                    particle.style.left = Math.random() * 100 + '%';
-                    particle.style.animationDelay = Math.random() * 20 + 's';
-                    particle.style.animationDuration = (15 + Math.random() * 10) + 's';
-                    container.appendChild(particle);
+                for (let i = 0; i < 40; i++) {
+                    const p = document.createElement('div');
+                    p.className = 'particle';
+                    p.style.left = Math.random() * 100 + '%';
+                    p.style.animationDelay = Math.random() * 20 + 's';
+                    p.style.animationDuration = (15 + Math.random() * 10) + 's';
+                    container.appendChild(p);
                 }
             }
-            createParticles();
+            initParticles();
 
-            // 2. УВЕДОМЛЕНИЯ (TOASTS)
-            window.showToast = function(message) {
-                const toast = document.getElementById('toast');
-                toast.textContent = message;
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 3000);
-            }
-// 3. ПАМЯТЬ ЧАТА (LOCAL STORAGE)
-            let chatHistory = JSON.parse(localStorage.getItem('quanta_chat_history')) || [];
+            // ==========================================
+            // 2. ГЛОБАЛЬНОЕ СОСТОЯНИЕ (STATE)
+            // ==========================================
+            let currentChatId = Date.now().toString();
+            let chats = JSON.parse(localStorage.getItem('quanta_chats')) || {};
+            let pendingImage = null; // Хранилище для прикрепленного фото
             
-            function saveHistory() {
-                localStorage.setItem('quanta_chat_history', JSON.stringify(chatHistory));
-            }
-
-            window.clearHistoryUI = function() {
-                chatHistory = [];
-                saveHistory();
-                document.getElementById('workspaceBody').innerHTML = '';
-                showToast('История чата очищена');
-            }
-
-            // Восстановление UI при перезагрузке
-            function restoreUI() {
-                if (chatHistory.length > 0) {
-                    const ws = document.getElementById('workspace');
-                    ws.style.display = 'block';
-                    chatHistory.forEach(msg => {
-                        // Не рендерим системные промпты в UI
-                        if (msg.role === 'system') return;
-                        addMessage(msg.role === 'user' ? 'user' : 'ai', renderText(msg.content));
-                    });
-                    
-                    // Обновляем подсветку синтаксиса
-                    setTimeout(() => {
-                        document.querySelectorAll('pre code').forEach((block) => {
-                            hljs.highlightElement(block);
-                        });
-                    }, 500);
-                }
-            }
-
-            // 4. ЭКСПОРТ ФАЙЛОВ
-            let _exportRegistry = {};
-            let _exportCounter = 0;
-            
-            function registerExport(text) { 
-                const id = 'exp' + (_exportCounter++); 
-                _exportRegistry[id] = text; 
-                return id; 
-            }
-
-            window.attachExport = function(el, text, filenameBase) {
-                if (!text || !el) return;
-                const id = registerExport(text);
-                const bar = document.createElement('div');
-                bar.style.cssText = 'margin-top:16px; padding-top:12px; border-top:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap;';
-                bar.innerHTML = `
-                    <button class="ws-download" style="border:none;cursor:pointer;" onclick="exportFile('${id}','txt','${filenameBase}')">📄 TXT</button>
-                    <button class="ws-download" style="background:#2563eb;border:none;cursor:pointer;" onclick="exportFile('${id}','doc','${filenameBase}')">📝 Word</button>
-                    <button class="ws-download" style="background:#ef4444;border:none;cursor:pointer;" onclick="exportFile('${id}','pdf','${filenameBase}')">📕 PDF</button>
-                `;
-                el.appendChild(bar);
-            }
-
-            window.exportFile = function(id, type, filenameBase) {
-                const text = _exportRegistry[id];
-                if (!text) return showToast('Ошибка: текст не найден');
-                
-                if (type === 'txt') {
-                    triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filenameBase + '.txt');
-                } else if (type === 'doc') {
-                    const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
-                    const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Export</title></head><body>' + body + '</body></html>';
-                    triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filenameBase + '.doc');
-                } else if (type === 'pdf') {
-                    const win = window.open('', '_blank');
-                    if (!win) return showToast('Снимите блокировку всплывающих окон');
-                    win.document.write('<html><head><meta charset="utf-8"><title>' + escapeHtml(filenameBase) + '</title><style>body{font-family:Arial,sans-serif;padding:40px;line-height:1.6;white-space:pre-wrap;color:#111;}</style></head><body>' + escapeHtml(text) + '</body></html>');
-                    win.document.close(); win.focus(); setTimeout(() => win.print(), 350);
-                }
-            }
-
-            function triggerDownload(blob, filename) {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = filename; document.body.appendChild(a);
-                a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
-            }
-
-            // 5. AI ДВИЖОК И МОДЕЛИ
-            const MODELS = { 
-                quick: 'gpt-4o-mini', 
-                deep: 'gpt-4o', 
-                ultra: 'claude-3-opus' // Самая мощная модель без лимитов
+            // Модели ИИ (С каскадным Ультра-режимом)
+            const AI_MODELS = {
+                quick: 'gpt-4o-mini',
+                deep: 'gpt-4o',
+                // Каскад: если первый недоступен, пробуем второй, затем третий
+                ultraFallback: ['claude-3-5-sonnet', 'google/gemini-1.5-pro', 'gpt-4o'] 
             };
-            let currentMode = 'quick';
-            const modeNames = { quick: 'Быстрый', deep: 'Глубокий', ultra: 'Ультра (Opus)' };
+            let activeMode = 'quick';
+            const modeLabels = { quick: 'Быстрый (GPT-4o mini)', deep: 'Глубокий (GPT-4o)', ultra: 'Ультра (Smart Router)' };
 
-            window.toggleModel = function() {
-                const label = document.getElementById('modeLabel');
-                if (currentMode === 'quick') { 
-                    currentMode = 'deep'; 
-                } else if (currentMode === 'deep') {
-                    currentMode = 'ultra';
-                    label.style.color = '#8b5cf6';
-                    label.style.fontWeight = 'bold';
-                    label.style.textShadow = '0 0 8px rgba(139, 92, 246, 0.5)';
+            // ==========================================
+            // 3. UI УТИЛИТЫ И ИНТЕРФЕЙС
+            // ==========================================
+            
+            window.showToast = function(message, isError = false) {
+                const toast = document.getElementById('toastBox');
+                document.getElementById('toastIcon').textContent = isError ? '⚠️' : '✅';
+                document.getElementById('toastText').textContent = message;
+                
+                toast.style.borderColor = isError ? 'var(--danger)' : 'var(--border)';
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3500);
+            }
+
+            window.toggleSidebar = function() {
+                document.getElementById('sidebar').classList.toggle('open');
+            }
+
+            // Авторасширение поля ввода
+            const textarea = document.getElementById('mainInput');
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                if (this.value.trim() === '') this.style.height = 'auto';
+            });
+
+            // ==========================================
+            // 4. ПАМЯТЬ ЧАТА (СЕССИИ LOCAL STORAGE)
+            // ==========================================
+            
+            function saveChats() {
+                localStorage.setItem('quanta_chats', JSON.stringify(chats));
+                renderChatHistoryList();
+            }
+
+            function renderChatHistoryList() {
+                const list = document.getElementById('chatHistoryList');
+                list.innerHTML = '';
+                
+                Object.keys(chats).sort((a,b) => b - a).forEach(id => {
+                    const session = chats[id];
+                    if (session.messages.length === 0) return;
+                    
+                    // Берем первое сообщение как заголовок чата
+                    const title = session.messages.find(m => m.role === 'user')?.content.substring(0, 25) || 'Новый диалог';
+                    
+                    const item = document.createElement('div');
+                    item.className = `history-item ${id === currentChatId ? 'active' : ''}`;
+                    item.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> ${escapeHtml(title)}...`;
+                    item.onclick = () => loadChat(id);
+                    list.appendChild(item);
+                });
+            }
+
+            window.startNewChat = function() {
+                currentChatId = Date.now().toString();
+                chats[currentChatId] = { messages: [] };
+                
+                document.getElementById('chatMessages').innerHTML = '';
+                document.getElementById('chatMessages').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+                
+                if (window.innerWidth <= 768) toggleSidebar();
+                renderChatHistoryList();
+            }
+
+            function loadChat(id) {
+                currentChatId = id;
+                const session = chats[id];
+                
+                document.getElementById('emptyState').style.display = 'none';
+                const msgContainer = document.getElementById('chatMessages');
+                msgContainer.style.display = 'flex';
+                msgContainer.innerHTML = '';
+                
+                session.messages.forEach(msg => {
+                    if (msg.role !== 'system') appendMessageUI(msg.role, msg.html || renderMarkdown(msg.content));
+                });
+                
+                if (window.innerWidth <= 768) toggleSidebar();
+                renderChatHistoryList();
+                
+                // Применяем подсветку синтаксиса
+                document.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+            }
+
+            // Инициализация при загрузке
+            if (!chats[currentChatId]) chats[currentChatId] = { messages: [] };
+            renderChatHistoryList();
+
+            // ==========================================
+            // 5. AI PUTER AUTH И SMART ROUTER
+            // ==========================================
+
+            async function updateAuthUI() {
+                const btn = document.getElementById('puterStatus');
+                const text = document.getElementById('puterStatusText');
+                if (typeof puter === 'undefined') return;
+                
+                try {
+                    if (await puter.auth.isSignedIn()) {
+                        btn.classList.remove('offline');
+                        text.textContent = 'Puter: Подключен';
+                    } else {
+                        btn.classList.add('offline');
+                        text.textContent = 'Puter: Требуется вход';
+                    }
+                } catch (e) { console.error('Auth error', e); }
+            }
+
+            window.handlePuterAuth = async function() {
+                if (typeof puter === 'undefined') return showToast('Скрипт Puter заблокирован', true);
+                try {
+                    if (!await puter.auth.isSignedIn()) {
+                        await puter.auth.signIn();
+                        showToast('Вы успешно авторизовались!');
+                    } else {
+                        showToast('Нейросеть уже готова к работе.');
+                    }
+                } catch (e) { showToast('Авторизация отменена', true); }
+                updateAuthUI();
+            }
+            setTimeout(updateAuthUI, 1000);
+
+            window.toggleAIModel = function() {
+                const label = document.getElementById('modelIndicator');
+                if (activeMode === 'quick') {
+                    activeMode = 'deep';
+                } else if (activeMode === 'deep') {
+                    activeMode = 'ultra';
+                    label.style.color = 'var(--accent-hover)';
+                    label.style.fontWeight = '600';
                 } else {
-                    currentMode = 'quick';
+                    activeMode = 'quick';
                     label.style.color = '';
                     label.style.fontWeight = '';
-                    label.style.textShadow = '';
                 }
-                label.textContent = modeNames[currentMode];
-                showToast(`Активирован: ${modeNames[currentMode]}`);
+                label.textContent = modeLabels[activeMode];
+                showToast(`Переключено на: ${modeLabels[activeMode]}`);
             }
 
-            // Авторизация Puter
-            async function refreshPuterAuthUI() {
-                const btn = document.getElementById('puterAuthBtn');
-                const label = document.getElementById('puterAuthLabel');
-                if (typeof puter === 'undefined') return;
-                try {
-                    if (await puter.auth.isSignedIn()) { 
-                        btn.classList.add('puter-signed-in'); 
-                        label.textContent = 'Puter подключён'; 
-                    } else { 
-                        btn.classList.remove('puter-signed-in'); 
-                        label.textContent = 'Войти в Puter'; 
+            // Тот самый Smart Router для Ультра-режима
+            async function smartAIFetch(messagesPayload) {
+                if (typeof puter === 'undefined') throw new Error('API недоступно. Выключите AdBlock.');
+                
+                if (activeMode !== 'ultra') {
+                    // Обычный запрос для Quick и Deep
+                    const res = await puter.ai.chat(messagesPayload, { model: AI_MODELS[activeMode] });
+                    return typeof res === 'string' ? res : (res?.message?.content || res?.text);
+                }
+
+                // УЛЬТРА КАСКАД: Пытаемся пробиться через топовые модели
+                for (const modelId of AI_MODELS.ultraFallback) {
+                    try {
+                        console.log(`[Smart Router] Пытаюсь использовать: ${modelId}`);
+                        const res = await puter.ai.chat(messagesPayload, { model: modelId });
+                        return typeof res === 'string' ? res : (res?.message?.content || res?.text);
+                    } catch (error) {
+                        console.warn(`[Smart Router] Модель ${modelId} недоступна:`, error.message);
+                        // Идем к следующей модели в цикле
                     }
-                } catch (e) {}
-            }
-
-            window.handlePuterAuthClick = async function() {
-                if (typeof puter === 'undefined') return showToast('Сеть недоступна');
-                try {
-                    if (await puter.auth.isSignedIn()) return showToast('Уже подключён');
-                    await puter.auth.signIn(); 
-                    showToast('AI успешно активирован!');
-                } catch (e) { showToast('Отмена входа'); } 
-                finally { refreshPuterAuthUI(); }
-            }
-            setTimeout(refreshPuterAuthUI, 800);
-
-            let _puterHintShown = false;
-            function maybeShowPuterHint() { 
-                if (!_puterHintShown) { 
-                    _puterHintShown = true; 
-                    showToast('Разрешите всплывающее окно для Puter (это бесплатно)'); 
-                } 
-            }
-
-            function withTimeout(promise, ms, label) {
-                let timer;
-                const timeout = new Promise((_, reject) => {
-                    timer = setTimeout(() => reject(new Error(`${label} превысил таймаут ожидания (${Math.round(ms / 1000)} сек)`)), ms);
-                });
-                return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-            }
-
-            async function askAI(prompt, opts = {}) {
-                if (typeof puter === 'undefined') throw new Error('Шлюз Puter.js заблокирован. Отключите AdBlock.');
-                maybeShowPuterHint();
-                
-                const model = opts.model || MODELS[currentMode];
-                let payload;
-                
-                if (opts.useHistory) {
-                    payload = [...chatHistory, { role: 'user', content: prompt }];
-                } else {
-                    payload = prompt;
                 }
-
-                const response = await withTimeout(puter.ai.chat(payload, { model }), 45000, 'Ответ от нейросети');
-                const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text || JSON.stringify(response));
                 
-                if (opts.useHistory) {
-                    chatHistory.push({ role: 'user', content: prompt });
-                    chatHistory.push({ role: 'assistant', content: answer });
-                    if (chatHistory.length > 30) chatHistory = chatHistory.slice(-30); // Храним последние 30 сообщений
-                    saveHistory();
-                }
-                return answer;
+                throw new Error('Все Ultra-модели в данный момент перегружены сервером. Переключитесь на Глубокий режим.');
             }
 
-            // 6. УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ЧАТА И MARKDOWN
-            window.openWorkspace = function(title) {
-                const ws = document.getElementById('workspace');
-                document.getElementById('workspaceTitle').textContent = title || 'Quanta AI';
-                ws.style.display = 'block'; 
-                ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            window.closeWorkspace = function() {
-                document.getElementById('workspace').style.display = 'none';
-                document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
-            }
-
-            function addMessage(role, contentHtml) {
-                const body = document.getElementById('workspaceBody');
-                const div = document.createElement('div');
-                div.className = 'msg msg-' + role;
-                div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Вы' : 'Quanta'}</div><div class="msg-content">${contentHtml}</div>`;
-                body.appendChild(div); 
-                body.scrollTop = body.scrollHeight; 
-                return div.querySelector('.msg-content');
-            }
-
-            function addLoading(label) {
-                return addMessage('ai', `<div class="ws-loading"><div class="spinner"></div>${label || 'Думаю...'}</div>`);
-            }
-
+            // ==========================================
+            // 6. РЕНДЕР СООБЩЕНИЙ И КОДА (IDE STYLE)
+            // ==========================================
+            
             function escapeHtml(str) { 
                 return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); 
             }
 
-            // Профессиональный рендер: Сначала Markdown, потом обертки с кнопками
-            let codeCounter = 0;
-            function renderText(text) {
-                // Используем мощь marked.js для парсинга
-                let html = marked.parse(text);
+            let codeSnippetId = 0;
+            
+            function renderMarkdown(rawText) {
+                let html = marked.parse(rawText);
                 
-                // Ищем все блоки <pre><code class="language-xyz"> и добавляем красивую шапку IDE
-                html = html.replace(/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/g, (match, lang, code) => {
-                    const id = 'code_' + (++codeCounter);
-                    const ext = lang || 'txt';
+                // Преобразуем блоки кода в красивые IDE-окна с кнопками
+                html = html.replace(/<pre><code class="language-(\w+)">([\s\S]*?)<\/code><\/pre>/gi, (match, lang, code) => {
+                    const id = 'snippet_' + (++codeSnippetId);
+                    const ext = lang.toLowerCase() || 'txt';
                     return `
-                    <div class="code-container">
-                        <div class="code-header">
-                            <span class="lang-badge">${ext}</span>
+                    <div class="code-block-wrapper">
+                        <div class="code-block-header">
+                            <span class="code-lang">${ext}</span>
                             <div class="code-actions">
-                                <button class="code-btn" onclick="navigator.clipboard.writeText(document.getElementById('${id}').innerText); showToast('Скопировано!')">📋 Копировать</button>
-                                <button class="code-btn primary" onclick="downloadCodeBlock('${id}', '${ext}')">💾 Скачать файл</button>
+                                <button class="code-btn" onclick="copyCode('${id}')">📋 Копировать</button>
+                                <button class="code-btn download" onclick="downloadCode('${id}', '${ext}')">💾 Сохранить</button>
                             </div>
                         </div>
                         <pre><code id="${id}" class="hljs language-${ext}">${code}</code></pre>
                     </div>`;
                 });
 
-                // Обработка блоков кода без указания языка
-                html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, (match, code) => {
-                    const id = 'code_' + (++codeCounter);
+                // Блоки кода без языка
+                html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/gi, (match, code) => {
+                    const id = 'snippet_' + (++codeSnippetId);
                     return `
-                    <div class="code-container">
-                        <div class="code-header">
-                            <span class="lang-badge">TEXT</span>
+                    <div class="code-block-wrapper">
+                        <div class="code-block-header">
+                            <span class="code-lang">TEXT</span>
                             <div class="code-actions">
-                                <button class="code-btn primary" onclick="downloadCodeBlock('${id}', 'txt')">💾 Сохранить</button>
+                                <button class="code-btn download" onclick="downloadCode('${id}', 'txt')">💾 Сохранить</button>
                             </div>
                         </div>
                         <pre><code id="${id}">${code}</code></pre>
@@ -781,290 +750,338 @@
                 return html;
             }
 
-            window.downloadCodeBlock = function(id, ext) {
-                const codeEl = document.getElementById(id);
-                if(!codeEl) return;
-                const code = codeEl.innerText || codeEl.textContent;
-                const filename = 'quanta_script.' + (ext === 'txt' ? 'txt' : ext);
-                triggerDownload(new Blob([code], { type: 'text/plain;charset=utf-8' }), filename);
-                showToast(`Файл ${filename} успешно сохранен!`);
-            }
-
-            // 7. ОБРАБОТКА ВВОДА И ТРИГГЕРЫ
-            window.pendingImage = null;
-
-            function setPendingImage(file, dataUrl) {
-                window.pendingImage = { file, dataUrl, name: file.name };
-                document.getElementById('imagePreviewThumb').src = dataUrl;
-                document.getElementById('imagePreviewName').textContent = file.name;
-                document.getElementById('imagePreviewBar').style.display = 'flex';
-                document.getElementById('mainInput').focus();
-            }
-
-            window.removePendingImage = function() {
-                window.pendingImage = null;
-                document.getElementById('imagePreviewBar').style.display = 'none';
-                document.getElementById('imagePreviewThumb').removeAttribute('src');
-            }
-
-            window.setActiveQuickAction = function(btn) {
-                const isActive = btn && btn.classList.contains('active');
-                document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
-                if (btn && !isActive) {
-                    btn.classList.add('active');
-                    return true;
+            window.copyCode = function(id) {
+                const el = document.getElementById(id);
+                if (el) {
+                    navigator.clipboard.writeText(el.innerText);
+                    showToast('Код скопирован в буфер обмена');
                 }
-                return false;
             }
 
-            window.triggerImageGen = function() {
-                const input = document.getElementById('mainInput');
-                if (!input.value.toLowerCase().startsWith('нарисуй')) {
-                    input.value = 'Нарисуй ' + input.value;
-                }
-                input.focus();
-                showToast('Напишите, что вы хотите увидеть!');
+            window.downloadCode = function(id, ext) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const blob = new Blob([el.innerText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; 
+                a.download = `quanta_script.${ext}`; 
+                document.body.appendChild(a);
+                a.click(); 
+                a.remove(); 
+                URL.revokeObjectURL(url);
+                showToast(`Файл quanta_script.${ext} скачан!`);
             }
 
-            // --- ОСНОВНАЯ ФУНКЦИЯ ОТПРАВКИ ---
-            window.handleSend = async function() {
-                const input = document.getElementById('mainInput');
-                const text = input.value.trim();
+            function appendMessageUI(role, htmlContent) {
+                const container = document.getElementById('chatMessages');
+                const div = document.createElement('div');
+                div.className = 'message-row animate-in';
+                
+                const isUser = role === 'user';
+                div.innerHTML = `
+                    <div class="message-avatar ${isUser ? 'avatar-user' : 'avatar-ai'}">
+                        ${isUser ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' : 'Q'}
+                    </div>
+                    <div class="message-content">
+                        <div class="message-name">${isUser ? 'Вы' : 'Quanta AI'}</div>
+                        <div class="markdown-body">${htmlContent}</div>
+                    </div>
+                `;
+                container.appendChild(div);
+                
+                // Плавный скролл вниз
+                const chatContainer = document.getElementById('chatContainer');
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                return div.querySelector('.markdown-body');
+            }
+
+            function showLoader(text) {
+                return appendMessageUI('ai', `<div class="typing-indicator"><div class="spinner"></div> ${text}</div>`);
+            }
+
+            // ==========================================
+            // 7. ЛОГИКА ОТПРАВКИ И ОБРАБОТКИ
+            // ==========================================
+            
+            window.handleChatSubmit = async function() {
+                const inputEl = document.getElementById('mainInput');
+                const text = inputEl.value.trim();
                 const textLower = text.toLowerCase();
+                const sendBtn = document.getElementById('sendBtn');
 
-                // Сценарий 1: Анализ фото
-                if (window.pendingImage) {
-                    const imgData = window.pendingImage;
-                    removePendingImage(); 
-                    input.value = '';
-                    openWorkspace('Vision AI');
-                    addMessage('user', `<img src="${imgData.dataUrl}" style="max-height:180px;margin-bottom:12px;"><br>${renderText(text ? text : 'Проанализируй это изображение')}`);
+                // Проверка: Фото + Текст
+                if (pendingImage) {
+                    const img = pendingImage;
+                    removePendingImage();
+                    inputEl.value = '';
+                    inputEl.style.height = 'auto';
                     
-                    const loadingEl = addLoading('Изучаю пиксели...');
+                    document.getElementById('emptyState').style.display = 'none';
+                    document.getElementById('chatMessages').style.display = 'flex';
+
+                    const displayHtml = `<img src="${img.dataUrl}" style="max-width:300px;"><br>${escapeHtml(text || 'Проанализируй изображение')}`;
+                    appendMessageUI('user', displayHtml);
+                    
+                    // Сохраняем в историю (без base64 чтобы не забить память, храним только факт запроса)
+                    chats[currentChatId].messages.push({ role: 'user', content: text || '[Изображение отправлено]', html: displayHtml });
+                    
+                    const loader = showLoader('Изучаю изображение (Vision AI)...');
+                    sendBtn.disabled = true;
+
                     try {
-                        const answer = await withTimeout(puter.ai.chat(text || 'Опиши детально это фото', imgData.dataUrl, false, { model: MODELS.ultra }), 45000, 'Vision AI');
-                        const resultText = typeof answer === 'string' ? answer : (answer?.message?.content || answer?.text);
-                        loadingEl.innerHTML = renderText(resultText);
-                        attachExport(loadingEl, resultText, 'quanta-vision');
-                    } catch (e) { loadingEl.innerHTML = `⚠️ <b>Критическая ошибка:</b> ${escapeHtml(e.message)}`; }
+                        // Vision запрос всегда идет через топовую доступную модель в Puter
+                        const response = await puter.ai.chat(text || 'Опиши детально это фото', img.dataUrl, false);
+                        const answer = typeof response === 'string' ? response : (response?.message?.content || response?.text);
+                        
+                        const htmlAnswer = renderMarkdown(answer);
+                        loader.innerHTML = htmlAnswer;
+                        
+                        chats[currentChatId].messages.push({ role: 'assistant', content: answer, html: htmlAnswer });
+                        saveChats();
+                        document.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+                    } catch (e) {
+                        loader.innerHTML = `<span style="color:var(--danger)">⚠️ Ошибка Vision: ${escapeHtml(e.message)}</span>`;
+                        showToast('Сбой анализа изображения', true);
+                    }
+                    sendBtn.disabled = false;
                     return;
                 }
 
-                if (!text) return showToast('Поле ввода пустое');
+                if (!text) return;
 
-                // Сценарий 2: Триггер Слайдов
-                if (textLower.includes('презентаци') || textLower.includes('слайды')) {
-                    const slidesBtn = Array.from(document.querySelectorAll('.quick-action')).find(el => el.textContent.includes('Слайды'));
-                    document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
-                    if(slidesBtn) slidesBtn.classList.add('active');
-                    return handleSlides(text);
-                }
+                // Очистка UI перед отправкой
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('chatMessages').style.display = 'flex';
+                inputEl.value = '';
+                inputEl.style.height = 'auto';
+                sendBtn.disabled = true;
 
-                // Сценарий 3: Триггер Генерации DALL-E 3
-                if (textLower.startsWith('нарисуй') || textLower.startsWith('сгенерируй') || textLower.startsWith('сделай фото')) {
-                    openWorkspace('Студия DALL-E 3');
-                    addMessage('user', renderText(text)); 
-                    input.value = '';
-                    const loadingEl = addLoading('🎨 Синтезирую изображение...');
+                appendMessageUI('user', escapeHtml(text));
+                chats[currentChatId].messages.push({ role: 'user', content: text });
+
+                // ТРИГГЕР 1: ГЕНЕРАЦИЯ КАРТИНОК (Прямой вызов)
+                if (textLower.startsWith('нарисуй') || textLower.startsWith('сгенерируй') || textLower.startsWith('сделай арт')) {
+                    const loader = showLoader('🎨 Рисую шедевр...');
                     try {
-                        maybeShowPuterHint();
-                        const imgEl = await withTimeout(puter.ai.txt2img(text), 45000, 'Генерация DALL-E');
-                        const src = imgEl?.src || (typeof imgEl === 'string' ? imgEl : null);
-                        if (!src) throw new Error('API вернул пустой ответ');
-                        loadingEl.innerHTML = `
-                            <img src="${src}" alt="Generated Art" style="width:100%; max-width:512px; border-radius:12px; margin-top:8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                        // Используем нативный txt2img. Puter сам решит, какую модель юзать (DALL-E 3 или SD)
+                        const imgRes = await puter.ai.txt2img(text);
+                        const src = imgRes?.src || (typeof imgRes === 'string' ? imgRes : null);
+                        
+                        if (!src) throw new Error('Сервер не вернул изображение');
+                        
+                        const resultHtml = `
+                            <p>Вот ваше изображение:</p>
+                            <img src="${src}" alt="AI Generated Art">
                             <br>
-                            <a class="ws-download" href="${src}" download="quanta-art.png" target="_blank" style="margin-top:16px;">💾 Скачать оригинал</a>
+                            <button class="ws-download" style="margin-top:12px; background:var(--success);" onclick="window.open('${src}', '_blank')">💾 Скачать оригинал</button>
                         `;
-                    } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка генерации:</b> ${escapeHtml(e.message)}`; }
+                        loader.innerHTML = resultHtml;
+                        chats[currentChatId].messages.push({ role: 'assistant', content: '[Изображение сгенерировано]', html: resultHtml });
+                        saveChats();
+                    } catch (e) {
+                        loader.innerHTML = `<span style="color:var(--danger)">⚠️ Ошибка генерации: ${escapeHtml(e.message)}</span>`;
+                    }
+                    sendBtn.disabled = false;
                     return;
                 }
 
-                // Сценарий 4: Обычный Чат (С памятью и кодом)
-                openWorkspace('Чат с Quanta');
-                addMessage('user', renderText(text)); 
-                input.value = '';
-                
-                const loadingEl = addLoading('Формирую архитектуру ответа...');
-                try {
-                    // Строгий промпт для Opus: никакого обрыва кода
-                    const systemPrompt = "Ты — элитный Senior AI. Твоя задача писать ИДЕАЛЬНЫЙ, ПОЛНЫЙ и РАБОЧИЙ код. Категорически запрещено использовать комментарии вроде '// ...остальной код...' или обрывать логику. Если пишешь код, выдавай его целиком от первой до последней строки в блоках markdown.";
-                    let finalPrompt = text;
-                    
-                    if (currentMode === 'ultra') {
-                        finalPrompt = systemPrompt + "\n\nЗАДАЧА ОТ ПОЛЬЗОВАТЕЛЯ:\n" + text;
-                    }
-                    
-                    const answer = await askAI(finalPrompt, { useHistory: true });
-                    loadingEl.innerHTML = renderText(answer); 
-                    attachExport(loadingEl, answer, 'quanta-response');
-                    
-                    // Обновляем подсветку синтаксиса в новых блоках
-                    document.querySelectorAll('pre code').forEach((block) => {
-                        hljs.highlightElement(block);
-                    });
-
-                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Системный сбой:</b> ${escapeHtml(e.message)}`; }
-            }
-
-            // 8. БЫСТРЫЕ ДЕЙСТВИЯ (ШАБЛОНЫ)
-            window.runQuickAction = async function(kind, btnElement) {
-                if (!setActiveQuickAction(btnElement)) {
-                    document.getElementById('mainInput').value = '';
-                    return; 
-                }
-
-                const input = document.getElementById('mainInput');
-                const text = input.value.trim();
-
-                if (kind === 'cluster') return void handleClusterAnalysis(text);
-                if (kind === 'slides') return void handleSlides(text);
-                if (kind === 'research') return void handleResearch(text);
-                if (kind === 'website') return void handleWebsite(text);
-                if (kind === 'image') {
-                    input.value = "Нарисуй " + text;
-                    input.focus();
+                // ТРИГГЕР 2: ПРЕЗЕНТАЦИИ (Будет в Части 3)
+                if (textLower.includes('презентаци') || textLower.includes('слайды')) {
+                    await handlePresentationLogic(text, sendBtn);
                     return;
                 }
-                if (kind === 'code') return void handleGenericMode(text, 'code', 'Режим Программирования', 'Ты Senior Engineer. Пиши полный, безошибочный код без сокращений в markdown-блоках. Запрос: ');
-                if (kind === 'translate') return void handleGenericMode(text, 'translate', 'Умный перевод', 'Переведи текст сохраняя форматирование: ');
-                if (kind === 'table') return void triggerFileUpload();
-            }
 
-            async function handleGenericMode(text, kind, title, sys) {
-                if (!text) { showToast('Сначала введите текст задачи'); document.getElementById('mainInput').focus(); return; }
-                openWorkspace(title); 
-                addMessage('user', renderText(text)); 
-                document.getElementById('mainInput').value = '';
-                
-                const loadingEl = addLoading('Запускаю алгоритмы...');
-                try { 
-                    const answer = await askAI(sys + text, { model: MODELS.ultra }); 
-                    loadingEl.innerHTML = renderText(answer); 
-                    attachExport(loadingEl, answer, `quanta-${kind}`); 
-                    document.querySelectorAll('pre code').forEach(hljs.highlightElement);
-                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка:</b> ${escapeHtml(e.message)}`; }
-            }
-
-            async function handleResearch(text) {
-                if (!text) { showToast('Введите тему для исследования'); document.getElementById('mainInput').focus(); return; }
-                openWorkspace('Глубокое исследование (Deep Research)'); 
-                addMessage('user', renderText(text)); 
-                document.getElementById('mainInput').value = '';
-                
-                const loadingEl = addLoading('Анализирую семантическое ядро темы...');
+                // ОБЫЧНЫЙ ТЕКСТОВЫЙ ЗАПРОС С ПАМЯТЬЮ
+                const loader = showLoader('Анализирую...');
                 try {
-                    const planRaw = await askAI(`Разбей тему на 4 ключевых вопроса для глубокого анализа. Ответь ТОЛЬКО нумерованным списком. Тема: ${text}`, { model: MODELS.ultra });
-                    const subqs = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
+                    // Системный промпт для программиста без лимитов
+                    const sysPrompt = { 
+                        role: 'system', 
+                        content: "Ты — Senior Developer & Expert AI. Отвечай максимально глубоко. ЕСЛИ ПИШЕШЬ КОД: выдавай его ПОЛНОСТЬЮ, от первой до последней строки. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать комментарии вроде '// остальной код здесь', сокращать массивы или обрывать функции. Оформляй код в markdown блоки ```lang." 
+                    };
                     
-                    let report = `### План исследования:\n` + subqs.map((q, i) => `${i+1}. ${q}`).join('\n') + `\n\n---\n\n`;
-                    loadingEl.innerHTML = renderText(report) + '<div class="ws-loading"><div class="spinner"></div>Собираю данные по подтемам...</div>';
+                    // Собираем контекст для отправки
+                    let payload = [sysPrompt, ...chats[currentChatId].messages.filter(m => m.role !== 'system')];
+                    // Ограничиваем историю 15 последними сообщениями для экономии токенов
+                    if (payload.length > 15) payload = [sysPrompt, ...payload.slice(-14)];
 
-                    for (const q of subqs) {
-                        const answer = await askAI(`Развернуто ответь на вопрос в рамках темы "${text}": ${q}`, { model: MODELS.ultra });
-                        report += `### ${q}\n${answer}\n\n---\n\n`;
-                        loadingEl.innerHTML = renderText(report) + '<div class="ws-loading"><div class="spinner"></div>Собираю данные по подтемам...</div>';
-                    }
+                    // Вызываем умный роутер
+                    const answer = await smartAIFetch(payload);
                     
-                    const summary = await askAI(`Напиши мощное итоговое заключение на базе этого исследования. Тема: ${text}`, { model: MODELS.ultra });
-                    report += `### Заключение\n${summary}`;
+                    const htmlAnswer = renderMarkdown(answer);
+                    loader.innerHTML = htmlAnswer;
                     
-                    loadingEl.innerHTML = renderText(report); 
-                    attachExport(loadingEl, report, 'quanta-research');
-                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка:</b> ${escapeHtml(e.message)}`; }
+                    chats[currentChatId].messages.push({ role: 'assistant', content: answer, html: htmlAnswer });
+                    saveChats();
+                    
+                    // Подсветка нового кода
+                    document.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+
+                } catch (e) {
+                    loader.innerHTML = `<span style="color:var(--danger)">⚠️ Сбой нейросети: ${escapeHtml(e.message)}</span>`;
+                }
+                
+                sendBtn.disabled = false;
             }
 
-            async function handleWebsite(text) {
-                let url = text;
-                if (!url || !/^https?:\/\//i.test(url)) { url = prompt('Вставьте валидный URL (https://...):', text || 'https://'); if (!url) return; }
-                openWorkspace('Веб-сканер'); 
-                addMessage('user', renderText(url)); 
-                document.getElementById('mainInput').value = '';
-                
-                const loadingEl = addLoading('Скрейпинг страницы...');
-                try {
-                    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-                    const controller = new AbortController(); 
-                    const t = setTimeout(() => controller.abort(), 20000);
-                    
-                    const res = await fetch(proxyUrl, { signal: controller.signal }); 
-                    clearTimeout(t);
-                    if (!res.ok) throw new Error(`Сервер вернул статус ${res.status}`);
-                    
-                    const html = await res.text(); 
-                    const doc = new DOMParser().parseFromString(html, 'text/html');
-                    doc.querySelectorAll('script, style, noscript, svg, img, nav, footer').forEach(el => el.remove());
-                    
-                    const text2 = (doc.body ? doc.body.innerText : html).replace(/\n{3,}/g, '\n\n').trim().slice(0, 10000); // Берем до 10к символов
-                    
-                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализ семантики...</div>';
-                    const answer = await askAI(`Сделай подробную выжимку текста (основные тезисы, факты). Текст с сайта:\n\n${text2}`, { model: MODELS.ultra });
-                    
-                    loadingEl.innerHTML = renderText(answer); 
-                    attachExport(loadingEl, answer, 'quanta-web-summary');
-                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Сбой прокси:</b> ${escapeHtml(e.message)}`; }
+            // Быстрая вставка текста из карточек на главном экране
+            window.insertPrompt = function(text) {
+                document.getElementById('mainInput').value = text;
+                window.handleChatSubmit();
             }
-
-            async function handleSlides(text) {
-                if (!text) { showToast('Введите тему презентации'); document.getElementById('mainInput').focus(); return; }
-                openWorkspace('Генератор Слайдов PPTX'); 
-                addMessage('user', renderText(text)); 
-                document.getElementById('mainInput').value = '';
-                
-                const loadingEl = addLoading('Формирую структуру JSON (Model: Ultra)...');
+// ==========================================
+            // 8. ГЕНЕРАТОР ПРЕЗЕНТАЦИЙ (PPTX)
+            // ==========================================
+            async function handlePresentationLogic(text, sendBtn) {
+                const loader = showLoader('Архитектура слайдов (Smart Router)...');
                 try {
-                    const raw = await askAI(`Сгенерируй структуру презентации на тему "${text}". 
-ВЕРНИ ТОЛЬКО ЧИСТЫЙ JSON без markdown-кавычек. Формат:
+                    // Используем строгий промпт, чтобы вытащить только JSON
+                    const prompt = `Создай подробный план презентации на тему "${text}". 
+ВЕРНИ ТОЛЬКО ЧИСТЫЙ JSON без markdown-разметки или лишних слов. Структура:
 {
-  "title": "Название",
+  "title": "Главное название",
   "slides": [
-    { "title": "Слайд 1", "bullets": ["Текст 1", "Текст 2", "Текст 3"] }
+    { "title": "Заголовок 1", "bullets": ["Пункт 1", "Пункт 2", "Пункт 3"] },
+    { "title": "Заголовок 2", "bullets": ["Пункт 1", "Пункт 2", "Пункт 3"] }
   ]
 }
-Обязательно 6-8 слайдов. Никаких слов "Вот ваш JSON".`, { model: MODELS.ultra });
+Сделай ровно 6-8 информативных слайдов.`;
                     
+                    const raw = await smartAIFetch(prompt);
+                    
+                    // Защита: ищем JSON даже если ИИ добавил текст до/после
                     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) throw new Error('Нейросеть нарушила формат JSON');
+                    if (!jsonMatch) throw new Error('Нейросеть нарушила структуру JSON');
                     const data = JSON.parse(jsonMatch[0]);
 
                     const pptx = new PptxGenJS();
                     
-                    // Титульный слайд
+                    // Слайд 1: Титульный
                     const titleSlide = pptx.addSlide(); 
                     titleSlide.background = { color: '0A0A0A' };
                     titleSlide.addText(data.title || text, { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 44, bold: true, color: 'FFFFFF', align: 'center' });
 
-                    // Контентные слайды
+                    // Слайды 2+: Контент
                     (data.slides || []).forEach(s => {
                         const slide = pptx.addSlide(); 
                         slide.background = { color: '121212' };
                         
-                        // Заголовок слайда с градиентным эффектом (фиолетовый)
+                        // Декоративная плашка для заголовка
                         slide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 0.3, w: 9, h: 1, fill: '1E1E2E' });
-                        slide.addText(s.title || '', { x: 0.8, y: 0.4, w: 8.4, h: 0.8, fontSize: 28, bold: true, color: 'A78BFA' });
+                        slide.addText(s.title || 'Слайд', { x: 0.8, y: 0.4, w: 8.4, h: 0.8, fontSize: 28, bold: true, color: 'A78BFA' });
                         
-                        // Буллиты
+                        // Содержимое списка
                         slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: { type: 'number' }, breakLine: true } })), 
                             { x: 0.8, y: 1.6, w: 8.4, h: 3.5, fontSize: 18, color: 'E2E8F0', lineSpacing: 32 }
                         );
                     });
 
-                    // Безопасный экспорт blob
+                    // Сохранение и вывод кнопки
                     const blob = await pptx.write({ outputType: 'blob' });
                     const url = URL.createObjectURL(blob);
                     
-                    loadingEl.innerHTML = `
+                    const htmlResult = `
                         <div style="background:var(--bg-input); padding:20px; border-radius:12px; border:1px solid var(--success); text-align:center;">
                             <div style="font-size:3rem; margin-bottom:10px;">📊</div>
-                            <h3 style="color:var(--success); margin-bottom:8px;">Презентация успешно создана!</h3>
-                            <p style="color:var(--text-secondary); margin-bottom:16px;"><b>Тема:</b> ${escapeHtml(data.title || text)} (${(data.slides || []).length} слайдов)</p>
-                            <a class="ws-download" href="${url}" download="Quanta_${text.replace(/\s+/g, '_').substring(0,20)}.pptx" style="font-size:1rem; padding:12px 24px; background:var(--success);">📥 Скачать файл .PPTX</a>
+                            <h3 style="color:var(--success); margin-bottom:8px;">Презентация создана!</h3>
+                            <p style="color:var(--text-muted); margin-bottom:16px;"><b>Тема:</b> ${escapeHtml(data.title || text)} (${(data.slides || []).length} слайдов)</p>
+                            <a href="${url}" download="Quanta_${text.replace(/\s+/g, '_').substring(0,20)}.pptx" style="display:inline-block; font-size:1rem; padding:12px 24px; background:var(--success); color:white; border-radius:8px; text-decoration:none; font-weight:600; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">📥 Скачать файл .PPTX</a>
                         </div>
                     `;
-                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка компиляции слайдов:</b> ${escapeHtml(e.message)}`; }
+                    
+                    loader.innerHTML = htmlResult;
+                    chats[currentChatId].messages.push({ role: 'assistant', content: '[Файл презентации]', html: htmlResult });
+                    saveChats();
+                } catch (e) {
+                    loader.innerHTML = `<span style="color:var(--danger)">⚠️ Ошибка компиляции: ${escapeHtml(e.message)}</span>`;
+                }
             }
 
-            // 9. АНАЛИЗ ФАЙЛОВ И ТАБЛИЦ (РАСШИРЕННЫЙ)
+            // ==========================================
+            // 9. БЫСТРЫЕ ШАБЛОНЫ (DEEP RESEARCH И СКРАПИНГ)
+            // ==========================================
+
+            async function handleResearch(text) {
+                if (!text) return showToast('Введите тему для исследования', true);
+                
+                openWorkspace('Deep Research Engine'); 
+                addMessage('user', renderText(`🔍 Глубокий анализ темы: ${text}`)); 
+                document.getElementById('mainInput').value = '';
+                
+                const loader = addLoading('Формирую семантическое ядро...');
+                try {
+                    // 1. Дробим на вопросы
+                    const planRaw = await smartAIFetch(`Разбей тему "${text}" на 4 фундаментальных вопроса для исследования. ВЕРНИ ТОЛЬКО СПИСОК с новой строки, без цифр и маркировки.`);
+                    const questions = planRaw.split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 4);
+                    
+                    let markdownReport = `# Исследовательский отчет: ${text}\n\n`;
+                    let uiHtml = `<h3>План исследования:</h3><ul>` + questions.map(q => `<li>${escapeHtml(q)}</li>`).join('') + `</ul><hr><div class="ws-loading"><div class="spinner"></div>Синтезирую данные...</div>`;
+                    loader.innerHTML = uiHtml;
+
+                    // 2. Исследуем каждый вопрос
+                    for (const q of questions) {
+                        const answer = await smartAIFetch(`Детально ответь на вопрос в рамках темы "${text}": ${q}`);
+                        markdownReport += `## ${q}\n${answer}\n\n`;
+                        uiHtml = renderMarkdown(markdownReport) + `<div class="ws-loading"><div class="spinner"></div>Синтезирую данные...</div>`;
+                        loader.innerHTML = uiHtml;
+                    }
+                    
+                    // 3. Заключение
+                    const summary = await smartAIFetch(`На основе вышесказанного, напиши мощный итоговый вывод (3-4 абзаца) для темы "${text}".`);
+                    markdownReport += `## Итоговое Заключение\n${summary}`;
+                    
+                    const finalHtml = renderMarkdown(markdownReport);
+                    loader.innerHTML = finalHtml; 
+                    
+                    chats[currentChatId].messages.push({ role: 'assistant', content: markdownReport, html: finalHtml });
+                    saveChats();
+                } catch (e) { loader.innerHTML = `<span style="color:var(--danger)">⚠️ Сбой исследования: ${escapeHtml(e.message)}</span>`; }
+            }
+
+            async function handleWebsite(url) {
+                if (!url || !/^https?:\/\//i.test(url)) { 
+                    url = prompt('Укажите корректный URL (с https://):', 'https://'); 
+                    if (!url) return; 
+                }
+                openWorkspace('Веб-Сканер'); 
+                addMessage('user', renderText(`🌐 Анализ ресурса: ${url}`)); 
+                
+                const loader = addLoading('Обход защиты CORS и парсинг DOM...');
+                try {
+                    // Используем бесплатный прокси allorigins
+                    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+                    const controller = new AbortController(); 
+                    const t = setTimeout(() => controller.abort(), 15000);
+                    
+                    const res = await fetch(proxyUrl, { signal: controller.signal }); 
+                    clearTimeout(t);
+                    if (!res.ok) throw new Error(`Отказ сервера: ${res.status}`);
+                    
+                    const html = await res.text(); 
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    
+                    // Вырезаем мусор
+                    doc.querySelectorAll('script, style, noscript, svg, img, nav, footer, iframe').forEach(el => el.remove());
+                    let textExtracted = (doc.body ? doc.body.innerText : html).replace(/\n{3,}/g, '\n\n').trim().slice(0, 10000); 
+                    
+                    loader.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализ семантики через ИИ...</div>';
+                    
+                    const prompt = `Сделай профессиональную выжимку этой страницы. Укажи: 1) О чем сайт. 2) Ключевые тезисы. 3) Ценную информацию. Текст сайта:\n\n${textExtracted}`;
+                    const answer = await smartAIFetch(prompt);
+                    
+                    const finalHtml = renderMarkdown(answer);
+                    loader.innerHTML = finalHtml; 
+                    chats[currentChatId].messages.push({ role: 'assistant', content: answer, html: finalHtml });
+                    saveChats();
+                } catch (e) { loader.innerHTML = `<span style="color:var(--danger)">⚠️ Сбой подключения: ${escapeHtml(e.message)} (Возможно, сайт блокирует ботов)</span>`; }
+            }
+
+            // ==========================================
+            // 10. ПАРСИНГ ФАЙЛОВ И ТАБЛИЦ (DATA SCIENCE)
+            // ==========================================
+
             window.triggerFileUpload = function() { document.getElementById('fileInput').click(); }
 
             document.getElementById('fileInput').addEventListener('change', async function (e) {
@@ -1072,100 +1089,86 @@
                 if (!file) return;
                 
                 const ext = file.name.split('.').pop().toLowerCase(); 
-                e.target.value = ''; // Сброс инпута
+                e.target.value = ''; // Сброс 
                 
-                const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+                const imageExts = ['png', 'jpg', 'jpeg', 'webp'];
                 
                 if (imageExts.includes(ext) || file.type.startsWith('image/')) {
-                    const dataUrl = await fileToDataURL(file); 
+                    const dataUrl = await new Promise(r => { const reader = new FileReader(); reader.onload = () => r(reader.result); reader.readAsDataURL(file); });
                     setPendingImage(file, dataUrl); 
-                    showToast('Изображение готово к анализу');
-                } else if (['csv', 'xlsx'].includes(ext)) { 
+                    showToast('Фото загружено! Введите команду.');
+                } else if (['csv', 'xlsx', 'xls'].includes(ext)) { 
                     await handleSpreadsheet(file);
                 } else if (['pdf', 'docx', 'txt', 'md'].includes(ext)) { 
                     await handleDocument(file, ext);
                 } else { 
-                    showToast('Критическая ошибка: неподдерживаемый формат'); 
+                    showToast('Формат не поддерживается', true); 
                 }
             });
 
-            function fileToDataURL(file) { 
-                return new Promise((r, j) => { 
-                    const reader = new FileReader(); 
-                    reader.onload = () => r(reader.result); 
-                    reader.onerror = j; 
-                    reader.readAsDataURL(file); 
-                }); 
-            }
-
-            async function extractTextFromFile(file, ext) {
-                if (ext === 'txt' || ext === 'md') return await file.text();
-                
-                if (ext === 'pdf') {
-                    // Используем стабильный CDN для PDF.js worker
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-                    let full = ''; 
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const content = await page.getTextContent();
-                        full += content.items.map(it => it.str).join(' ') + '\n';
-                    }
-                    return full;
-                }
-                
-                if (ext === 'docx') {
-                    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-                    return result.value;
-                }
-                return '';
-            }
-
             async function handleDocument(file, ext) {
-                openWorkspace('Doc Parser AI'); 
-                addMessage('user', `📄 Загружен документ: <b>${escapeHtml(file.name)}</b>`);
+                openWorkspace('Анализатор Документов'); 
+                addMessage('user', `📄 Файл: <b>${escapeHtml(file.name)}</b>`);
+                const loader = addLoading('Распаковка и чтение...');
                 
-                const loadingEl = addLoading('Извлечение текста...');
                 try {
-                    let content = (await extractTextFromFile(file, ext)).trim().slice(0, 15000); // Берем до 15к символов
-                    if (!content) throw new Error('Документ пуст или защищен паролем');
+                    let content = '';
+                    if (ext === 'txt' || ext === 'md') {
+                        content = await file.text();
+                    } else if (ext === 'pdf') {
+                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                        const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                        for (let i = 1; i <= pdf.numPages && i <= 30; i++) { // Защита от гигантских PDF
+                            const pageText = await (await pdf.getPage(i)).getTextContent();
+                            content += pageText.items.map(it => it.str).join(' ') + '\n';
+                        }
+                    } else if (ext === 'docx') {
+                        content = (await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value;
+                    }
                     
-                    loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализ семантики...</div>';
+                    content = content.trim().slice(0, 15000); 
+                    if (!content) throw new Error('Пустой документ или зашифрован');
                     
-                    const prompt = `Проанализируй этот документ. Сделай структурированную выжимку:\n1. Главная мысль (2 предложения)\n2. Ключевые тезисы (списком)\n3. Важные цифры и факты (если есть).\n\nТекст:\n${content}`;
-                    const answer = await askAI(prompt, { model: MODELS.ultra });
+                    loader.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Извлечение сущностей...</div>';
                     
-                    loadingEl.innerHTML = renderText(answer); 
-                    attachExport(loadingEl, answer, `Summary_${file.name}`);
-                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Ошибка парсера:</b> ${escapeHtml(e.message)}`; }
+                    const answer = await smartAIFetch(`Проанализируй документ. Выдели:\n- Основную суть\n- Главные тезисы\n- Важные цифры и выводы\n\nТекст:\n${content}`);
+                    const finalHtml = renderMarkdown(answer);
+                    
+                    loader.innerHTML = finalHtml; 
+                    chats[currentChatId].messages.push({ role: 'assistant', content: answer, html: finalHtml });
+                    saveChats();
+                } catch (e) { loader.innerHTML = `<span style="color:var(--danger)">⚠️ Ошибка чтения: ${escapeHtml(e.message)}</span>`; }
             }
 
             async function handleSpreadsheet(file) {
                 openWorkspace('Data Science Engine');
-                addMessage('user', `📊 Загружена таблица: <b>${escapeHtml(file.name)}</b>`);
-                const loadingEl = addLoading('Парсинг ячеек...');
+                addMessage('user', `📊 Датасет: <b>${escapeHtml(file.name)}</b>`);
+                const loader = addLoading('Парсинг ячеек и типов данных...');
                 
                 try {
                     let rows = [];
+                    // Чтение формата
                     if (file.name.toLowerCase().endsWith('.csv')) {
                         rows = Papa.parse(await file.text(), { header: true, skipEmptyLines: true, dynamicTyping: true }).data;
                     } else {
                         const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
                         rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
                     }
-                    if (!rows.length) throw new Error('Таблица не содержит данных');
+                    
+                    if (!rows.length) throw new Error('Файл не содержит табличных данных');
 
-                    // Поиск числовых колонок для анализа
                     const columns = Object.keys(rows[0]);
                     const numericCols = columns.filter(c => rows.every(r => typeof r[c] === 'number' || r[c] == null));
 
-                    // Сбор статистики
+                    // Вычисление математической статистики
                     const stats = {};
                     numericCols.forEach(c => {
                         const vals = rows.map(r => r[c]).filter(v => typeof v === 'number');
                         if (!vals.length) return;
+                        
                         const sum = vals.reduce((a, b) => a + b, 0);
                         const sorted = [...vals].sort((a, b) => a - b);
+                        
                         stats[c] = {
                             count: vals.length, 
                             mean: (sum / vals.length).toFixed(2), 
@@ -1175,84 +1178,105 @@
                         };
                     });
 
-                    // Рендер таблицы статистики
-                    let statsHtml = `<p><b>Анализ размерности:</b> Строк: ${rows.length} | Столбцов: ${columns.length}</p><br>`;
-                    statsHtml += '<table><tr><th>Метрика</th><th>Среднее</th><th>Мин.</th><th>Медиана</th><th>Макс.</th></tr>';
-                    Object.entries(stats).forEach(([c, s]) => { 
-                        statsHtml += `<tr><td><b>${escapeHtml(c)}</b></td><td>${s.mean}</td><td>${s.min}</td><td>${s.median}</td><td>${s.max}</td></tr>`; 
-                    });
-                    statsHtml += '</table>';
+                    // Генерация UI Таблицы
+                    let statsHtml = `<p style="color:var(--text-muted)">Размерность: ${rows.length} строк × ${columns.length} столбцов</p>`;
+                    if (Object.keys(stats).length > 0) {
+                        statsHtml += `
+                        <div style="overflow-x:auto; margin-top:16px;">
+                            <table style="width:100%; border-collapse:collapse; background:var(--bg-input); border-radius:8px; overflow:hidden;">
+                                <tr style="background:var(--bg-hover);">
+                                    <th style="padding:10px; text-align:left; border:1px solid var(--border);">Колонка</th>
+                                    <th style="padding:10px; border:1px solid var(--border);">Среднее</th>
+                                    <th style="padding:10px; border:1px solid var(--border);">Минимум</th>
+                                    <th style="padding:10px; border:1px solid var(--border);">Медиана</th>
+                                    <th style="padding:10px; border:1px solid var(--border);">Максимум</th>
+                                </tr>`;
+                        Object.entries(stats).forEach(([c, s]) => { 
+                            statsHtml += `<tr>
+                                <td style="padding:10px; border:1px solid var(--border); font-weight:600;">${escapeHtml(c)}</td>
+                                <td style="padding:10px; border:1px solid var(--border);">${s.mean}</td>
+                                <td style="padding:10px; border:1px solid var(--border);">${s.min}</td>
+                                <td style="padding:10px; border:1px solid var(--border);">${s.median}</td>
+                                <td style="padding:10px; border:1px solid var(--border);">${s.max}</td>
+                            </tr>`; 
+                        });
+                        statsHtml += '</table></div>';
+                    } else {
+                        statsHtml += '<p style="color:var(--warning); margin-top:10px;">В таблице нет числовых колонок для глубокого анализа.</p>';
+                    }
 
+                    // График K-Means (если есть хотя бы 2 числовые колонки)
                     let chartHtml = '';
+                    const canvasId = 'chart_' + Date.now();
                     
-                    // Если есть 2 числовые колонки - строим ML График (K-Means)
                     if (numericCols.length >= 2) {
                         const [cx, cy] = numericCols;
                         const points = rows.map(r => [r[cx], r[cy]]).filter(p => typeof p[0] === 'number' && typeof p[1] === 'number');
                         
-                        // Алгоритм кластеризации
-                        const clusters = kMeans(points, Math.min(3, points.length));
-                        const canvasId = 'chart_' + Date.now();
-                        
                         chartHtml = `
-                            <div style="background:#1e1e1e; padding:16px; border-radius:12px; margin-top:16px;">
-                                <h4 style="margin-bottom:12px; color:#a78bfa;">ML Кластеризация (K-Means)</h4>
-                                <canvas id="${canvasId}" height="220"></canvas>
+                            <div style="background:#1e1e1e; padding:16px; border-radius:12px; margin-top:24px; border: 1px solid var(--border);">
+                                <h4 style="margin-bottom:12px; color:var(--accent-hover);">Кластеризация (Оси: ${escapeHtml(cx)} / ${escapeHtml(cy)})</h4>
+                                <canvas id="${canvasId}" height="200"></canvas>
                             </div>
                         `;
-                        loadingEl.innerHTML = statsHtml + chartHtml + '<div class="ws-loading" style="margin-top:16px;"><div class="spinner"></div>Нейросеть ищет аномалии...</div>';
                         
-                        setTimeout(() => renderClusterChart(canvasId, points, clusters, cx, cy), 50);
+                        loader.innerHTML = statsHtml + chartHtml + '<div class="ws-loading" style="margin-top:16px;"><div class="spinner"></div>Анализ аномалий (ИИ)...</div>';
+                        
+                        // Асинхронно рисуем график после обновления DOM
+                        setTimeout(() => {
+                            const clusters = calculateKMeans(points, Math.min(3, points.length));
+                            renderScatterChart(canvasId, points, clusters, cx, cy);
+                        }, 100);
                     } else {
-                        loadingEl.innerHTML = statsHtml + '<div class="ws-loading" style="margin-top:16px;"><div class="spinner"></div>Нейросеть ищет инсайты...</div>';
+                        loader.innerHTML = statsHtml + '<div class="ws-loading" style="margin-top:16px;"><div class="spinner"></div>Анализ аномалий (ИИ)...</div>';
                     }
 
-                    // Генерация ИИ-инсайтов
-                    const insightsPrompt = `Вот математическая статистика по датасету (${rows.length} строк): ${JSON.stringify(stats)}. Выведи 3 самых интересных закономерности или инсайта бизнес-языком.`;
-                    const insights = await askAI(insightsPrompt, { model: MODELS.ultra });
+                    // ИИ Инсайты
+                    const prompt = `Проанализируй эти статистические данные датасета (${rows.length} записей): ${JSON.stringify(stats)}. Выдай 3 бизнес-инсайта маркированным списком.`;
+                    const insights = await smartAIFetch(prompt);
                     
-                    loadingEl.innerHTML = statsHtml + chartHtml + '<br><h3>ИИ-Инсайты</h3>' + renderText(insights);
+                    const finalOutput = `
+                        ${statsHtml}
+                        ${chartHtml}
+                        <h3 style="margin-top:24px; margin-bottom:12px;">Выводы ИИ:</h3>
+                        <div class="markdown-body">${renderMarkdown(insights)}</div>
+                        <button class="ws-download" style="width:100%; background:var(--success); margin-top:20px;" onclick="exportExcelGlobal()">📊 Скачать отчет (Excel)</button>
+                    `;
                     
-                    if (chartHtml) setTimeout(() => renderClusterChart(loadingEl.querySelector('canvas').id, null, null, null, null, true), 60);
-                    
-                    // Кнопка экспорта XLSX
-                    const xlsxBtn = document.createElement('button');
-                    xlsxBtn.className = 'ws-download'; 
-                    xlsxBtn.style.cssText = 'border:none; cursor:pointer; background:#10b981; margin-top:16px; width:100%;';
-                    xlsxBtn.textContent = '📊 Выгрузить полный отчет в Excel (.xlsx)';
-                    xlsxBtn.onclick = () => downloadStatsXlsx(rows, stats, 'Quanta_Analytics');
-                    loadingEl.appendChild(xlsxBtn);
+                    loader.innerHTML = finalOutput;
+                    chats[currentChatId].messages.push({ role: 'assistant', content: 'Отчет Data Science', html: finalOutput });
+                    saveChats();
 
-                } catch (e) { loadingEl.innerHTML = `⚠️ <b>Data Error:</b> ${escapeHtml(e.message)}`; }
+                    // Сохраняем глобально для кнопки скачивания
+                    window.exportExcelGlobal = () => {
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Raw Data');
+                        
+                        const statsArray = Object.entries(stats).map(([col, s]) => ({ 
+                            'Показатель': col, 'Среднее': s.mean, 'Мин': s.min, 'Медиана': s.median, 'Макс': s.max 
+                        }));
+                        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(statsArray), 'Analytics');
+                        XLSX.writeFile(wb, `Quanta_Report_${Date.now()}.xlsx`);
+                    };
+
+                } catch (e) { loader.innerHTML = `<span style="color:var(--danger)">⚠️ Сбой датасета: ${escapeHtml(e.message)}</span>`; }
             }
 
-            async function handleClusterAnalysis(text) {
-                openWorkspace('Менеджер Кластеров'); 
-                addMessage('user', renderText(text || 'Проведи кластерный анализ')); 
-                document.getElementById('mainInput').value = '';
-                const loadingEl = addLoading('Вычисляю...');
-                try {
-                    const prompt = text ? `Опиши процесс кластеризации (K-means) для задачи: ${text}. Укажи признаки.` : 'Объясни математику алгоритма K-means простыми словами и предложи пользователю загрузить Excel/CSV.';
-                    const answer = await askAI(prompt, { model: MODELS.ultra });
-                    loadingEl.innerHTML = renderText(answer); 
-                    attachExport(loadingEl, answer, 'quanta-cluster-logic');
-                } catch (e) { loadingEl.innerHTML = `⚠️ ${escapeHtml(e.message)}`; }
-            }
-
-            // Математика K-Means
-            function kMeans(points, k) {
+            // Математика K-Means (Кластеризация)
+            function calculateKMeans(points, k) {
                 let centroids = points.slice(0, k).map(p => [...p]);
                 let assignments = new Array(points.length).fill(0);
                 
-                for (let iter = 0; iter < 20; iter++) {
+                for (let iter = 0; iter < 15; iter++) {
                     assignments = points.map(p => {
                         let best = 0, bestDist = Infinity;
                         centroids.forEach((c, i) => { 
                             const d = (p[0]-c[0])**2 + (p[1]-c[1])**2; 
-                            if(d < bestDist){ bestDist=d; best=i; }
+                            if(d < bestDist) { bestDist=d; best=i; }
                         });
                         return best;
                     });
+                    
                     centroids = centroids.map((c, i) => {
                         const m = points.filter((_, idx) => assignments[idx] === i);
                         return m.length ? [m.reduce((a, p) => a+p[0], 0)/m.length, m.reduce((a, p) => a+p[1], 0)/m.length] : c;
@@ -1261,23 +1285,18 @@
                 return assignments;
             }
 
-            let _lastChartCache = null;
-            function renderClusterChart(canvasId, points, clusters, cx, cy, reuse) {
+            // Отрисовка графиков Chart.js
+            function renderScatterChart(canvasId, points, clusters, cx, cy) {
                 const canvas = document.getElementById(canvasId); 
                 if (!canvas) return;
                 
-                if (points) _lastChartCache = { points, clusters, cx, cy };
-                const data = _lastChartCache; 
-                if (!data) return;
-                
-                // Киберпанк-цвета
-                const colors = ['#a78bfa', '#34d399', '#fbbf24', '#f87171', '#2dd4bf'];
-                const datasets = [...new Set(data.clusters)].map(cl => ({
-                    label: `Группа ${cl + 1}`,
-                    data: data.points.filter((_, i) => data.clusters[i] === cl).map(p => ({ x: p[0], y: p[1] })),
+                const colors = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+                const datasets = [...new Set(clusters)].map(cl => ({
+                    label: `Кластер ${cl + 1}`,
+                    data: points.filter((_, i) => clusters[i] === cl).map(p => ({ x: p[0], y: p[1] })),
                     backgroundColor: colors[cl % colors.length],
-                    pointRadius: 5,
-                    pointHoverRadius: 8
+                    pointRadius: 6,
+                    pointHoverRadius: 9
                 }));
                 
                 new Chart(canvas, {
@@ -1285,94 +1304,17 @@
                     data: { datasets },
                     options: { 
                         responsive: true, 
+                        maintainAspectRatio: false,
                         scales: { 
-                            x: { title: { display: true, text: data.cx, color: '#9ca3af' }, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }, 
-                            y: { title: { display: true, text: data.cy, color: '#9ca3af' }, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } } 
+                            x: { title: { display: true, text: cx, color: '#a1a1aa' }, ticks: { color: '#a1a1aa' }, grid: { color: '#27272a' } }, 
+                            y: { title: { display: true, text: cy, color: '#a1a1aa' }, ticks: { color: '#a1a1aa' }, grid: { color: '#27272a' } } 
                         }, 
-                        plugins: { legend: { labels: { color: '#e5e7eb', font: { family: 'Inter' } } } } 
+                        plugins: { legend: { labels: { color: '#f4f4f5' } } } 
                     }
                 });
             }
 
-            function downloadStatsXlsx(rows, stats, filenameBase) {
-                try {
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Raw Data');
-                    
-                    const statsRows = Object.entries(stats).map(([col, s]) => ({ 
-                        Feature: col, Mean: s.mean, Min: s.min, Median: s.median, Max: s.max, Count: s.count 
-                    }));
-                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(statsRows), 'Statistics');
-                    XLSX.writeFile(wb, filenameBase + '.xlsx');
-                } catch (e) { showToast('Сбой экспорта: ' + e.message); }
-            }
-
-            // 10. ГОЛОСОВОЙ ВВОД
-            window.startVoiceInput = function() {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) return showToast('Браузер не поддерживает Web Speech API');
-                
-                const recognition = new SpeechRecognition(); 
-                recognition.lang = 'ru-RU'; 
-                recognition.interimResults = false;
-                
-                const btn = document.getElementById('voiceBtn'); 
-                btn.style.color = '#ef4444'; // Красный цвет записи
-                btn.style.transform = 'scale(1.1)';
-                showToast('Говорите...');
-                
-                recognition.start();
-                
-                recognition.onresult = (e) => { 
-                    const input = document.getElementById('mainInput');
-                    input.value += (input.value ? ' ' : '') + e.results[0][0].transcript; 
-                };
-                
-                recognition.onerror = () => showToast('Речь не распознана'); 
-                recognition.onend = () => { 
-                    btn.style.color = ''; 
-                    btn.style.transform = 'scale(1)'; 
-                };
-            }
-
-            // 11. ГЛОБАЛЬНЫЕ СЛУШАТЕЛИ И ИНИЦИАЛИЗАЦИЯ
-            document.getElementById('mainInput').addEventListener('keydown', function(e) { 
-                // Отправка по Enter (Shift+Enter для переноса строки)
-                if (e.key === 'Enter' && !e.shiftKey) { 
-                    e.preventDefault(); 
-                    window.handleSend(); 
-                }
-            });
-
-            // Плавный скролл к якорям
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => { 
-                anchor.addEventListener('click', function(e) { 
-                    e.preventDefault(); 
-                    const target = document.querySelector(this.getAttribute('href')); 
-                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
-                }); 
-            });
-
-            // Анимации при скролле
-            const observer = new IntersectionObserver((entries) => { 
-                entries.forEach(e => { 
-                    if (e.isIntersecting) { 
-                        e.target.style.opacity = '1'; 
-                        e.target.style.transform = 'translateY(0)'; 
-                    }
-                }); 
-            }, { threshold: 0.1 });
-            
-            document.querySelectorAll('.feature-card, .step').forEach(el => { 
-                el.style.opacity = '0'; 
-                el.style.transform = 'translateY(20px)'; 
-                el.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'; 
-                observer.observe(el); 
-            });
-
-            // Восстановление UI (память) при загрузке страницы
-            restoreUI();
-        });
+        }); // Конец DOMContentLoaded
     </script>
 </body>
 </html>
