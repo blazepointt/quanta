@@ -46,22 +46,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0d0d0d;
-            --bg-secondary: #141414;
-            --bg-card: #1a1a1a;
-            --bg-input: #1e1e1e;
-            --bg-hover: #252525;
-            --text-primary: #e8e8e8;
-            --text-secondary: #888888;
-            --text-muted: #555555;
+            --bg-primary: #212121;
+            --bg-secondary: #171717;
+            --bg-sidebar: #171717;
+            --bg-card: #2a2a2a;
+            --bg-input: #2f2f2f;
+            --bg-hover: #2a2a2a;
+            --text-primary: #ececec;
+            --text-secondary: #b4b4b4;
+            --text-muted: #8e8e8e;
             --accent: #6366f1;
             --accent-hover: #818cf8;
-            --accent-glow: rgba(99, 102, 241, 0.3);
-            --border: #262626;
-            --border-light: #333333;
+            --accent-glow: rgba(99, 102, 241, 0.25);
+            --border: #2f2f2f;
+            --border-light: #3a3a3a;
             --success: #22c55e;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --sidebar-width: 260px;
         }
 
         /* --- Жесткий контроль переполнения --- */
@@ -71,14 +73,15 @@
             box-sizing: border-box;
         }
 
-        body, main {
+        body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            min-height: 100vh;
+            height: 100vh;
             max-width: 100vw;
-            overflow-x: hidden;
+            overflow: hidden;
             line-height: 1.6;
+            display: flex;
         }
         
         pre, code, .ai-response-container, .msg-content {
@@ -93,48 +96,243 @@
             display: none;
         }
 
-        /* Background particles */
+        /* Particles disabled — kept in DOM (hidden) so existing JS calls don't error */
         .particles {
-            position: fixed;
-            top: 0;
+            display: none;
+        }
+
+        /* ===== Sidebar (ChatGPT-style) ===== */
+        .sidebar {
+            width: var(--sidebar-width);
+            min-width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            padding: 12px 8px;
+            border-right: 1px solid var(--border);
+        }
+
+        .sidebar-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 6px 14px;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .sidebar-logo .logo-icon {
+            width: 28px;
+            height: 28px;
+            font-size: 0.95rem;
+            border-radius: 8px;
+        }
+
+        .new-chat-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: transparent;
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-bottom: 18px;
+        }
+
+        .new-chat-btn:hover {
+            background: var(--bg-hover);
+        }
+
+        .sidebar-section-label {
+            padding: 8px 10px 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .sidebar-history {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .sidebar-item svg { flex-shrink: 0; opacity: 0.75; }
+
+        .sidebar-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .sidebar-item.active {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* ===== Firebase Auth UI ===== */
+        .auth-google-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 9px 10px;
+            border-radius: 10px;
+            background: transparent;
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s ease;
+        }
+
+        .auth-google-btn:hover {
+            background: var(--bg-hover);
+        }
+
+        .auth-google-btn .google-g-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .auth-user-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.15s ease;
+        }
+
+        .auth-user-row:hover {
+            background: var(--bg-hover);
+        }
+
+        .auth-user-row img.auth-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: var(--bg-card);
+        }
+
+        .auth-user-name {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .auth-user-menu {
+            position: absolute;
+            bottom: calc(100% + 6px);
             left: 0;
             width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            opacity: 0.4;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 10px;
+            padding: 6px;
+            display: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 50;
         }
 
-        .particle {
-            position: absolute;
-            width: 2px;
-            height: 2px;
-            background: var(--accent);
-            border-radius: 50%;
-            animation: float 20s infinite linear;
+        .auth-user-menu.open { display: block; }
+
+        .auth-user-menu button {
+            width: 100%;
+            padding: 8px 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.82rem;
+            text-align: left;
+            border-radius: 8px;
+            cursor: pointer;
         }
 
-        @keyframes float {
-            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        .auth-user-menu button:hover {
+            background: var(--bg-hover);
         }
 
-        /* Header */
+        .sidebar-item.history-empty {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            cursor: default;
+            padding: 8px 10px;
+        }
+
+        .sidebar-item.history-empty:hover {
+            background: transparent;
+        }
+
+        .sidebar-bottom {
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        /* Header (top bar within main workspace) */
         header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            width: 100%;
             z-index: 100;
-            padding: 16px 32px;
+            padding: 14px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(13, 13, 13, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
+            background: var(--bg-primary);
+            border-bottom: 1px solid transparent;
+        }
+
+        .header-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .logo {
@@ -207,11 +405,102 @@
             gap: 10px;
         }
 
-        #puterAuthBtn.puter-signed-in {
+        #settingsBtn.api-configured {
             background: rgba(34, 197, 94, 0.12);
             border-color: rgba(34, 197, 94, 0.4);
             color: #4ade80;
         }
+
+        /* ===== Settings Modal ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 440px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .modal-header h2 {
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+        .modal-close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            line-height: 0;
+        }
+        .modal-close-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .modal-field { margin-bottom: 14px; }
+        .modal-field label {
+            display: block;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .modal-field input, .modal-field select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 9px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.88rem;
+        }
+        .modal-field input:focus, .modal-field select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .modal-hint {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 9px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 500;
+        }
+        .modal-btn-primary { background: var(--accent); color: #fff; }
+        .modal-btn-primary:hover { background: var(--accent-hover); }
+        .modal-btn-secondary { background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary); }
+        .modal-btn-secondary:hover { background: var(--bg-hover); }
 
         .github-btn:hover {
             background: var(--bg-hover);
@@ -219,21 +508,32 @@
         }
 
         /* Main content */
+        .app-main {
+            flex: 1;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
         main {
-            position: relative;
-            z-index: 1;
-            padding-top: 80px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         /* Hero section */
         .hero {
-            min-height: calc(100vh - 80px);
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
+            justify-content: flex-end;
+            padding: 20px 20px 28px;
             text-align: center;
+            min-height: 100%;
         }
 
         .hero-logo {
@@ -630,16 +930,14 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            :root { --sidebar-width: 72px; }
             header { padding: 12px 16px; }
-            .nav-links { display: none; }
-            .github-btn span, .github-btn:not(#puterAuthBtn) { font-size: 0; }
-            .github-btn svg { margin: 0; }
-            #puterAuthBtn span { display: none; }
-            .github-btn { padding: 8px 10px; }
-            .hero-logo { font-size: 2.5rem; }
-            .features-grid { grid-template-columns: 1fr; }
-            .step { flex-direction: column; text-align: center; }
-            .step-number { margin: 0 auto; }
+            .sidebar { padding: 12px 6px; align-items: center; }
+            .sidebar-logo span, .new-chat-btn span, .sidebar-item span, .sidebar-section-label { display: none; }
+            .new-chat-btn { justify-content: center; padding: 10px; }
+            .sidebar-item { justify-content: center; }
+            .chat-avatar-large { width: 48px; height: 48px; }
+            .chat-greeting { font-size: 1.4rem; }
         }
 
         /* Scrollbar */
@@ -792,44 +1090,183 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* ===== ChatGPT-style Welcome Screen ===== */
+        .chat-welcome-screen {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 20px 24px;
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        .chat-avatar-large {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 18px;
+        }
+
+        .chat-greeting {
+            font-size: 1.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+            letter-spacing: -0.5px;
+            margin: 0;
+            line-height: 1.3;
+            min-height: 2.4rem;
+        }
+
+        /* Greeting typing cursor blink */
+        .chat-greeting::after {
+            content: '';
+            display: inline-block;
+            width: 2px;
+            height: 1.1em;
+            background: var(--accent);
+            margin-left: 3px;
+            vertical-align: middle;
+            border-radius: 1px;
+            animation: blink 1s step-end infinite;
+            opacity: 0;
+        }
+
+        .chat-greeting.typed::after {
+            opacity: 1;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        /* ===== End Welcome Screen ===== */
     </style>
 </head>
 <body>
     <div class="particles" id="particles"></div>
 
-    <header>
-        <a href="#" class="logo">
-            <div class="logo-icon">Q</div>
-            <span>Quanta</span>
-        </a>
-        <nav class="nav-links">
-            <a href="#features" class="nav-link">Возможности</a>
-            <a href="#how-it-works" class="nav-link">Как работает</a>
-            <a href="#stats" class="nav-link">Статистика</a>
-        </nav>
-        <div class="header-actions">
-            <a href="https://github.com/blazepointt/quanta" target="_blank" class="github-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <aside class="sidebar">
+        <div class="sidebar-top">
+            <a href="#" class="sidebar-logo">
+                <div class="logo-icon">Q</div>
+                <span>Quanta</span>
+            </a>
+        </div>
+
+        <button class="new-chat-btn" onclick="window.startNewChat()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Новый чат
+        </button>
+
+        <div class="sidebar-section-label">Проекты</div>
+        <div class="sidebar-history">
+            <div class="sidebar-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Анализ отчётов
+            </div>
+            <div class="sidebar-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Презентации
+            </div>
+            <div class="sidebar-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Код и разработка
+            </div>
+            <div class="sidebar-section-label">Чаты</div>
+            <div id="firebaseChatList">
+                <div class="sidebar-item history-empty" id="chatHistoryPlaceholder">Войдите, чтобы видеть историю чатов</div>
+            </div>
+        </div>
+
+        <div class="sidebar-bottom">
+            <a href="https://github.com/blazepointt/quanta" target="_blank" class="sidebar-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                 </svg>
                 GitHub
             </a>
-            <button class="github-btn" id="puterAuthBtn" onclick="handlePuterAuthClick()" title="Войти в Puter, чтобы заработал AI">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="8" r="4"/>
-                    <path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/>
+            <button class="sidebar-item" id="settingsBtn" onclick="openSettingsModal()" title="Настройки API" style="border:none; background:transparent; width:100%; text-align:left; cursor:pointer; font-family:inherit;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
-                <span id="puterAuthLabel">Войти в Puter</span>
+                <span>Настройки API</span>
             </button>
+
+            <!-- ===== Firebase Auth: блок входа / профиля (ChatGPT-style, левый нижний угол) ===== -->
+            <div id="authContainer">
+                <button class="auth-google-btn" id="googleSignInBtn" onclick="window.signInWithGoogle()">
+                    <svg class="google-g-icon" viewBox="0 0 48 48">
+                        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+                        <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+                        <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+                        <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+                    </svg>
+                    <span>Войти через Google</span>
+                </button>
+            </div>
         </div>
+    </aside>
+
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>⚙️ Настройки API</h2>
+                <button class="modal-close-btn" onclick="closeSettingsModal()" title="Закрыть">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="modal-field">
+                <label for="settingsApiKey">API-ключ (OpenRouter, Google Gemini и т.п.)</label>
+                <input type="password" id="settingsApiKey" placeholder="sk-or-v1-... или AIza...">
+                <div class="modal-hint">Ключ хранится только в этом браузере (localStorage) и никуда не отправляется, кроме выбранного эндпоинта.</div>
+            </div>
+
+            <div class="modal-field">
+                <label for="settingsEndpoint">Эндпоинт (OpenAI-совместимый)</label>
+                <input type="text" id="settingsEndpoint" placeholder="https://openrouter.ai/api/v1/chat/completions или http://localhost:11434/v1/chat/completions">
+                <div class="modal-hint">Для Ollama: <code>http://localhost:11434/v1/chat/completions</code>. Для OpenRouter: <code>https://openrouter.ai/api/v1/chat/completions</code>.</div>
+            </div>
+
+            <div class="modal-field">
+                <label for="settingsModelName">Название модели для запроса</label>
+                <input type="text" id="settingsModelName" placeholder="например: openai/gpt-4o-mini, llama3, gemini-2.0-flash">
+                <div class="modal-hint">Точное имя модели, ожидаемое вашим эндпоинтом.</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="closeSettingsModal()">Отмена</button>
+                <button class="modal-btn modal-btn-primary" onclick="saveApiSettings()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-main">
+    <header>
+        <div class="header-title">Quanta AI</div>
+        <div class="header-actions"></div>
     </header>
 
     <main>
         <section class="hero">
-            <h1 class="hero-logo animate-in">QUANTA</h1>
-            <p class="hero-subtitle animate-in delay-1">
-                AI-платформа для работы со знаниями, генерации контента и анализа данных
-            </p>
+            <div class="chat-welcome-screen" id="welcomeScreen">
+                <div class="chat-avatar-large">Q</div>
+                <h2 id="dynamicGreeting" class="chat-greeting">Что вас интересует?</h2>
+            </div>
 
             <div class="input-container animate-in delay-2">
                 <div class="input-wrapper">
@@ -933,7 +1370,10 @@
                 <div class="workspace-body" id="workspaceBody"></div>
             </div>
         </section>
+        </main>
+    </div>
 
+    <div class="removed-marketing-sections" style="display:none">
         <section class="features" id="features">
             <h2 class="section-title">Возможности Quanta</h2>
             <p class="section-subtitle">Всё, что нужно для работы с информацией и создания контента</p>
@@ -1022,18 +1462,12 @@
                 </div>
             </div>
         </section>
-    </main>
-
-    <footer>
-        <p>Quanta — открытая AI-платформа. <a href="https://github.com/blazepointt/quanta" target="_blank">GitHub</a> • <a href="#">Документация</a> • <a href="#">API</a></p>
-        <p style="margin-top: 8px; font-size: 0.8rem;">Создано с ❤️ для людей. MIT License.</p>
-    </footer>
+    </div>
 
     <div class="toast" id="toast"></div>
     <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.html,.htm,.js,.css,image/*">
 
     <!-- Библиотеки -->
-    <script src="https://js.puter.com/v2/"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -1041,8 +1475,297 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
+    <!-- ===== Firebase (Auth + Firestore) — работает без сервера, подходит для GitHub Pages ===== -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
     <script>
+        // =====================================================================
+        // FIREBASE: конфигурация, Google Auth и Firestore (история чатов)
+        // Полностью бессерверная интеграция — подходит для GitHub Pages.
+        // =====================================================================
+
+        // ⚠️ Замените значения на данные вашего проекта из Firebase Console
+        // (Project settings → General → Your apps → SDK setup and configuration).
+        const firebaseConfig = {
+
+  apiKey: "AIzaSyBgIjIdjkneyrlQ15v9mXFLjB5oIJvHkIA",
+  authDomain: "quanta-7eb3d.firebaseapp.com",
+  projectId: "quanta-7eb3d",
+  storageBucket: "quanta-7eb3d.firebasestorage.app",
+  messagingSenderId: "65094153374",
+  appId: "1:65094153374:web:7cd10f09cb84cd722b378f",
+  measurementId: "G-49MHQC626Z"
+
+};
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+        // Текущее состояние
+        window.currentUser = null;
+        window.currentChatId = null;
+        let unsubscribeChatsListener = null;
+
+        // ---------- Вход / выход через Google ----------
+        window.signInWithGoogle = async function () {
+            try {
+                await auth.signInWithPopup(googleProvider);
+                // onAuthStateChanged сам обновит UI после успешного входа
+            } catch (e) {
+                console.error('Ошибка входа через Google:', e);
+                if (typeof showToast === 'function') showToast('Не удалось войти: ' + e.message);
+            }
+        };
+
+        window.signOutUser = async function () {
+            try {
+                await auth.signOut();
+            } catch (e) {
+                console.error('Ошибка выхода:', e);
+            }
+        };
+
+        window.toggleAuthUserMenu = function () {
+            const menu = document.getElementById('authUserMenu');
+            if (menu) menu.classList.toggle('open');
+        };
+
+        document.addEventListener('click', function (e) {
+            const menu = document.getElementById('authUserMenu');
+            const row = document.getElementById('authUserRow');
+            if (menu && menu.classList.contains('open') && !menu.contains(e.target) && e.target !== row && !row.contains(e.target)) {
+                menu.classList.remove('open');
+            }
+        });
+
+        // ---------- Отрисовка блока авторизации в сайдбаре ----------
+        function renderAuthUI(user) {
+            const container = document.getElementById('authContainer');
+            if (!container) return;
+
+            if (user) {
+                const photo = user.photoURL || '';
+                const name = user.displayName || user.email || 'Пользователь';
+                container.innerHTML = `
+                    <div class="auth-user-row" id="authUserRow" onclick="toggleAuthUserMenu()">
+                        ${photo ? `<img class="auth-avatar" src="${photo}" alt="avatar" referrerpolicy="no-referrer">` : `<div class="auth-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);font-size:0.8rem;">${escapeHtml(name[0] || 'U')}</div>`}
+                        <span class="auth-user-name">${escapeHtml(name)}</span>
+                        <div class="auth-user-menu" id="authUserMenu">
+                            <button onclick="event.stopPropagation(); window.signOutUser();">🚪 Выйти</button>
+                        </div>
+                    </div>`;
+            } else {
+                container.innerHTML = `
+                    <button class="auth-google-btn" id="googleSignInBtn" onclick="window.signInWithGoogle()">
+                        <svg class="google-g-icon" viewBox="0 0 48 48">
+                            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+                            <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+                            <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+                            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+                        </svg>
+                        <span>Войти через Google</span>
+                    </button>`;
+            }
+        }
+
+        // ---------- Слушатель состояния авторизации ----------
+        auth.onAuthStateChanged(function (user) {
+            window.currentUser = user;
+            renderAuthUI(user);
+
+            if (unsubscribeChatsListener) { unsubscribeChatsListener(); unsubscribeChatsListener = null; }
+
+            if (user) {
+                subscribeToChatHistory(user.uid);
+            } else {
+                window.currentChatId = null;
+                const list = document.getElementById('firebaseChatList');
+                if (list) list.innerHTML = '<div class="sidebar-item history-empty">Войдите, чтобы видеть историю чатов</div>';
+            }
+        });
+
+        // ---------- Firestore: создание нового диалога ----------
+        // Вызывается в начале нового диалога (кнопка "Новый чат").
+        // Создаёт документ в users/{uid}/chats и делает его текущим.
+        window.createNewFirestoreChat = async function (title) {
+            if (!window.currentUser) { window.currentChatId = null; return null; }
+            try {
+                const chatRef = await db.collection('users').doc(window.currentUser.uid)
+                    .collection('chats').add({
+                        title: title || 'Новый диалог',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                window.currentChatId = chatRef.id;
+                return chatRef.id;
+            } catch (e) {
+                console.error('Не удалось создать чат в Firestore:', e);
+                return null;
+            }
+        };
+
+        // ---------- Firestore: сохранение сообщения в текущий диалог ----------
+        window.saveMessageToFirestore = async function (role, content) {
+            if (!window.currentUser || !window.currentChatId) return;
+            try {
+                const chatDocRef = db.collection('users').doc(window.currentUser.uid)
+                    .collection('chats').doc(window.currentChatId);
+
+                await chatDocRef.collection('messages').add({
+                    role,
+                    content,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                const updateData = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+                // Заголовок чата — по первому сообщению пользователя
+                if (role === 'user') {
+                    const snap = await chatDocRef.collection('messages').limit(2).get();
+                    if (snap.size <= 1) {
+                        updateData.title = content.slice(0, 60) + (content.length > 60 ? '…' : '');
+                    }
+                }
+                await chatDocRef.update(updateData);
+            } catch (e) {
+                console.error('Не удалось сохранить сообщение в Firestore:', e);
+            }
+        };
+
+        // ---------- Firestore: подписка на список чатов пользователя (realtime) ----------
+        function subscribeToChatHistory(uid) {
+            unsubscribeChatsListener = db.collection('users').doc(uid)
+                .collection('chats')
+                .orderBy('updatedAt', 'desc')
+                .limit(50)
+                .onSnapshot(function (snapshot) {
+                    renderChatHistoryList(snapshot.docs);
+                }, function (e) {
+                    console.error('Ошибка подписки на историю чатов:', e);
+                });
+        }
+
+        function renderChatHistoryList(docs) {
+            const list = document.getElementById('firebaseChatList');
+            if (!list) return;
+
+            if (!docs.length) {
+                list.innerHTML = '<div class="sidebar-item history-empty">Пока нет диалогов — начните новый чат</div>';
+                return;
+            }
+
+            list.innerHTML = docs.map(function (doc) {
+                const data = doc.data();
+                const title = data.title || 'Новый диалог';
+                const active = doc.id === window.currentChatId ? ' active' : '';
+                return `<div class="sidebar-item${active}" onclick="window.openFirestoreChat('${doc.id}')" title="${escapeHtml(title)}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    ${escapeHtml(title)}
+                </div>`;
+            }).join('');
+        }
+
+        // ---------- Firestore: открыть прошлый чат — подгрузить сообщения в центральное окно ----------
+        window.openFirestoreChat = async function (chatId) {
+            if (!window.currentUser) return;
+            try {
+                window.currentChatId = chatId;
+
+                if (typeof closeWorkspace === 'function') closeWorkspace();
+                if (typeof openWorkspace === 'function') openWorkspace('Чат с Quanta');
+                if (typeof window.resetChatHistory === 'function') window.resetChatHistory();
+
+                const messagesSnap = await db.collection('users').doc(window.currentUser.uid)
+                    .collection('chats').doc(chatId)
+                    .collection('messages').orderBy('createdAt', 'asc').get();
+
+                messagesSnap.forEach(function (doc) {
+                    const m = doc.data();
+                    const html = (typeof renderText === 'function') ? renderText(m.content) : escapeHtml(m.content);
+                    if (typeof addMessage === 'function') addMessage(m.role === 'assistant' ? 'ai' : 'user', html);
+                    // Восстанавливаем контекст диалога для последующих запросов к AI
+                    if (typeof chatHistory !== 'undefined') {
+                        chatHistory.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content });
+                    }
+                });
+
+                // Обновляем подсветку активного пункта в списке
+                document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(function (el) { el.classList.remove('active'); });
+                const clicked = Array.from(document.querySelectorAll('#firebaseChatList .sidebar-item'))
+                    .find(function (el) { return el.getAttribute('onclick') === `window.openFirestoreChat('${chatId}')`; });
+                if (clicked) clicked.classList.add('active');
+            } catch (e) {
+                console.error('Не удалось загрузить чат из Firestore:', e);
+                if (typeof showToast === 'function') showToast('Не удалось загрузить чат');
+            }
+        };
+
+        // ---------- Начало нового диалога (кнопка "Новый чат") ----------
+        // Создаёт документ в users/{uid}/chats (если пользователь авторизован)
+        // и сбрасывает локальное состояние чата.
+        window.startNewChat = async function () {
+            if (typeof window.resetChatHistory === 'function') window.resetChatHistory();
+            if (typeof closeWorkspace === 'function') closeWorkspace();
+            window.currentChatId = null;
+
+            if (window.currentUser) {
+                await window.createNewFirestoreChat('Новый диалог');
+            }
+
+            if (typeof showToast === 'function') showToast('Начат новый диалог');
+        };
+
+        // ---------- Сохранение одного "хода" диалога (реплика пользователя + ответ AI) ----------
+        // Если текущего диалога ещё нет — создаёт его перед сохранением
+        // (на случай, если пользователь начал писать, не нажимая "Новый чат").
+        window.persistTurn = async function (userText, assistantText) {
+            if (!window.currentUser) return;
+            if (!window.currentChatId) {
+                await window.createNewFirestoreChat(userText.slice(0, 60));
+            }
+            await window.saveMessageToFirestore('user', userText);
+            await window.saveMessageToFirestore('assistant', assistantText);
+        };
+
+        // escapeHtml нужен ещё до определения в основном скрипте — локальный fallback
+        if (typeof window.escapeHtml !== 'function') {
+            window.escapeHtml = function (str) {
+                return String(str).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                });
+            };
+        }
+    </script>
+
+    <script>
+        // ===== Random Greeting Phrases =====
+        const greetings = [
+            "Что вас интересует?",
+        ];
+
+        function typeGreeting(el, text, speed = 38) {
+            el.textContent = '';
+            el.classList.remove('typed');
+            let i = 0;
+            const timer = setInterval(() => {
+                el.textContent += text[i++];
+                if (i >= text.length) {
+                    clearInterval(timer);
+                    el.classList.add('typed');
+                }
+            }, speed);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            const greetingEl = document.getElementById('dynamicGreeting');
+            if (greetingEl) {
+                const chosen = greetings[Math.floor(Math.random() * greetings.length)];
+                typeGreeting(greetingEl, chosen);
+            }
+
             window.pendingImage = null;
 
             function createParticles() {
@@ -1114,7 +1837,8 @@
             }
 
             // --- МОДЕЛИ ---
-            // Актуальные модели Puter: https://docs.puter.com/ai/chat/
+            // Список моделей для UI-переключателя. Реальная модель, которая уйдёт в запрос,
+            // берётся из настроек пользователя (см. settingsModelName), эти id — просто подписи.
             const MODEL_LIST = [
                 { id: 'gpt-4o-mini',           label: 'GPT-4o Mini',       color: '',        shadow: '' },
                 { id: 'gpt-4o',                label: 'GPT-4o',            color: '#22c55e', shadow: '0 0 8px rgba(34,197,94,0.4)' },
@@ -1148,25 +1872,49 @@
                 return MODEL_LIST[currentModelIdx].id;
             }
 
-            async function refreshPuterAuthUI() {
-                const btn = document.getElementById('puterAuthBtn');
-                const label = document.getElementById('puterAuthLabel');
-                if (typeof puter === 'undefined') return;
+            // --- Настройки собственного API ---
+            const API_SETTINGS_KEY = 'quanta_api_settings';
+
+            function getApiSettings() {
                 try {
-                    const signedIn = await puter.auth.isSignedIn();
-                    if (signedIn) { btn.classList.add('puter-signed-in'); label.textContent = 'Puter подключён'; }
-                    else { btn.classList.remove('puter-signed-in'); label.textContent = 'Войти в Puter'; }
-                } catch (e) { }
+                    return JSON.parse(localStorage.getItem(API_SETTINGS_KEY)) || {};
+                } catch (e) { return {}; }
             }
 
-            window.handlePuterAuthClick = async function() {
-                if (typeof puter === 'undefined') return showToast('AI ещё не загрузился');
-                try {
-                    if (await puter.auth.isSignedIn()) return showToast('Уже подключён');
-                    await puter.auth.signIn(); showToast('Готово! AI работает');
-                } catch (e) { showToast('Вход не завершён'); } finally { refreshPuterAuthUI(); }
+            function refreshSettingsBtnUI() {
+                const btn = document.getElementById('settingsBtn');
+                const { apiKey, endpoint } = getApiSettings();
+                if (btn) btn.classList.toggle('api-configured', !!(apiKey || endpoint));
             }
-            setTimeout(refreshPuterAuthUI, 800);
+
+            window.openSettingsModal = function() {
+                const { apiKey, endpoint, model } = getApiSettings();
+                document.getElementById('settingsApiKey').value = apiKey || '';
+                document.getElementById('settingsEndpoint').value = endpoint || '';
+                document.getElementById('settingsModelName').value = model || '';
+                document.getElementById('settingsModal').classList.add('open');
+            }
+
+            window.closeSettingsModal = function() {
+                document.getElementById('settingsModal').classList.remove('open');
+            }
+
+            window.saveApiSettings = function() {
+                const apiKey = document.getElementById('settingsApiKey').value.trim();
+                const endpoint = document.getElementById('settingsEndpoint').value.trim();
+                const model = document.getElementById('settingsModelName').value.trim();
+                if (!endpoint) { showToast('Укажите эндпоинт'); return; }
+                localStorage.setItem(API_SETTINGS_KEY, JSON.stringify({ apiKey, endpoint, model }));
+                refreshSettingsBtnUI();
+                closeSettingsModal();
+                showToast('Настройки сохранены');
+            }
+
+            document.getElementById('settingsModal').addEventListener('click', function(e) {
+                if (e.target === this) closeSettingsModal();
+            });
+
+            setTimeout(refreshSettingsBtnUI, 0);
 
             window.openWorkspace = function(title) {
                 const ws = document.getElementById('workspace');
@@ -1231,59 +1979,116 @@
                 return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
             }
 
-            let _puterHintShown = false;
-            function maybeShowPuterHint() { if (!_puterHintShown) { _puterHintShown = true; showToast('Может открыться окно входа Puter'); } }
-
             let chatHistory = [];
             window.resetChatHistory = function() { chatHistory = []; }
 
-            // Ждём, пока Puter SDK будет готов (до 15 сек)
-            function waitForPuter(timeoutMs) {
-                return new Promise((resolve, reject) => {
-                    if (typeof puter !== 'undefined' && puter.ai) return resolve();
-                    const start = Date.now();
-                    const check = setInterval(() => {
-                        if (typeof puter !== 'undefined' && puter.ai) { clearInterval(check); resolve(); return; }
-                        if (Date.now() - start > (timeoutMs || 15000)) { clearInterval(check); reject(new Error('Puter SDK не загрузился — обновите страницу')); }
-                    }, 200);
-                });
+            // Проверяем, что пользователь указал эндпоинт в настройках
+            function requireApiSettings() {
+                const settings = getApiSettings();
+                if (!settings.endpoint) {
+                    openSettingsModal();
+                    throw new Error('Сначала укажите эндпоинт и API-ключ в настройках (⚙️)');
+                }
+                return settings;
             }
 
-            // Вспомогательная функция: нормализовать ответ puter в строку
+            // Вспомогательная функция: нормализовать ответ OpenAI-совместимого API в строку
             function extractAnswer(response) {
                 if (typeof response === 'string') return response;
-                return response?.message?.content?.[0]?.text
+                return response?.choices?.[0]?.message?.content
                     || response?.message?.content
                     || response?.text
-                    || response?.choices?.[0]?.message?.content
                     || JSON.stringify(response);
             }
 
-            // Fallback-цепочка: если выбранная модель недоступна, пробуем gpt-4o-mini
-            async function chatWithFallback(payload, model) {
+            // Отправляет OpenAI-совместимый запрос на выбранный пользователем эндпоинт
+            async function callOpenAICompatible(messages, opts = {}) {
+                const settings = requireApiSettings();
+                const model = opts.model || settings.model || getSelectedModel();
+
+                const headers = { 'Content-Type': 'application/json' };
+                if (settings.apiKey) headers['Authorization'] = 'Bearer ' + settings.apiKey;
+
+                const body = {
+                    model,
+                    messages,
+                    stream: false
+                };
+
+                let response;
                 try {
-                    const response = await withTimeout(puter.ai.chat(payload, { model }), 60000, 'Чат (' + model + ')');
-                    return extractAnswer(response);
-                } catch (primaryErr) {
-                    if (model === 'gpt-4o-mini') throw primaryErr; // fallback сам упал — пробрасываем
-                    console.warn('[Quanta] Модель ' + model + ' вернула ошибку (' + primaryErr.message + '), переключаюсь на gpt-4o-mini');
-                    try {
-                        const fallbackResp = await withTimeout(puter.ai.chat(payload, { model: 'gpt-4o-mini' }), 60000, 'Чат (fallback)');
-                        const ans = extractAnswer(fallbackResp);
-                        showToast('⚠️ Модель ' + model + ' недоступна — ответил gpt-4o-mini');
-                        return ans;
-                    } catch (fallbackErr) {
-                        throw new Error('Все модели недоступны: ' + fallbackErr.message);
-                    }
+                    response = await withTimeout(
+                        fetch(settings.endpoint, {
+                            method: 'POST',
+                            headers,
+                            body: JSON.stringify(body)
+                        }),
+                        60000,
+                        'Запрос к ' + model
+                    );
+                } catch (e) {
+                    throw new Error('Не удалось связаться с эндпоинтом: ' + e.message);
                 }
+
+                if (!response.ok) {
+                    let details = '';
+                    try { details = (await response.json())?.error?.message || ''; } catch (e) { try { details = await response.text(); } catch (e2) {} }
+                    throw new Error('Ошибка ' + response.status + (details ? ': ' + details : ''));
+                }
+
+                const data = await response.json();
+                return extractAnswer(data);
+            }
+
+            // Генерация изображений через OpenAI-совместимый эндпоинт /images/generations
+            // (выводится из адреса чат-эндпоинта, указанного в настройках)
+            async function askImage(prompt) {
+                const settings = requireApiSettings();
+                const imageEndpoint = settings.endpoint.replace(/\/chat\/completions\/?$/, '/images/generations');
+
+                const headers = { 'Content-Type': 'application/json' };
+                if (settings.apiKey) headers['Authorization'] = 'Bearer ' + settings.apiKey;
+
+                let response;
+                try {
+                    response = await withTimeout(
+                        fetch(imageEndpoint, {
+                            method: 'POST',
+                            headers,
+                            body: JSON.stringify({ prompt, n: 1, size: '1024x1024' })
+                        }),
+                        90000,
+                        'Рисование'
+                    );
+                } catch (e) {
+                    throw new Error('Не удалось связаться с эндпоинтом генерации изображений: ' + e.message);
+                }
+
+                if (!response.ok) {
+                    let details = '';
+                    try { details = (await response.json())?.error?.message || ''; } catch (e) {}
+                    throw new Error('Ваш эндпоинт не поддерживает генерацию изображений (' + response.status + (details ? ': ' + details : '') + ')');
+                }
+
+                const data = await response.json();
+                const item = data?.data?.[0];
+                if (!item) throw new Error('Картинка не получена — попробуйте ещё раз');
+                if (item.url) return item.url;
+                if (item.b64_json) return 'data:image/png;base64,' + item.b64_json;
+                throw new Error('Неожиданный формат ответа от эндпоинта изображений');
             }
 
             async function askAI(prompt, opts = {}) {
-                await waitForPuter();
-                maybeShowPuterHint();
                 const model = opts.model || getSelectedModel();
-                const payload = opts.useHistory ? [...chatHistory, { role: 'user', content: prompt }] : prompt;
-                const answer = await chatWithFallback(payload, model);
+                let messages;
+                if (opts.useHistory) {
+                    messages = [...chatHistory, { role: 'user', content: prompt }];
+                } else if (Array.isArray(prompt)) {
+                    messages = prompt;
+                } else {
+                    messages = [{ role: 'user', content: prompt }];
+                }
+                const answer = await callOpenAICompatible(messages, { model });
                 if (opts.useHistory) {
                     chatHistory.push({ role: 'user', content: prompt });
                     chatHistory.push({ role: 'assistant', content: answer });
@@ -1292,34 +2097,16 @@
                 return answer;
             }
 
-            // Анализ изображения через vision-модель
+            // Анализ изображения через vision-модель (OpenAI-совместимый формат image_url)
             async function askVision(imageDataUrl, text) {
-                await waitForPuter();
-                maybeShowPuterHint();
-                // Извлекаем base64-данные и mime
-                const match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
-                if (!match) throw new Error('Неверный формат изображения');
-                const [, mediaType, b64] = match;
-                // Используем claude-sonnet-4-5 — поддерживает vision; fallback на gpt-4o
-                const visionModels = ['claude-sonnet-4-5', 'gpt-4o'];
                 const messages = [{
                     role: 'user',
                     content: [
-                        { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+                        { type: 'image_url', image_url: { url: imageDataUrl } },
                         { type: 'text', text: text || 'Опиши это изображение подробно.' }
                     ]
                 }];
-                let lastErr;
-                for (const model of visionModels) {
-                    try {
-                        const response = await withTimeout(puter.ai.chat(messages, { model }), 60000, 'Vision (' + model + ')');
-                        return extractAnswer(response);
-                    } catch (e) {
-                        console.warn('[Quanta] Vision модель ' + model + ' ошибка:', e.message);
-                        lastErr = e;
-                    }
-                }
-                throw lastErr || new Error('Vision-модели недоступны');
+                return await callOpenAICompatible(messages);
             }
 
             function setPendingImage(file, dataUrl) {
@@ -1389,16 +2176,7 @@
                     addMessage('user', renderText(text)); input.value = '';
                     const loadingEl = addLoading('🎨 Рисую... (может занять 20–40 сек)');
                     try {
-                        await waitForPuter();
-                        maybeShowPuterHint();
-                        const imgEl = await withTimeout(puter.ai.txt2img(text), 90000, 'Рисование');
-                        // puter.ai.txt2img возвращает HTMLImageElement или строку-URL
-                        let src = null;
-                        if (typeof imgEl === 'string') { src = imgEl; }
-                        else if (imgEl instanceof HTMLImageElement) { src = imgEl.src; }
-                        else if (imgEl?.src) { src = imgEl.src; }
-                        else if (imgEl?.url) { src = imgEl.url; }
-                        if (!src) throw new Error('Картинка не получена — попробуйте ещё раз');
+                        const src = await askImage(text);
                         loadingEl.innerHTML = `<img src="${src}" alt="Art" style="width:100%; border-radius:12px; margin-top:8px;" onerror="this.style.display='none'; this.nextSibling.textContent='⚠️ Не удалось отобразить — скачайте по ссылке ниже.'"><span></span><br><a class="ws-download" href="${src}" download="quanta-art.png" target="_blank">💾 Скачать</a>`;
                     } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка генерации: ' + escapeHtml(e.message); }
                     return;
@@ -1416,6 +2194,7 @@
                     }
                     const answer = await askAI(finalPrompt, { useHistory: true });
                     loadingEl.innerHTML = renderText(answer); attachExport(loadingEl, answer, 'quanta-chat');
+                    if (typeof window.persistTurn === 'function') window.persistTurn(text, answer);
                 } catch (e) { loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message); }
             }
 
