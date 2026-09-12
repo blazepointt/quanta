@@ -1001,33 +1001,29 @@
         }
 
         .workspace {
-            width: 100%;
-            max-width: 700px;
-            margin: 0 auto 32px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            text-align: left;
-            overflow: hidden;
-        }
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    flex: 1; /* Растягивает чат на всё свободное пространство */
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    background: transparent; /* Убираем фон карточки */
+    border: none; /* Убираем рамки */
+}
 
-        .workspace-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
+/* Скрываем верхнюю плашку с названием и крестиком, как в ChatGPT */
+.workspace-header {
+    display: none; 
+}
 
-        .workspace-body {
-            padding: 18px;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-
+.workspace-body {
+    flex: 1;
+    padding: 20px 0;
+    overflow-y: auto;
+    max-height: none; /* Снимаем ограничение по высоте */
+    text-align: left;
+}
         .msg {
             margin-bottom: 16px;
             display: flex;
@@ -1281,7 +1277,16 @@
                 <div class="chat-avatar-large">Q</div>
                 <h2 id="dynamicGreeting" class="chat-greeting">Что вас интересует?</h2>
             </div>
-
+<div class="workspace" id="workspace" style="display:none;">
+                <div class="workspace-header">
+                    <span id="workspaceTitle">Quanta AI</span>
+                    <div style="display:flex; gap:6px;">
+                        <button class="icon-btn" onclick="resetChatHistory(); showToast('Начат новый диалог')" title="Новый диалог">🗑</button>
+                        <button class="icon-btn" onclick="closeWorkspace()" title="Закрыть">✕</button>
+                    </div>
+                </div>
+                <div class="workspace-body" id="workspaceBody"></div>
+            
             <div class="input-container animate-in delay-2">
                 <div class="input-wrapper">
                     <div class="image-preview-bar" id="imagePreviewBar">
@@ -1940,17 +1945,28 @@ document.addEventListener('click', function(e) {
             setTimeout(refreshSettingsBtnUI, 0);
 
             window.openWorkspace = function(title) {
-                const ws = document.getElementById('workspace');
-                document.getElementById('workspaceTitle').textContent = title || 'Quanta AI';
-                ws.style.display = 'block'; ws.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+    // Скрываем приветственный экран и быстрые действия
+    document.getElementById('welcomeScreen').style.display = 'none';
+    const quickActions = document.querySelector('.quick-actions');
+    if (quickActions) quickActions.style.display = 'none';
 
-            window.closeWorkspace = function() {
-                document.getElementById('workspace').style.display = 'none';
-                document.getElementById('workspaceBody').innerHTML = '';
-                document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
-            }
+    // Показываем чат на весь экран
+    const ws = document.getElementById('workspace');
+    ws.style.display = 'flex';
+}
 
+window.closeWorkspace = function() {
+    // Прячем чат и очищаем его
+    document.getElementById('workspace').style.display = 'none';
+    document.getElementById('workspaceBody').innerHTML = '';
+    
+    // Возвращаем приветственный экран
+    document.getElementById('welcomeScreen').style.display = 'flex';
+    const quickActions = document.querySelector('.quick-actions');
+    if (quickActions) quickActions.style.display = 'flex';
+    
+    document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
+}
             function addMessage(role, contentHtml) {
                 const body = document.getElementById('workspaceBody');
                 const div = document.createElement('div');
