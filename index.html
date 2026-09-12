@@ -66,6 +66,20 @@
             --sidebar-width: 260px;
         }
 
+.dropdown-item {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-align: left;
+}
+.dropdown-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
         /* --- Жесткий контроль переполнения --- */
         * {
             margin: 0;
@@ -1311,27 +1325,24 @@
                                 </svg>
                             </button>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <button class="mode-selector" onclick="toggleModel()">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                                </svg>
-                                <span id="modeLabel">GPT-4o Mini</span>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="6 9 12 15 18 9"/>
-                                </svg>
-                            </button>
-                            <button class="send-btn" onclick="handleSend()">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="22" y1="2" x2="11" y2="13"/>
-                                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                        <div class="model-select-wrapper" style="position: relative;">
+    <button class="mode-selector" id="modelDropdownBtn" type="button" onclick="toggleModelDropdown()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        <span id="modeLabel" style="font-weight: 500;">Авто (OpenRouter Free)</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+        </svg>
+    </button>
+    <div class="model-dropdown-menu" id="modelDropdownMenu" style="display: none; position: absolute; bottom: calc(100% + 8px); right: 0; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 6px; width: 260px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100;">
+        <div class="dropdown-item" onclick="selectModel('openrouter/free', 'Авто (OpenRouter Free)')">⚡ <b>Автовыбор</b> (лучшая доступная)</div>
+        <div class="dropdown-item" onclick="selectModel('nvidia/nemotron-3-super-120b-a12b:free', 'NVIDIA Nemotron 3')">🟢 <b>NVIDIA Nemotron 3</b> (умная)</div>
+        <div class="dropdown-item" onclick="selectModel('cohere/north-mini-code:free', 'Cohere North Code')">💻 <b>Cohere Code</b> (для кодинга)</div>
+        <div class="dropdown-item" onclick="selectModel('inclusionai/ling-3.0-flash-fin:free', 'Ling 3.0 Flash')">⚡ <b>Ling 3.0 Flash</b> (быстрая)</div>
+        <div class="dropdown-item" onclick="selectModel('dots-studio/dots-3-note-preview:free', 'Dots 3 Note')">📝 <b>Dots 3</b> (длинные тексты)</div>
+    </div>
+</div>
             <div class="quick-actions animate-in delay-3">
                 <button class="quick-action" onclick="runQuickAction('cluster', this)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -1856,17 +1867,29 @@
             };
             let currentModelIdx = 0;
 
-            window.toggleModel = function() {
-                currentModelIdx = (currentModelIdx + 1) % MODEL_LIST.length;
-                const m = MODEL_LIST[currentModelIdx];
-                const lbl = document.getElementById('modeLabel');
-                lbl.textContent = m.label;
-                lbl.style.color = m.color;
-                lbl.style.fontWeight = m.color ? 'bold' : '';
-                lbl.style.textShadow = m.shadow;
-                showToast(`Модель: ${m.label}`);
-            }
+            window.selectedFreeModel = localStorage.getItem('quanta_selected_model') || 'openrouter/free';
 
+window.toggleModelDropdown = function() {
+    const menu = document.getElementById('modelDropdownMenu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+};
+
+window.selectModel = function(modelId, label) {
+    window.selectedFreeModel = modelId;
+    localStorage.setItem('quanta_selected_model', modelId);
+    document.getElementById('modeLabel').textContent = label;
+    document.getElementById('modelDropdownMenu').style.display = 'none';
+    showToast(`Выбрана: ${label}`);
+};
+
+// Закрытие при клике вне меню
+document.addEventListener('click', function(e) {
+    const wrapper = document.querySelector('.model-select-wrapper');
+    const menu = document.getElementById('modelDropdownMenu');
+    if (menu && wrapper && !wrapper.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+});
             // Возвращает ID текущей выбранной модели
             function getSelectedModel() {
                 return MODEL_LIST[currentModelIdx].id;
@@ -2004,7 +2027,7 @@
             // Отправляет OpenAI-совместимый запрос на выбранный пользователем эндпоинт
             async function callOpenAICompatible(messages, opts = {}) {
                 const settings = requireApiSettings();
-                const model = opts.model || settings.model || getSelectedModel();
+                const model = window.selectedFreeModel || settings.model || 'openrouter/free';
 
                 const headers = { 'Content-Type': 'application/json' };
                 if (settings.apiKey) headers['Authorization'] = 'Bearer ' + settings.apiKey;
