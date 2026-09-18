@@ -7,6 +7,7 @@
     <meta name="description" content="Универсальная AI-платформа для ПК и смартфонов: чат с нейросетями, точная генерация картинок по описанию, анализ документов, таблиц и презентаций.">
     <meta name="keywords" content="quanta, quanta ai, ai платформа, нейросеть онлайн, чат с ии бесплатно, генерация изображений, анализ документов ai">
     <meta name="robots" content="index, follow">
+    <meta name="referrer" content="no-referrer-when-downgrade">
 
     <!-- Open Graph -->
     <meta property="og:locale" content="ru_RU">
@@ -170,13 +171,37 @@
             border-color: var(--accent);
         }
 
+        .sidebar-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 8px 6px;
+        }
+
         .sidebar-section-label {
-            padding: 8px 10px 6px;
             font-size: 0.72rem;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.06em;
+        }
+
+        .clear-history-btn {
+            display: none;
+            align-items: center;
+            gap: 4px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 5px;
+            transition: all 0.15s ease;
+        }
+        .clear-history-btn:hover {
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
         }
 
         .sidebar-history {
@@ -191,23 +216,61 @@
         .sidebar-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
+            gap: 8px;
+            padding: 8px 10px;
             border-radius: 9px;
             color: var(--text-secondary);
             font-size: 0.88rem;
             cursor: pointer;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
             transition: all 0.15s ease;
             text-decoration: none;
-            min-height: 42px;
+            min-height: 40px;
+            position: relative;
+            user-select: none;
         }
-        .sidebar-item svg { flex-shrink: 0; opacity: 0.8; }
+        .sidebar-item svg.item-icon { flex-shrink: 0; opacity: 0.8; }
         .sidebar-item:hover, .sidebar-item.active {
             background: var(--bg-hover);
             color: var(--text-primary);
+        }
+
+        .chat-item-text {
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.86rem;
+        }
+
+        .chat-delete-btn {
+            opacity: 0;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+        }
+        .sidebar-item:hover .chat-delete-btn,
+        .sidebar-item.active .chat-delete-btn {
+            opacity: 1;
+        }
+        .chat-delete-btn:hover {
+            background: rgba(239, 68, 68, 0.18);
+            color: var(--danger);
+        }
+
+        @media (max-width: 768px) {
+            .chat-delete-btn {
+                opacity: 0.85;
+            }
         }
 
         .sidebar-item.history-empty {
@@ -561,11 +624,17 @@
             max-width: 100%;
         }
 
-        .msg-bubble img {
+        .msg-bubble img.chat-attached-img {
             max-width: 100%;
+            max-height: 280px;
             border-radius: 10px;
             margin-top: 8px;
             border: 1px solid var(--border);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .msg-bubble img.chat-attached-img:hover {
+            transform: scale(1.01);
         }
 
         .table-responsive {
@@ -805,7 +874,7 @@
             border: none;
             outline: none;
             color: var(--text-primary);
-            font-size: 1rem; /* 16px prevents iOS zoom */
+            font-size: 1rem;
             font-family: inherit;
             resize: none;
             min-height: 48px;
@@ -884,7 +953,7 @@
             border-radius: 12px;
             padding: 6px;
             width: min(290px, 92vw);
-            max-height: 320px;
+            max-height: 340px;
             overflow-y: auto;
             box-shadow: 0 12px 36px rgba(0,0,0,0.6);
             z-index: 200;
@@ -945,12 +1014,12 @@
         .send-btn:active { transform: scale(0.95); }
         .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-        /* ===== Settings Modal (Mobile friendly) ===== */
+        /* ===== Modals (Settings & Confirm) ===== */
         .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             backdrop-filter: blur(4px);
             z-index: 1000;
             align-items: center;
@@ -1056,6 +1125,8 @@
         }
         .modal-btn-primary { background: var(--accent); color: #fff; }
         .modal-btn-primary:hover { background: var(--accent-hover); }
+        .modal-btn-danger { background: var(--danger); color: #fff; }
+        .modal-btn-danger:hover { opacity: 0.9; }
         .modal-btn-secondary { background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary); }
         .modal-btn-secondary:hover { background: var(--bg-hover); }
 
@@ -1110,7 +1181,7 @@
             border-color: var(--accent);
         }
 
-        /* ===== Generated Image Cards (Desktop & Mobile Optimized) ===== */
+        /* ===== Generated Image Cards ===== */
         .generated-img-card {
             width: 100%;
             max-width: 520px;
@@ -1134,6 +1205,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            min-height: 260px;
         }
         .generated-img-element {
             width: 100%;
@@ -1269,7 +1341,7 @@
         }
         .lightbox-close-btn:hover { background: var(--accent); transform: scale(1.08); }
 
-        /* ===== Responsive Breakpoints for Smartphones ===== */
+        /* ===== Responsive Breakpoints ===== */
         @media (max-width: 768px) {
             .mobile-menu-btn { display: flex; }
             .sidebar-close-btn { display: flex; }
@@ -1328,7 +1400,6 @@
             .header-badge { display: none; }
         }
 
-        /* Scrollbar styles */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
@@ -1358,28 +1429,40 @@
                 Новый чат
             </button>
 
-            <div class="sidebar-section-label">Быстрые сценарии</div>
+            <div class="sidebar-section-header">
+                <span class="sidebar-section-label">Быстрые сценарии</span>
+            </div>
             <div class="sidebar-item" onclick="runQuickAction('cluster'); toggleSidebar(false);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                Анализ отчётов и кластеры
+                <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                <span>Анализ отчётов и кластеры</span>
             </div>
             <div class="sidebar-item" onclick="runQuickAction('slides'); toggleSidebar(false);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                Генерация презентаций
+                <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span>Генерация презентаций</span>
             </div>
             <div class="sidebar-item" onclick="runQuickAction('code'); toggleSidebar(false);">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                Код и разработка
+                <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                <span>Код и разработка</span>
             </div>
 
-            <div class="sidebar-section-label" style="margin-top: 10px;">История чатов</div>
+            <!-- Chat History Header with Clear All Button -->
+            <div class="sidebar-section-header" style="margin-top: 10px;">
+                <span class="sidebar-section-label">История чатов</span>
+                <button class="clear-history-btn" id="clearHistoryBtn" onclick="promptClearAllChats()" title="Очистить всю историю">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    <span>Очистить</span>
+                </button>
+            </div>
+
             <div class="sidebar-history" id="firebaseChatList">
                 <div class="sidebar-item history-empty" id="chatHistoryPlaceholder">Войдите через Google, чтобы синхронизировать историю диалогов</div>
             </div>
 
             <div class="sidebar-bottom">
                 <button class="sidebar-item" id="sidebarSettingsBtn" onclick="openSettingsModal(); toggleSidebar(false);" title="Настройки API" style="border:none; background:transparent; width:100%; text-align:left; cursor:pointer;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
@@ -1527,7 +1610,17 @@
                                         <div class="dropdown-item" onclick="selectModel('openrouter/free', 'Автовыбор (Free)')">
                                             <span class="model-brand-dot" style="background:#a855f7; color:#a855f7;"></span>
                                             <span class="model-item-name" style="color:#a855f7;">Автовыбор</span>
-                                            <span class="model-item-tag">(Free)</span>
+                                            <span class="model-item-tag">(Free Router)</span>
+                                        </div>
+                                        <div class="dropdown-item" onclick="selectModel('meta-llama/llama-3.3-70b-instruct:free', 'Llama 3.3 70B')">
+                                            <span class="model-brand-dot" style="background:#3b82f6; color:#3b82f6;"></span>
+                                            <span class="model-item-name" style="color:#3b82f6;">Llama 3.3 70B</span>
+                                            <span class="model-item-tag">(Meta AI)</span>
+                                        </div>
+                                        <div class="dropdown-item" onclick="selectModel('deepseek/deepseek-r1:free', 'DeepSeek R1')">
+                                            <span class="model-brand-dot" style="background:#06b6d4; color:#06b6d4;"></span>
+                                            <span class="model-item-name" style="color:#06b6d4;">DeepSeek R1</span>
+                                            <span class="model-item-tag">(Рассуждения)</span>
                                         </div>
                                         <div class="dropdown-item" onclick="selectModel('nvidia/nemotron-3-super-120b-a12b:free', 'Nemotron 3')">
                                             <span class="model-brand-dot" style="background:#76b900; color:#76b900;"></span>
@@ -1544,11 +1637,6 @@
                                             <span class="model-item-name" style="color:#0ea5e9;">Ling Flash</span>
                                             <span class="model-item-tag">(Быстрая)</span>
                                         </div>
-                                        <div class="dropdown-item" onclick="selectModel('dots-studio/dots-3-note-preview:free', 'Dots 3')">
-                                            <span class="model-brand-dot" style="background:#f59e0b; color:#f59e0b;"></span>
-                                            <span class="model-item-name" style="color:#f59e0b;">Dots 3</span>
-                                            <span class="model-item-tag">(Тексты)</span>
-                                        </div>
                                         <div class="dropdown-item" onclick="selectModel('flux/image-gen', 'Flux Art')">
                                             <span class="model-brand-dot" style="background:#ec4899; color:#ec4899;"></span>
                                             <span class="model-item-name" style="color:#ec4899;">Flux Art</span>
@@ -1557,7 +1645,6 @@
                                     </div>
                                 </div>
 
-                                <!-- FIXED: Missing Send button in original snippet -->
                                 <button class="send-btn" id="sendBtn" onclick="handleSend()" title="Отправить" aria-label="Отправить">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                         <line x1="12" y1="19" x2="12" y2="5"/>
@@ -1583,7 +1670,7 @@
             </div>
 
             <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
-                Быстрые пресеты для смартфона:
+                Быстрые пресеты для смартфона и ПК:
             </div>
             <div class="modal-presets">
                 <button class="preset-btn" onclick="applyPreset('openrouter')">OpenRouter</button>
@@ -1594,7 +1681,7 @@
             <div class="modal-field">
                 <label for="settingsApiKey">API-ключ</label>
                 <input type="password" id="settingsApiKey" placeholder="sk-or-v1-... или ваш ключ">
-                <div class="modal-hint">Ключ хранится локально в localStorage вашего устройства. Для бесплатного OpenRouter можно оставить пустым или указать бесплатный ключ.</div>
+                <div class="modal-hint">Ключ хранится локально на вашем устройстве. Для бесплатного OpenRouter можно оставить пустым или указать личный ключ с openrouter.ai.</div>
             </div>
 
             <div class="modal-field">
@@ -1611,6 +1698,21 @@
             <div class="modal-actions">
                 <button class="modal-btn modal-btn-secondary" onclick="closeSettingsModal()">Отмена</button>
                 <button class="modal-btn modal-btn-primary" onclick="saveApiSettings()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Clear History Modal -->
+    <div class="modal-overlay" id="confirmClearModal">
+        <div class="modal-box" style="max-width: 400px; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 10px;">🗑️</div>
+            <h2 style="font-size: 1.15rem; margin-bottom: 8px;">Очистить все диалоги?</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 18px;">
+                Вся история переписки текущего аккаунта будет удалена без возможности восстановления.
+            </p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="closeConfirmClearModal()">Отмена</button>
+                <button class="modal-btn modal-btn-danger" onclick="executeClearAllChats()">Удалить всё</button>
             </div>
         </div>
     </div>
@@ -1661,7 +1763,7 @@
         };
 
         try {
-            if (typeof firebase !== 'undefined') {
+            if (typeof firebase !== 'undefined' && !firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
             }
         } catch (err) {
@@ -1677,9 +1779,181 @@
         let unsubscribeChatsListener = null;
 
         window.escapeHtml = function(str) {
+            if (!str) return '';
             return String(str).replace(/[&<>"']/g, function (c) {
                 return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
             });
+        };
+
+        // ==========================================
+        // MULTI-TIER CHAT STORAGE (BOUND TO GOOGLE ACCOUNT)
+        // ==========================================
+        // Guarantee: Chats are strictly separated and bound to currentUser.uid.
+        // Fallback: Synchronized with localStorage so chats are NEVER lost, even if
+        // Firestore rules or offline network block remote DB writes.
+        const ChatStorage = {
+            getKey: function(uid) {
+                const targetUid = uid || (window.currentUser ? window.currentUser.uid : 'guest');
+                return 'quanta_user_chats_' + targetUid;
+            },
+
+            getAllLocal: function(uid) {
+                try {
+                    const raw = localStorage.getItem(this.getKey(uid));
+                    return raw ? JSON.parse(raw) : [];
+                } catch (e) {
+                    return [];
+                }
+            },
+
+            saveAllLocal: function(chats, uid) {
+                try {
+                    localStorage.setItem(this.getKey(uid), JSON.stringify(chats));
+                } catch (e) {
+                    console.warn('LocalStorage save error:', e);
+                }
+            },
+
+            getChat: function(chatId, uid) {
+                const chats = this.getAllLocal(uid);
+                return chats.find(c => c.id === chatId) || null;
+            },
+
+            saveChatTurn: async function(chatId, userMsg, assistantMsg, extraMeta = {}) {
+                const uid = window.currentUser ? window.currentUser.uid : 'guest';
+                let chats = this.getAllLocal(uid);
+                let chat = chats.find(c => c.id === chatId);
+
+                const titleText = userMsg.length > 45 ? userMsg.slice(0, 45) + '…' : userMsg;
+
+                if (!chat) {
+                    chat = {
+                        id: chatId || ('chat_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+                        title: titleText || 'Новый диалог',
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        messages: []
+                    };
+                    chats.unshift(chat);
+                } else {
+                    chat.updatedAt = Date.now();
+                    // Update title if it was default
+                    if (chat.title === 'Новый диалог' || chat.messages.length === 0) {
+                        chat.title = titleText;
+                    }
+                }
+
+                // Add messages
+                if (userMsg) {
+                    chat.messages.push({
+                        role: 'user',
+                        content: userMsg,
+                        timestamp: Date.now(),
+                        meta: extraMeta.userMeta || null
+                    });
+                }
+                if (assistantMsg) {
+                    chat.messages.push({
+                        role: 'assistant',
+                        content: assistantMsg,
+                        timestamp: Date.now(),
+                        type: extraMeta.type || 'text',
+                        imageUrl: extraMeta.imageUrl || null,
+                        meta: extraMeta.assistantMeta || null
+                    });
+                }
+
+                // Sort chats by updatedAt desc
+                chats.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                this.saveAllLocal(chats, uid);
+
+                // Update UI list immediately
+                renderChatHistoryList(chats);
+
+                // Sync to Cloud Firestore if user is authenticated
+                if (window.currentUser && db) {
+                    try {
+                        const chatDocRef = db.collection('users').doc(window.currentUser.uid)
+                            .collection('chats').doc(chat.id);
+
+                        await chatDocRef.set({
+                            id: chat.id,
+                            title: chat.title,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            createdAt: chat.createdAt ? new Date(chat.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+
+                        if (userMsg) {
+                            await chatDocRef.collection('messages').add({
+                                role: 'user',
+                                content: userMsg,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        }
+                        if (assistantMsg) {
+                            await chatDocRef.collection('messages').add({
+                                role: 'assistant',
+                                content: assistantMsg,
+                                type: extraMeta.type || 'text',
+                                imageUrl: extraMeta.imageUrl || null,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        }
+                    } catch (fsErr) {
+                        console.info('Firestore cloud sync notice (local backup active):', fsErr.message);
+                    }
+                }
+
+                return chat.id;
+            },
+
+            deleteChat: async function(chatId) {
+                const uid = window.currentUser ? window.currentUser.uid : 'guest';
+                let chats = this.getAllLocal(uid);
+                chats = chats.filter(c => c.id !== chatId);
+                this.saveAllLocal(chats, uid);
+
+                // If deleted chat was open, reset workspace
+                if (window.currentChatId === chatId) {
+                    startNewChat();
+                }
+
+                renderChatHistoryList(chats);
+
+                // Delete from Firestore
+                if (window.currentUser && db) {
+                    try {
+                        await db.collection('users').doc(window.currentUser.uid)
+                            .collection('chats').doc(chatId).delete();
+                    } catch (e) {
+                        console.warn('Firestore delete notice:', e);
+                    }
+                }
+            },
+
+            clearAll: async function() {
+                const uid = window.currentUser ? window.currentUser.uid : 'guest';
+                const currentChats = this.getAllLocal(uid);
+                this.saveAllLocal([], uid);
+
+                startNewChat();
+                renderChatHistoryList([]);
+
+                // Delete from Firestore
+                if (window.currentUser && db) {
+                    try {
+                        const batch = db.batch();
+                        for (const c of currentChats) {
+                            const ref = db.collection('users').doc(window.currentUser.uid)
+                                .collection('chats').doc(c.id);
+                            batch.delete(ref);
+                        }
+                        await batch.commit();
+                    } catch (e) {
+                        console.warn('Firestore clear batch notice:', e);
+                    }
+                }
+            }
         };
 
         window.signInWithGoogle = async function () {
@@ -1688,14 +1962,13 @@
                 return;
             }
             try {
-                // Check if running on mobile or if popup fails
                 await auth.signInWithPopup(googleProvider);
             } catch (e) {
                 console.warn('Popup error, trying redirect:', e);
                 try {
                     await auth.signInWithRedirect(googleProvider);
                 } catch (e2) {
-                    showToast('Не удалось войти: ' + e.message);
+                    showToast('Не удалось войти: ' + e2.message);
                 }
             }
         };
@@ -1703,7 +1976,16 @@
         window.signOutUser = async function () {
             if (!auth) return;
             try {
+                if (unsubscribeChatsListener) {
+                    unsubscribeChatsListener();
+                    unsubscribeChatsListener = null;
+                }
                 await auth.signOut();
+                window.currentUser = null;
+                window.currentChatId = null;
+                closeWorkspace();
+                renderAuthUI(null);
+                renderChatHistoryList([]);
                 showToast('Вы вышли из профиля');
             } catch (e) {
                 console.error('Ошибка выхода:', e);
@@ -1721,7 +2003,6 @@
             if (menu && menu.classList.contains('open') && !menu.contains(e.target) && e.target !== row && !row?.contains(e.target)) {
                 menu.classList.remove('open');
             }
-            // Close model dropdown when clicking outside
             const modelMenu = document.getElementById('modelDropdownMenu');
             const modelBtn = document.getElementById('modelDropdownBtn');
             if (modelMenu && modelMenu.style.display === 'block' && !modelMenu.contains(e.target) && !modelBtn.contains(e.target)) {
@@ -1737,7 +2018,7 @@
                 const photo = user.photoURL || '';
                 const name = user.displayName || user.email || 'Пользователь';
                 container.innerHTML = `
-                    <div class="auth-user-row" id="authUserRow" onclick="toggleAuthUserMenu()">
+                    <div class="auth-user-row" id="authUserRow" onclick="toggleAuthUserMenu()" title="Профиль: ${escapeHtml(name)}">
                         ${photo ? `<img class="auth-avatar" src="${photo}" alt="avatar" referrerpolicy="no-referrer">` : `<div class="auth-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--accent);font-size:0.8rem;color:#fff;">${escapeHtml(name[0] || 'U')}</div>`}
                         <span class="auth-user-name">${escapeHtml(name)}</span>
                         <div class="auth-user-menu" id="authUserMenu">
@@ -1763,124 +2044,225 @@
                 window.currentUser = user;
                 renderAuthUI(user);
 
-                if (unsubscribeChatsListener) { unsubscribeChatsListener(); unsubscribeChatsListener = null; }
+                if (unsubscribeChatsListener) {
+                    unsubscribeChatsListener();
+                    unsubscribeChatsListener = null;
+                }
 
-                if (user && db) {
-                    subscribeToChatHistory(user.uid);
+                if (user) {
+                    // Instantly display user's isolated local chat history
+                    const localChats = ChatStorage.getAllLocal(user.uid);
+                    renderChatHistoryList(localChats);
+
+                    // Subscribe to Firestore cloud updates in parallel
+                    if (db) {
+                        subscribeToChatHistory(user.uid);
+                    }
                 } else {
                     window.currentChatId = null;
                     const list = document.getElementById('firebaseChatList');
-                    if (list) list.innerHTML = '<div class="sidebar-item history-empty">Войдите через Google, чтобы синхронизировать историю диалогов</div>';
+                    const clearBtn = document.getElementById('clearHistoryBtn');
+                    if (clearBtn) clearBtn.style.display = 'none';
+                    if (list) {
+                        list.innerHTML = '<div class="sidebar-item history-empty" id="chatHistoryPlaceholder">Войдите через Google, чтобы синхронизировать историю диалогов</div>';
+                    }
                 }
             });
         }
 
-        window.createNewFirestoreChat = async function (title) {
-            if (!window.currentUser || !db) { window.currentChatId = null; return null; }
-            try {
-                const chatRef = await db.collection('users').doc(window.currentUser.uid)
-                    .collection('chats').add({
-                        title: title || 'Новый диалог',
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                window.currentChatId = chatRef.id;
-                return chatRef.id;
-            } catch (e) {
-                console.error('Firestore chat error:', e);
-                return null;
-            }
-        };
-
-        window.saveMessageToFirestore = async function (role, content) {
-            if (!window.currentUser || !window.currentChatId || !db) return;
-            try {
-                const chatDocRef = db.collection('users').doc(window.currentUser.uid)
-                    .collection('chats').doc(window.currentChatId);
-
-                await chatDocRef.collection('messages').add({
-                    role,
-                    content,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                const updateData = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
-                if (role === 'user') {
-                    const snap = await chatDocRef.collection('messages').limit(2).get();
-                    if (snap.size <= 1) {
-                        updateData.title = content.slice(0, 50) + (content.length > 50 ? '…' : '');
-                    }
-                }
-                await chatDocRef.update(updateData);
-            } catch (e) {
-                console.error('Firestore save message error:', e);
-            }
-        };
-
         function subscribeToChatHistory(uid) {
             if (!db) return;
-            unsubscribeChatsListener = db.collection('users').doc(uid)
-                .collection('chats')
-                .orderBy('updatedAt', 'desc')
-                .limit(40)
-                .onSnapshot(function (snapshot) {
-                    renderChatHistoryList(snapshot.docs);
-                }, function (e) {
-                    console.error('Ошибка подписки на историю чатов:', e);
-                });
+            try {
+                unsubscribeChatsListener = db.collection('users').doc(uid)
+                    .collection('chats')
+                    .orderBy('updatedAt', 'desc')
+                    .limit(50)
+                    .onSnapshot(function (snapshot) {
+                        if (!snapshot || snapshot.empty) {
+                            const local = ChatStorage.getAllLocal(uid);
+                            renderChatHistoryList(local);
+                            return;
+                        }
+                        const cloudChats = [];
+                        snapshot.docs.forEach(doc => {
+                            const d = doc.data();
+                            cloudChats.push({
+                                id: doc.id,
+                                title: d.title || 'Диалог',
+                                updatedAt: d.updatedAt?.toMillis ? d.updatedAt.toMillis() : Date.now(),
+                                createdAt: d.createdAt?.toMillis ? d.createdAt.toMillis() : Date.now(),
+                                messages: d.messages || []
+                            });
+                        });
+                        // Merge cloud with local
+                        const local = ChatStorage.getAllLocal(uid);
+                        const mergedMap = new Map();
+                        local.forEach(c => mergedMap.set(c.id, c));
+                        cloudChats.forEach(c => {
+                            const existing = mergedMap.get(c.id);
+                            if (!existing || (existing.messages?.length || 0) <= (c.messages?.length || 0)) {
+                                mergedMap.set(c.id, { ...(existing || {}), ...c });
+                            }
+                        });
+                        const merged = Array.from(mergedMap.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                        ChatStorage.saveAllLocal(merged, uid);
+                        renderChatHistoryList(merged);
+                    }, function (e) {
+                        console.info('Using local account storage for chats:', e.message);
+                        // Still load local account chats smoothly
+                        const local = ChatStorage.getAllLocal(uid);
+                        renderChatHistoryList(local);
+                    });
+            } catch (e) {
+                console.warn('Firestore subscribe error:', e);
+                const local = ChatStorage.getAllLocal(uid);
+                renderChatHistoryList(local);
+            }
         }
 
-        function renderChatHistoryList(docs) {
+        function renderChatHistoryList(chats) {
             const list = document.getElementById('firebaseChatList');
+            const clearBtn = document.getElementById('clearHistoryBtn');
             if (!list) return;
 
-            if (!docs.length) {
-                list.innerHTML = '<div class="sidebar-item history-empty">Пока нет диалогов — начните новый чат</div>';
+            if (!chats || !chats.length) {
+                if (clearBtn) clearBtn.style.display = 'none';
+                if (window.currentUser) {
+                    list.innerHTML = '<div class="sidebar-item history-empty">Пока нет диалогов — начните новый чат</div>';
+                } else {
+                    list.innerHTML = '<div class="sidebar-item history-empty" id="chatHistoryPlaceholder">Войдите через Google, чтобы синхронизировать историю диалогов</div>';
+                }
                 return;
             }
 
-            list.innerHTML = docs.map(function (doc) {
-                const data = doc.data();
-                const title = data.title || 'Диалог';
-                const active = doc.id === window.currentChatId ? ' active' : '';
-                return `<div class="sidebar-item${active}" onclick="window.openFirestoreChat('${doc.id}')" title="${escapeHtml(title)}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <span>${escapeHtml(title)}</span>
-                </div>`;
+            if (clearBtn) clearBtn.style.display = 'inline-flex';
+
+            list.innerHTML = chats.map(function (chat) {
+                const title = chat.title || 'Диалог';
+                const active = chat.id === window.currentChatId ? ' active' : '';
+                return `
+                    <div class="sidebar-item${active}" onclick="window.openLocalChat('${chat.id}')" title="${escapeHtml(title)}">
+                        <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <span class="chat-item-text">${escapeHtml(title)}</span>
+                        <button class="chat-delete-btn" onclick="window.deleteSingleChat('${chat.id}', event)" title="Удалить этот чат" aria-label="Удалить чат">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6 6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
             }).join('');
         }
 
-        window.openFirestoreChat = async function (chatId) {
-            if (!window.currentUser || !db) return;
-            try {
-                window.currentChatId = chatId;
-                openWorkspace('Чат');
-                resetChatHistory();
+        window.openLocalChat = async function(chatId) {
+            const uid = window.currentUser ? window.currentUser.uid : 'guest';
+            const chat = ChatStorage.getChat(chatId, uid);
+            if (!chat) return;
 
-                const messagesSnap = await db.collection('users').doc(window.currentUser.uid)
-                    .collection('chats').doc(chatId)
-                    .collection('messages').orderBy('createdAt', 'asc').get();
+            window.currentChatId = chatId;
+            openWorkspace();
+            resetChatHistory();
 
-                messagesSnap.forEach(function (doc) {
-                    const m = doc.data();
-                    addMessage(m.role === 'assistant' ? 'ai' : 'user', renderText(m.content));
+            const body = document.getElementById('workspaceBody');
+            body.innerHTML = '';
+
+            // If Firestore is available and chat has few messages locally, attempt to fetch messages from cloud
+            if (window.currentUser && db && (!chat.messages || !chat.messages.length)) {
+                try {
+                    const snap = await db.collection('users').doc(window.currentUser.uid)
+                        .collection('chats').doc(chatId)
+                        .collection('messages').orderBy('createdAt', 'asc').get();
+
+                    if (!snap.empty) {
+                        chat.messages = [];
+                        snap.forEach(doc => {
+                            const d = doc.data();
+                            chat.messages.push({
+                                role: d.role,
+                                content: d.content,
+                                type: d.type || 'text',
+                                imageUrl: d.imageUrl || null
+                            });
+                        });
+                        ChatStorage.saveChatTurn(chatId, null, null);
+                    }
+                } catch (e) {
+                    console.warn('Firestore fetch messages notice:', e);
+                }
+            }
+
+            // Render existing messages
+            if (chat.messages && chat.messages.length) {
+                chat.messages.forEach(m => {
+                    if (m.type === 'image' && m.imageUrl) {
+                        const safeDisplay = escapeHtml(m.content || 'Изображение');
+                        const genId = 'img_hist_' + Math.floor(Math.random() * 100000);
+                        const el = addMessage('ai', '');
+                        el.innerHTML = `
+                            <div class="generated-img-card" id="${genId}">
+                                <div class="generated-img-view" onclick="openImageLightbox('${m.imageUrl}', '${safeDisplay}')">
+                                    <img class="generated-img-element" src="${m.imageUrl}" alt="${safeDisplay}" />
+                                    <div class="generated-img-overlay">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                        <span>Нажмите для зума</span>
+                                    </div>
+                                </div>
+                                <div class="generated-img-footer">
+                                    <div class="generated-prompt-badge"><span>✨</span> <b>${safeDisplay}</b></div>
+                                    <div class="generated-img-btns">
+                                        <button class="img-action-btn img-action-btn-primary" onclick="downloadGeneratedImage('${m.imageUrl}', 'quanta-${genId}.jpg')">💾 Скачать</button>
+                                        <button class="img-action-btn" onclick="openImageLightbox('${m.imageUrl}', '${safeDisplay}')">🔍 На весь экран</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        addMessage(m.role === 'assistant' ? 'ai' : 'user', renderText(m.content));
+                    }
                     chatHistory.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content });
                 });
-
-                document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(el => el.classList.remove('active'));
-                toggleSidebar(false);
-            } catch (e) {
-                showToast('Не удалось загрузить чат');
             }
+
+            document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(el => el.classList.remove('active'));
+            const targetEl = document.querySelector(`#firebaseChatList .sidebar-item[onclick*="${chatId}"]`);
+            if (targetEl) targetEl.classList.add('active');
+
+            toggleSidebar(false);
+            scrollToBottom();
         };
 
-        window.persistTurn = async function (userText, assistantText) {
-            if (!window.currentUser) return;
+        window.deleteSingleChat = function(chatId, event) {
+            if (event) event.stopPropagation();
+            ChatStorage.deleteChat(chatId);
+            showToast('Чат удален');
+        };
+
+        window.promptClearAllChats = function() {
+            const modal = document.getElementById('confirmClearModal');
+            if (modal) modal.classList.add('open');
+        };
+
+        window.closeConfirmClearModal = function() {
+            const modal = document.getElementById('confirmClearModal');
+            if (modal) modal.classList.remove('open');
+        };
+
+        window.executeClearAllChats = function() {
+            closeConfirmClearModal();
+            ChatStorage.clearAll();
+            showToast('История диалогов очищена');
+        };
+
+        window.persistTurn = async function (userText, assistantText, type = 'text', extra = {}) {
             if (!window.currentChatId) {
-                await window.createNewFirestoreChat(userText.slice(0, 50));
+                window.currentChatId = 'chat_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
             }
-            await window.saveMessageToFirestore('user', userText);
-            await window.saveMessageToFirestore('assistant', assistantText);
+            await ChatStorage.saveChatTurn(window.currentChatId, userText, assistantText, {
+                type,
+                imageUrl: extra.imageUrl || null
+            });
         };
 
         // ==========================================
@@ -1904,7 +2286,6 @@
                     overlay?.classList.remove('open');
                 }
             } else {
-                // Desktop: collapse / expand
                 const willCollapse = open === undefined ? !sidebar.classList.contains('collapsed') : !open;
                 sidebar.classList.toggle('collapsed', willCollapse);
                 try {
@@ -1915,12 +2296,12 @@
 
         window.showToast = function(message) {
             const toast = document.getElementById('toast');
+            if (!toast) return;
             toast.textContent = message;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         };
 
-        // Random greetings
         const greetings = [
             "Что вас интересует?",
             "Чем могу помочь сегодня?",
@@ -1937,7 +2318,6 @@
             }, speed);
         }
 
-        // Auto-expand textarea on mobile & desktop
         const mainInput = document.getElementById('mainInput');
         mainInput.addEventListener('input', function() {
             this.style.height = 'auto';
@@ -1945,7 +2325,6 @@
         });
 
         mainInput.addEventListener('keydown', function(e) {
-            // Send on Enter (Shift+Enter for newline) on PC or devices with physical keyboard
             if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
                 if (window.innerWidth > 768 || (!('ontouchstart' in window) && navigator.maxTouchPoints === 0)) {
                     e.preventDefault();
@@ -1954,7 +2333,6 @@
             }
         });
 
-        // Floating scroll down button listener
         const chatContainerEl = document.getElementById('chatContainer');
         const scrollBtnEl = document.getElementById('scrollBottomBtn');
         if (chatContainerEl && scrollBtnEl) {
@@ -1987,6 +2365,7 @@
             document.getElementById('mainInput').value = '';
             document.getElementById('mainInput').style.height = 'auto';
             removePendingImage();
+            document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(el => el.classList.remove('active'));
             showToast('Начат новый диалог');
         };
 
@@ -2021,24 +2400,6 @@
             return el;
         }
 
-        function updateSpeedIndicator(containerEl, speed, tokens, elapsedSec, isDone = false) {
-            if (!containerEl) return;
-            const badge = containerEl.querySelector('.gen-speed-badge');
-            if (!badge) return;
-            badge.style.display = 'inline-flex';
-            badge.classList.toggle('live', !isDone);
-            badge.classList.toggle('done', isDone);
-
-            const textEl = badge.querySelector('.gen-speed-text');
-            if (textEl) {
-                if (isDone) {
-                    textEl.textContent = `⚡ ${speed} ток/с (${tokens} токенов за ${elapsedSec}с)`;
-                } else {
-                    textEl.textContent = `⚡ ${speed} ток/с • ${tokens} токенов`;
-                }
-            }
-        }
-
         function scrollToBottom() {
             const container = document.getElementById('chatContainer');
             setTimeout(() => {
@@ -2046,17 +2407,17 @@
             }, 30);
         }
 
-        // Code rendering & copying
         let codeCounter = 0;
         function renderText(text) {
+            if (!text) return '';
             let safe = escapeHtml(text);
-            // Tables wrapped in responsive container
+            // Responsive markdown tables
             safe = safe.replace(/(\|.+?\|\n)+/g, function(tableText) {
                 const lines = tableText.trim().split('\n');
                 if (lines.length < 2) return tableText;
                 let html = '<div class="table-responsive"><table>';
                 lines.forEach((line, idx) => {
-                    if (line.includes('---')) return; // delimiter line
+                    if (line.includes('---')) return;
                     const cells = line.split('|').filter((_, cIdx, arr) => cIdx > 0 && cIdx < arr.length - 1);
                     const tag = idx === 0 ? 'th' : 'td';
                     html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
@@ -2115,7 +2476,6 @@
             setTimeout(() => URL.revokeObjectURL(url), 5000);
         }
 
-        // Export utility
         let _exportRegistry = {};
         let _exportCounter = 0;
         function registerExport(text) {
@@ -2148,14 +2508,39 @@
         };
 
         // ==========================================
-        // SETTINGS & API CLIENT
+        // SETTINGS & API CLIENT (SMART MULTI-MODEL FALLBACK)
         // ==========================================
         const API_SETTINGS_KEY = 'quanta_api_settings';
+
+        // Verified working free models list
+        const FREE_MODELS_CATALOG = {
+            'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter' },
+            'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI' },
+            'deepseek/deepseek-r1:free': { name: 'DeepSeek R1', brand: 'DeepSeek' },
+            'nvidia/nemotron-3-super-120b-a12b:free': { name: 'Nemotron 3', brand: 'NVIDIA' },
+            'cohere/north-mini-code:free': { name: 'Cohere Code', brand: 'Cohere' },
+            'inclusionai/ling-3.0-flash-fin:free': { name: 'Ling Flash', brand: 'Inclusion' },
+            'flux/image-gen': { name: 'Flux Art', brand: 'Flux / SDXL' }
+        };
+
+        // Vision-capable models
+        const VISION_MODELS_CHAIN = [
+            'google/gemini-2.0-flash-exp:free',
+            'meta-llama/llama-3.2-11b-vision-instruct:free',
+            'inclusionai/ling-3.0-flash-vl:free',
+            'openrouter/free'
+        ];
+
+        // Robust fallback text models
+        const FALLBACK_TEXT_MODELS = [
+            'openrouter/free',
+            'meta-llama/llama-3.3-70b-instruct:free',
+            'deepseek/deepseek-r1:free'
+        ];
 
         function getApiSettings() {
             try {
                 const s = JSON.parse(localStorage.getItem(API_SETTINGS_KEY)) || {};
-                // Default endpoint to OpenRouter if not set
                 if (!s.endpoint) s.endpoint = 'https://openrouter.ai/api/v1/chat/completions';
                 if (s.apiKey) {
                     s.apiKey = String(s.apiKey).replace(/[^\x00-\x7F]/g, '').trim();
@@ -2167,7 +2552,7 @@
         }
 
         function refreshSettingsUI() {
-            const { apiKey, endpoint } = getApiSettings();
+            const { apiKey } = getApiSettings();
             const configured = !!(apiKey && apiKey.length > 5);
             const btn1 = document.getElementById('headerSettingsBtn');
             const btn2 = document.getElementById('sidebarSettingsBtn');
@@ -2197,7 +2582,7 @@
             }
             if (/[^\x00-\x7F]/.test(apiKey)) {
                 apiKey = apiKey.replace(/[^\x00-\x7F]/g, '').trim();
-                showToast('Ключ очищен от недопустимых символов');
+                showToast('Ключ очищен от спецсимволов');
             }
             localStorage.setItem(API_SETTINGS_KEY, JSON.stringify({ apiKey, endpoint, model }));
             refreshSettingsUI();
@@ -2219,7 +2604,7 @@
             showToast('Пресет применен');
         };
 
-        // Model dropdown
+        // Model selector state
         window.selectedFreeModel = localStorage.getItem('quanta_selected_model') || 'openrouter/free';
 
         window.toggleModelDropdown = function() {
@@ -2232,14 +2617,9 @@
             localStorage.setItem('quanta_selected_model', modelId);
             const modeEl = document.getElementById('modeLabel');
             if (modeEl) {
-                modeEl.textContent = label.length > 16 ? label.slice(0, 15) + '…' : label;
-                modeEl.style.color = 'var(--text-secondary)'; // standard neutral gray
+                modeEl.textContent = label.length > 15 ? label.slice(0, 14) + '…' : label;
+                modeEl.style.color = 'var(--text-secondary)';
             }
-            const btn = document.getElementById('modelDropdownBtn');
-            if (btn) {
-                btn.style.color = 'var(--text-secondary)'; // standard neutral gray
-            }
-
             const input = document.getElementById('mainInput');
             if (input) {
                 if (modelId === 'flux/image-gen') {
@@ -2290,7 +2670,6 @@
             showToast('Режим генерации картинок: введите описание');
         };
 
-        // Quick action toggle
         window.runQuickAction = function(kind, btn) {
             if (btn) {
                 document.querySelectorAll('.quick-action').forEach(el => el.classList.remove('active'));
@@ -2303,11 +2682,10 @@
             else if (kind === 'slides') handleSlides(text);
             else if (kind === 'research') handleResearch(text);
             else if (kind === 'website') handleWebsite(text);
-            else if (kind === 'code') handleGenericMode(text, 'code', 'Кодинг', 'Ты senior-разработчик. Пиши полный код в блоках с указанием языка. Запрос: ');
+            else if (kind === 'code') handleGenericMode(text, 'code', 'Кодинг', 'Ты senior-разработчик. Пиши чистый, полный код в блоках с указанием языка. Запрос: ');
             else if (kind === 'table') triggerFileUpload();
         };
 
-        // Voice input with mobile feedback
         window.startVoiceInput = function() {
             const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRec) {
@@ -2332,10 +2710,23 @@
             recognition.start();
         };
 
-        // API Caller with streaming support, tokens/sec indicator and fallback
-        async function callOpenAICompatible(messages, onProgress = null) {
+        // ==========================================
+        // CALL OPENAI COMPATIBLE (WITH AUTOMATIC RETRY & FALLBACK)
+        // ==========================================
+        async function callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
             const settings = getApiSettings();
-            const model = window.selectedFreeModel || settings.model || 'openrouter/free';
+            
+            // Determine primary model: NEVER send 'flux/image-gen' to LLM completions
+            let primaryModel = explicitModel || window.selectedFreeModel || settings.model || 'openrouter/free';
+            if (primaryModel === 'flux/image-gen') {
+                primaryModel = 'openrouter/free';
+            }
+
+            // Candidates list: primary model first, then fallback models
+            const modelsToTry = [primaryModel];
+            for (const fb of FALLBACK_TEXT_MODELS) {
+                if (!modelsToTry.includes(fb)) modelsToTry.push(fb);
+            }
 
             const headers = {
                 'Content-Type': 'application/json',
@@ -2350,130 +2741,143 @@
             }
 
             const canStream = typeof onProgress === 'function' && typeof ReadableStream !== 'undefined';
-            const body = { model, messages, stream: canStream };
+            let lastError = null;
 
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 90000);
-            const startTime = performance.now();
-            let firstChunkTime = null;
+            for (let i = 0; i < modelsToTry.length; i++) {
+                const curModel = modelsToTry[i];
+                const body = { model: curModel, messages, stream: canStream };
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 85000);
+                const startTime = performance.now();
+                let firstChunkTime = null;
 
-            try {
-                const response = await fetch(settings.endpoint, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(body),
-                    signal: controller.signal
-                });
-                clearTimeout(timer);
+                try {
+                    const response = await fetch(settings.endpoint, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(body),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timer);
 
-                if (!response.ok) {
-                    let errText = '';
-                    try {
-                        const errJson = await response.json();
-                        errText = errJson?.error?.message || response.statusText;
-                    } catch (e) {
-                        errText = await response.text();
+                    if (!response.ok) {
+                        let errText = '';
+                        try {
+                            const errJson = await response.json();
+                            errText = errJson?.error?.message || response.statusText;
+                        } catch (e) {
+                            errText = await response.text();
+                        }
+
+                        if (response.status === 401) {
+                            openSettingsModal();
+                            throw new Error('Требуется API-ключ. Настройте его в параметрах ⚙️');
+                        }
+
+                        // If rate limit (429), not found (404), or server overload (502/503), try next fallback model
+                        if ([404, 429, 500, 502, 503].includes(response.status) && i < modelsToTry.length - 1) {
+                            console.warn(`Model ${curModel} error (${response.status}). Retrying with fallback: ${modelsToTry[i + 1]}`);
+                            lastError = new Error(errText);
+                            continue;
+                        }
+                        throw new Error(`Ошибка ${response.status}: ${errText || 'Сбой сервера'}`);
                     }
-                    if (response.status === 401) {
-                        openSettingsModal();
-                        throw new Error('Требуется API-ключ. Настройте его в параметрах ⚙️');
-                    }
-                    throw new Error(`Ошибка ${response.status}: ${errText || 'Сбой сервера'}`);
-                }
 
-                // If streaming requested and response has body stream
-                if (canStream && response.body && response.body.getReader) {
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder('utf-8');
-                    let fullText = '';
-                    let buffer = '';
-                    let tokenCount = 0;
+                    // Handle streaming response
+                    if (canStream && response.body && response.body.getReader) {
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder('utf-8');
+                        let fullText = '';
+                        let buffer = '';
+                        let tokenCount = 0;
 
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
 
-                        const chunk = decoder.decode(value, { stream: true });
-                        buffer += chunk;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
 
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop() || ''; // keep trailing unfinished line
+                            for (const line of lines) {
+                                const trimmed = line.trim();
+                                if (!trimmed || trimmed.startsWith(':')) continue;
+                                if (trimmed === 'data: [DONE]') continue;
 
-                        for (const line of lines) {
-                            const trimmed = line.trim();
-                            if (!trimmed || trimmed.startsWith(':')) continue; // keep-alive or comment
-                            if (trimmed === 'data: [DONE]') continue;
+                                if (trimmed.startsWith('data:')) {
+                                    const jsonStr = trimmed.slice(5).trim();
+                                    try {
+                                        const parsed = JSON.parse(jsonStr);
+                                        const delta = parsed?.choices?.[0]?.delta?.content ||
+                                                      parsed?.choices?.[0]?.text ||
+                                                      parsed?.delta?.content || '';
+                                        if (delta) {
+                                            if (!firstChunkTime) firstChunkTime = performance.now();
+                                            fullText += delta;
+                                            tokenCount += Math.max(1, Math.round(delta.length / 3.3));
 
-                            if (trimmed.startsWith('data:')) {
-                                const jsonStr = trimmed.slice(5).trim();
-                                try {
-                                    const parsed = JSON.parse(jsonStr);
-                                    const delta = parsed?.choices?.[0]?.delta?.content ||
-                                                  parsed?.choices?.[0]?.text ||
-                                                  parsed?.delta?.content || '';
-                                    if (delta) {
-                                        if (!firstChunkTime) firstChunkTime = performance.now();
-                                        fullText += delta;
-                                        // Approximate tokens: words + punctuation
-                                        const deltaTokens = Math.max(1, Math.round(delta.length / 3.3));
-                                        tokenCount += deltaTokens;
+                                            const elapsedSec = Math.max(0.08, (performance.now() - (firstChunkTime || startTime)) / 1000);
+                                            const speed = (tokenCount / elapsedSec).toFixed(1);
 
-                                        const elapsedSec = Math.max(0.08, (performance.now() - (firstChunkTime || startTime)) / 1000);
-                                        const speed = (tokenCount / elapsedSec).toFixed(1);
-
-                                        onProgress({
-                                            text: fullText,
-                                            tokens: tokenCount,
-                                            speed: parseFloat(speed),
-                                            elapsedSec: elapsedSec.toFixed(1),
-                                            isDone: false
-                                        });
-                                    }
-                                } catch (parseErr) {
-                                    // Non-JSON SSE line, ignore
+                                            onProgress({
+                                                text: fullText,
+                                                tokens: tokenCount,
+                                                speed: parseFloat(speed),
+                                                elapsedSec: elapsedSec.toFixed(1),
+                                                isDone: false
+                                            });
+                                        }
+                                    } catch (parseErr) {}
                                 }
                             }
                         }
+
+                        if (fullText.trim()) {
+                            const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
+                            const finalTokens = Math.max(tokenCount, Math.round(fullText.length / 3.5));
+                            const finalSpeed = (finalTokens / totalSec).toFixed(1);
+
+                            onProgress({
+                                text: fullText,
+                                tokens: finalTokens,
+                                speed: parseFloat(finalSpeed),
+                                elapsedSec: totalSec.toFixed(1),
+                                isDone: true
+                            });
+                            return fullText;
+                        }
                     }
 
-                    if (fullText.trim()) {
-                        const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
-                        const finalTokens = Math.max(tokenCount, Math.round(fullText.length / 3.5));
-                        const finalSpeed = (finalTokens / totalSec).toFixed(1);
+                    // Fallback to json response
+                    const data = await response.json();
+                    const resultText = data?.choices?.[0]?.message?.content || data?.message?.content || data?.text || JSON.stringify(data);
+                    const totalSec = Math.max(0.1, (performance.now() - startTime) / 1000);
+                    const approxTokens = Math.max(1, Math.round(resultText.length / 3.5));
+                    const speed = (approxTokens / totalSec).toFixed(1);
 
+                    if (onProgress) {
                         onProgress({
-                            text: fullText,
-                            tokens: finalTokens,
-                            speed: parseFloat(finalSpeed),
+                            text: resultText,
+                            tokens: approxTokens,
+                            speed: parseFloat(speed),
                             elapsedSec: totalSec.toFixed(1),
                             isDone: true
                         });
-                        return fullText;
+                    }
+                    return resultText;
+                } catch (err) {
+                    clearTimeout(timer);
+                    lastError = err;
+                    if (err.name === 'AbortError') {
+                        if (i < modelsToTry.length - 1) continue;
+                        throw new Error('Превышено время ожидания ответа (85 сек)');
+                    }
+                    if (i === modelsToTry.length - 1) {
+                        throw lastError;
                     }
                 }
-
-                // Non-streaming fallback or if stream body returned empty
-                const data = await response.json();
-                const resultText = data?.choices?.[0]?.message?.content || data?.message?.content || data?.text || JSON.stringify(data);
-                const totalSec = Math.max(0.1, (performance.now() - startTime) / 1000);
-                const approxTokens = Math.max(1, Math.round(resultText.length / 3.5));
-                const speed = (approxTokens / totalSec).toFixed(1);
-
-                if (onProgress) {
-                    onProgress({
-                        text: resultText,
-                        tokens: approxTokens,
-                        speed: parseFloat(speed),
-                        elapsedSec: totalSec.toFixed(1),
-                        isDone: true
-                    });
-                }
-                return resultText;
-            } catch (err) {
-                clearTimeout(timer);
-                if (err.name === 'AbortError') throw new Error('Превышено время ожидания ответа (90 сек)');
-                throw err;
             }
+            throw lastError || new Error('Не удалось получить ответ');
         }
 
         async function askAI(prompt, opts = {}) {
@@ -2485,7 +2889,7 @@
             } else {
                 messages = [{ role: 'user', content: prompt }];
             }
-            const answer = await callOpenAICompatible(messages, opts.onProgress);
+            const answer = await callOpenAICompatible(messages, opts.onProgress, opts.model);
             if (opts.useHistory) {
                 chatHistory.push({ role: 'user', content: prompt });
                 chatHistory.push({ role: 'assistant', content: answer });
@@ -2494,22 +2898,33 @@
             return answer;
         }
 
+        // Vision router: always uses a vision-capable multimodal model
         async function askVision(imageDataUrl, text, opts = {}) {
             const messages = [{
                 role: 'user',
                 content: [
-                    { type: 'text', text: text || 'Опиши это изображение подробно.' },
+                    { type: 'text', text: text || 'Опиши и проанализируй это изображение подробно на русском языке.' },
                     { type: 'image_url', image_url: { url: imageDataUrl } }
                 ]
             }];
-            return await callOpenAICompatible(messages, opts.onProgress);
+
+            let lastErr = null;
+            for (const vModel of VISION_MODELS_CHAIN) {
+                try {
+                    return await callOpenAICompatible(messages, opts.onProgress, vModel);
+                } catch (e) {
+                    console.warn(`Vision model ${vModel} failed, trying next:`, e);
+                    lastErr = e;
+                }
+            }
+            throw lastErr || new Error('Ошибка анализа изображения мультимодальной моделью');
         }
 
         function isImagePrompt(text) {
             if (!text) return false;
             const t = text.trim();
             if (window.selectedFreeModel === 'flux/image-gen') return true;
-            return /^(нарисуй|рисуй|сгенерируй|создай|изобрази|сделай|draw|paint|generate|create)\s+/ui.test(t) ||
+            return /^(нарисуй мне|нарисуй|рисуй|сгенерируй мне|сгенерируй картинку|сгенерируй изображение|сгенерируй фото|сгенерируй|создай мне|создай картинку|создай фото|создай изображение|создай|изобрази|сделай фото|сделай картинку|сделай арт|нарисуйте|картинка|рисунок|фото|иллюстрация|draw|generate image|generate photo|create image|paint)\s*/ui.test(t) ||
                    /^(картинка|рисунок|фото)\s*[:\-–—]\s*/ui.test(t) ||
                    /(нарисуй|сгенерируй|создай)\s+(мне\s+)?(картинк|фото|изображен|арт|пейзаж|портрет)/ui.test(t);
         }
@@ -2517,46 +2932,13 @@
         function cleanImagePrompt(prompt) {
             if (!prompt) return '';
             return prompt
-                .replace(/^(нарисуй мне|нарисуй|рисуй|сгенерируй фото|сгенерируй картинку|сгенерируй изображение|сгенерируй|изобрази|создай картинку|создай фото|создай изображение|создай|сделай фото|сделай картинку|картинка|рисунок|фото|draw|generate image|generate photo|create image|paint)\s*/ui, '')
+                .replace(/^(нарисуй мне|нарисуй|рисуй|сгенерируй мне|сгенерируй картинку|сгенерируй изображение|сгенерируй фото|сгенерируй|создай мне|создай картинку|создай фото|создай изображение|создай|изобрази|сделай фото|сделай картинку|сделай арт|нарисуйте|картинка|рисунок|фото|иллюстрация|draw|generate image|generate photo|create image|paint)\s*/ui, '')
                 .replace(/^[:\-–—]\s*/, '')
                 .trim() || prompt.trim();
         }
 
-        async function generateImage(promptText) {
-            const clean = cleanImagePrompt(promptText);
-            const settings = getApiSettings();
-
-            // 1. If user configured official OpenAI with custom key
-            if (settings.apiKey && settings.endpoint && settings.endpoint.includes('api.openai.com')) {
-                try {
-                    const imageEndpoint = settings.endpoint.replace(/\/chat\/completions\/?$/, '/images/generations');
-                    const res = await fetch(imageEndpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + settings.apiKey
-                        },
-                        body: JSON.stringify({ prompt: clean, n: 1, size: '1024x1024' })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        const item = data?.data?.[0];
-                        if (item?.url) return item.url;
-                        if (item?.b64_json) return 'data:image/png;base64,' + item.b64_json;
-                    }
-                } catch (e) {
-                    console.warn('OpenAI image error, fallback to Pollinations:', e);
-                }
-            }
-
-            // 2. High-speed, free Flux/SDXL AI image generation via Pollinations
-            const seed = Math.floor(Math.random() * 9999999);
-            const encoded = encodeURIComponent(clean || promptText);
-            return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true`;
-        }
-
         // ==========================================
-        // RUSSIAN -> ENGLISH PROMPT TRANSLATOR FOR AI DIFFUSION
+        // PROMPT TRANSLATOR FOR HIGH QUALITY DIFFUSION (RUSSIAN -> ENGLISH)
         // ==========================================
         const PROMPT_TRANSLATION_DICT = {
             'зимний лес': 'winter forest, snow-covered pine trees, frozen winter landscape, soft warm sunlight filtering through branches, hyperrealistic, 8k resolution, cinematic atmosphere',
@@ -2576,7 +2958,6 @@
             'ночной город': 'cyberpunk night city, neon lights, dark rainy asphalt reflections, towering skyscrapers, cinematic, 8k',
             'космос': 'deep outer space, vibrant colorful nebula, distant galaxies, cosmic dust, stars, breathtaking astronomical view, 8k',
             'луна': 'detailed full moon in dark starry space, detailed lunar craters, celestial photography, 8k',
-            'планета': 'majestic alien planet orbiting in deep space, glowing atmosphere, cosmic rings, high detail, 8k',
             'кот': 'cute fluffy domestic cat, sharp focus on eyes, detailed soft fur, warm cozy lighting, portrait photography, 8k',
             'кошка': 'beautiful cute cat, highly detailed fur, expressive glowing eyes, studio lighting, photorealistic portrait, 8k',
             'котенок': 'adorable little kitten, fluffy fur, playful cute expression, warm lighting, close up portrait, 8k',
@@ -2584,19 +2965,13 @@
             'щенок': 'adorable puppy, big cute eyes, soft fluffy fur, bright daylight, charming portrait, 8k',
             'волк': 'wild majestic wolf, piercing gaze, detailed fur in snowy winter wilderness, cinematic, 8k',
             'лиса': 'vibrant red fox in a forest, bushy tail, sharp eyes, nature wildlife photography, 8k',
-            'медведь': 'mighty brown bear in pristine wild forest, river landscape, wildlife photography, 8k',
-            'тигр': 'majestic Bengal tiger, striped orange and black fur, piercing amber eyes, lush jungle background, 8k',
-            'лев': 'regal male lion, magnificent golden mane, powerful royal expression, savannah golden hour, 8k',
             'машина': 'modern luxury sports car, sleek aerodynamic design, metallic paint reflections, studio lighting, 8k',
             'автомобиль': 'high-end supercar, modern glossy finish, dramatic commercial photography lighting, 8k',
-            'самолет': 'modern passenger aircraft soaring above fluffy white clouds, sunset sky, aviation photography, 8k',
-            'корабль': 'majestic sailing ship on ocean waves, full white sails, golden sunset light, cinematic, 8k',
             'девушка': 'portrait of a beautiful young woman, delicate facial features, natural daylight, professional photography, 8k',
             'парень': 'portrait of a handsome young man, sharp features, cinematic lighting, professional photography, 8k',
             'цветы': 'bouquet of fresh blooming flowers, vibrant petals, morning dew drops, soft macro photography, 8k',
             'розы': 'gorgeous red roses in soft morning dew, macro flower photography, elegant petals, romantic lighting, 8k',
             'дом': 'cozy modern country cottage, warm glowing windows, scenic garden, peaceful sunset atmosphere, 8k',
-            'замок': 'majestic medieval fairy tale castle on a hill, stone towers, fantasy mist, dramatic sunset, 8k',
             'киберпанк': 'cyberpunk concept art, futuristic sci-fi city, glowing neon signs, rain slicked streets, high tech',
             'аниме': 'high quality anime illustration, vibrant expressive colors, detailed background, Makoto Shinkai style, 8k',
             'пицца': 'delicious freshly baked hot pizza, melted mozzarella cheese, fresh basil, appetizing food photography, 8k',
@@ -2604,89 +2979,17 @@
         };
 
         const WORD_MAP = {
-            'зимний': 'winter snowy',
-            'зима': 'winter snow',
-            'летний': 'summer sunny',
-            'лето': 'summer',
-            'весенний': 'spring blooming',
-            'весна': 'spring',
-            'осенний': 'autumn golden foliage',
-            'осень': 'autumn golden leaves',
-            'красивый': 'beautiful stunning',
-            'красивая': 'beautiful elegant',
-            'красивое': 'gorgeous scenic',
-            'лес': 'forest',
-            'лесу': 'forest',
-            'небо': 'clear sky with soft clouds',
-            'небе': 'sky',
-            'закат': 'sunset golden hour',
-            'закате': 'sunset',
-            'рассвет': 'sunrise dawn',
-            'рассвете': 'sunrise',
-            'горы': 'majestic mountains',
-            'горах': 'mountains',
-            'поле': 'blooming field',
-            'поля': 'meadow field',
-            'озеро': 'serene lake',
-            'озера': 'lake',
-            'море': 'ocean sea',
-            'моря': 'sea waves',
-            'океан': 'deep ocean',
-            'пляж': 'tropical beach',
-            'пляже': 'sunny beach',
-            'солнце': 'bright golden sun',
-            'луна': 'glowing moon',
-            'звезды': 'bright glittering stars',
-            'космос': 'outer space cosmos',
-            'город': 'modern city architecture',
-            'городе': 'city street',
-            'улица': 'urban street',
-            'ночь': 'night scene dark atmosphere',
-            'ночью': 'night atmosphere',
-            'день': 'bright daytime',
-            'дождь': 'rainy weather wet reflections',
-            'дождем': 'rain reflections',
-            'снег': 'fresh white snow',
-            'снегом': 'snow covered',
-            'туман': 'soft ethereal mist fog',
-            'кот': 'cute fluffy cat',
-            'кота': 'cute cat',
-            'кошка': 'cute fluffy cat',
-            'котенок': 'adorable little kitten',
-            'собака': 'cute happy dog',
-            'собаку': 'cute dog',
-            'щенок': 'adorable puppy',
-            'волк': 'wild wolf',
-            'лиса': 'red fox',
-            'птица': 'colorful bird',
-            'рыба': 'colorful tropical fish',
-            'машина': 'modern sports car',
-            'машину': 'sports car',
-            'автомобиль': 'luxury car',
-            'девушка': 'portrait of beautiful young woman',
-            'девушку': 'beautiful young woman',
-            'парень': 'handsome young man',
-            'человек': 'person cinematic portrait',
-            'ребенок': 'cute happy child',
-            'робот': 'futuristic advanced robot cyborg',
-            'дом': 'charming cozy house cottage',
-            'замок': 'majestic medieval castle',
-            'цветы': 'blooming vibrant flowers',
-            'розы': 'red rose flowers',
-            'дерево': 'magnificent tall green tree',
-            'деревья': 'lush trees',
-            'елка': 'snowy fir tree',
-            'сосна': 'pine tree',
-            'очки': 'sunglasses',
-            'очках': 'wearing sunglasses',
-            'шляпа': 'hat',
-            'шляпе': 'wearing a hat',
-            'на': 'on',
-            'в': 'in',
-            'с': 'with',
-            'под': 'under',
-            'над': 'above',
-            'и': 'and'
+            'зимний': 'winter snowy', 'зима': 'winter snow', 'летний': 'summer sunny', 'лето': 'summer',
+            'красивый': 'beautiful', 'красивая': 'beautiful elegant', 'красивое': 'gorgeous',
+            'лес': 'forest', 'лесу': 'forest', 'небо': 'clear sky', 'небе': 'sky',
+            'закат': 'sunset', 'рассвет': 'sunrise dawn', 'горы': 'mountains', 'озеро': 'lake',
+            'море': 'ocean sea', 'пляж': 'beach', 'солнце': 'sun', 'луна': 'moon', 'космос': 'outer space',
+            'город': 'modern city', 'ночь': 'night', 'дождь': 'rain', 'снег': 'snow',
+            'кот': 'cute cat', 'кота': 'cute cat', 'кошка': 'cute cat', 'котенок': 'kitten',
+            'собака': 'cute dog', 'щенок': 'puppy', 'машина': 'sports car', 'автомобиль': 'car',
+            'девушка': 'young woman', 'парень': 'young man', 'робот': 'robot cyborg',
+            'дом': 'house cottage', 'замок': 'castle', 'цветы': 'flowers', 'розы': 'roses',
+            'очки': 'sunglasses', 'очках': 'wearing sunglasses', 'шляпа': 'hat'
         };
 
         async function translateImagePrompt(rawPrompt) {
@@ -2707,37 +3010,34 @@
                 }
             }
 
-            // 3. If prompt is pure Latin / English already, enhance it directly
+            // 3. If prompt is pure Latin / English already
             const hasCyrillic = /[а-яё]/i.test(clean);
             if (!hasCyrillic) {
                 return `${clean}, photorealistic, highly detailed, 8k resolution, cinematic lighting`;
             }
 
-            // 4. Try word-by-word mapping
+            // 4. Online fast translation via askAI with fallback text model (NEVER image model)
+            try {
+                const sysTranslate = "Translate the following Russian text into a concise 10-25 word English image prompt for an AI image generator (like Flux/SDXL). Output ONLY the English prompt keywords, no quotes, no conversational filler:";
+                const quickEn = await askAI(`${sysTranslate}\n"${clean}"`, { useHistory: false, model: 'openrouter/free' });
+                if (quickEn && quickEn.trim() && !/[а-яё]/i.test(quickEn) && quickEn.length < 280) {
+                    return `${quickEn.trim().replace(/^["']|["']$/g, '')}, photorealistic, 8k resolution, cinematic lighting`;
+                }
+            } catch (e) {
+                console.info('Offline prompt mapping used:', e.message);
+            }
+
+            // 5. Fallback word mapping
             const words = cleanLower.split(/[\s,.-]+/).filter(Boolean);
             const translatedWords = words.map(w => WORD_MAP[w] || '');
             const combinedMapped = translatedWords.filter(Boolean).join(' ');
 
-            // 5. If we have at least 1-2 mapped keywords, synthesize a rich prompt
-            if (combinedMapped.length > 5) {
-                return `${combinedMapped}, photorealistic, extremely detailed, 8k resolution, cinematic atmosphere`;
-            }
-
-            // 6. Fast online translation via askAI if available
-            try {
-                const sysTranslate = "Translate the following Russian text into a concise 10-25 word English image prompt for a text-to-image AI model. Output ONLY the English keywords, no explanations, no quotes:";
-                const quickEn = await askAI(`${sysTranslate}\n"${clean}"`, { useHistory: false });
-                if (quickEn && quickEn.trim() && !/[а-яё]/i.test(quickEn) && quickEn.length < 250) {
-                    return `${quickEn.trim().replace(/^["']|["']$/g, '')}, photorealistic, 8k resolution, cinematic lighting`;
-                }
-            } catch (e) {
-                console.warn('AI translation fallback error:', e);
-            }
-
-            // Fallback: transliterate or combine mapped + enhancers
-            return `${combinedMapped || clean}, ultra detailed, 8k resolution, photorealistic`;
+            return `${combinedMapped || clean}, ultra detailed, 8k resolution, photorealistic, cinematic atmosphere`;
         }
 
+        // ==========================================
+        // IMAGE LIGHTBOX & DOWNLOAD HANDLERS
+        // ==========================================
         window.openImageLightbox = function(src, caption) {
             const box = document.getElementById('imageLightbox');
             const img = document.getElementById('lightboxImg');
@@ -2751,7 +3051,7 @@
                 if (dlBtn) dlBtn.onclick = () => downloadGeneratedImage(src, 'quanta-full.jpg');
                 if (cpBtn) cpBtn.onclick = () => {
                     navigator.clipboard.writeText(src)
-                        .then(() => showToast('Ссылка скопирована'))
+                        .then(() => showToast('Ссылка скопирована в буфер'))
                         .catch(() => showToast('Не удалось скопировать'));
                 };
                 box.classList.add('open');
@@ -2767,35 +3067,63 @@
             }
         };
 
-        window.downloadGeneratedImage = async function(url, filename = 'quanta-art.jpg') {
-            try {
-                showToast('Скачивание изображения...');
-                const resp = await fetch(url, { mode: 'cors' });
-                if (!resp.ok) throw new Error('Сбой сети');
-                const blob = await resp.blob();
-                const blobUrl = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    URL.revokeObjectURL(blobUrl);
+        window.downloadGeneratedImage = function(url, filename = 'quanta-art.jpg') {
+            showToast('Скачивание изображения...');
+            fetch(url)
+                .then(res => {
+                    if (!res.ok) throw new Error();
+                    return res.blob();
+                })
+                .then(blob => {
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
                     a.remove();
-                }, 2000);
-                showToast('Файл сохранен!');
-            } catch (e) {
-                const a = document.createElement('a');
-                a.href = url;
-                a.target = '_blank';
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                showToast('Изображение открыто для сохранения');
-            }
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+                    showToast('Файл сохранен!');
+                })
+                .catch(() => {
+                    // Canvas fallback for cross-origin images
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth || img.width;
+                        canvas.height = img.naturalHeight || img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        try {
+                            canvas.toBlob((blob) => {
+                                if (!blob) throw new Error();
+                                const blobUrl = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = blobUrl;
+                                a.download = filename;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+                                showToast('Файл сохранен!');
+                            }, 'image/jpeg', 0.95);
+                        } catch (e) {
+                            window.open(url, '_blank');
+                            showToast('Изображение открыто для сохранения');
+                        }
+                    };
+                    img.onerror = function() {
+                        window.open(url, '_blank');
+                        showToast('Изображение открыто в новой вкладке');
+                    };
+                    img.src = url;
+                });
         };
 
+        // ==========================================
+        // IMAGE GENERATION ENGINE (MULTI-PROVIDER)
+        // ==========================================
         window.startImageGeneration = async function(promptText) {
             if (!promptText || !promptText.trim()) {
                 showToast('Введите описание картинки');
@@ -2807,7 +3135,7 @@
             addMessage('user', `🎨 Генерация: <b>${escapeHtml(promptDisplay)}</b>`);
 
             const genId = 'img_' + Math.floor(Math.random() * 1000000);
-            const loadingEl = addLoading('🎨 Подготовка запроса для нейросети Flux Art...');
+            const loadingEl = addLoading('🎨 Подготовка запроса для нейросети...');
 
             let englishPrompt = '';
             try {
@@ -2818,7 +3146,9 @@
 
             const seed = Math.floor(Math.random() * 9999999);
             const encoded = encodeURIComponent(englishPrompt);
-            const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true`;
+
+            // Primary Flux URL + Turbo & alternative fallback
+            const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
             const safeDisplay = escapeHtml(promptDisplay).replace(/'/g, "\\'");
 
             loadingEl.innerHTML = `
@@ -2864,15 +3194,27 @@
                 </div>
             `;
             scrollToBottom();
+
+            // Persist turn to Google-bound history
+            persistTurn(`🎨 Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
         };
 
         window.handleImageFallback = function(img, encoded, genId, safePrompt) {
-            if (!img.dataset.retried) {
-                img.dataset.retried = '1';
+            const attempt = parseInt(img.dataset.attempt || '0', 10);
+            if (attempt === 0) {
+                img.dataset.attempt = '1';
                 const fallbackSeed = Math.floor(Math.random() * 888888);
-                img.src = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&seed=${fallbackSeed}&nologo=true`;
+                // Try Turbo model
+                img.src = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&seed=${fallbackSeed}&nologo=true&model=turbo`;
+                return;
+            } else if (attempt === 1) {
+                img.dataset.attempt = '2';
+                const fallbackSeed = Math.floor(Math.random() * 888888);
+                // Try standard endpoint
+                img.src = `https://pollinations.ai/p/${encoded}?width=800&height=800&seed=${fallbackSeed}`;
                 return;
             }
+
             const sk = document.getElementById(`skel-${genId}`);
             if (sk) {
                 sk.innerHTML = `
@@ -2890,15 +3232,15 @@
             const text = input.value.trim();
             const textLower = text.toLowerCase();
 
-            // Vision / image upload
+            // 1. Vision / image upload analysis
             if (window.pendingImage) {
                 const img = window.pendingImage;
                 removePendingImage();
                 input.value = '';
                 input.style.height = 'auto';
                 openWorkspace();
-                addMessage('user', `<img src="${img.dataUrl}" style="max-height:220px;margin-bottom:6px;"><br>${renderText(text || 'Анализ изображения')}`);
-                const loadingEl = addLoading('Анализирую изображение...');
+                addMessage('user', `<img class="chat-attached-img" src="${img.dataUrl}" onclick="openImageLightbox('${img.dataUrl}', 'Загруженное фото')" alt="Прикрепленное изображение"><br>${renderText(text || 'Анализ изображения')}`);
+                const loadingEl = addLoading('Анализирую изображение мультимодальной нейросетью...');
                 try {
                     let lastSpeedStats = null;
                     const answer = await askVision(img.dataUrl, text, {
@@ -2917,6 +3259,7 @@
                         : '';
                     loadingEl.innerHTML = renderText(answer) + statsBadge;
                     attachExport(loadingEl, answer, 'quanta-vision');
+                    persistTurn(text || 'Анализ фото', answer);
                 } catch (e) {
                     loadingEl.innerHTML = '⚠️ Ошибка анализа: ' + escapeHtml(e.message);
                 }
@@ -2928,19 +3271,19 @@
                 return;
             }
 
-            // Quick branching
+            // 2. Quick branching for slides
             if (textLower.includes('презентаци') || textLower.includes('слайды')) {
                 return handleSlides(text);
             }
 
-            // Image generation trigger by phrase or selected image model
+            // 3. Image generation trigger
             if (isImagePrompt(text)) {
                 input.value = '';
                 input.style.height = 'auto';
                 return startImageGeneration(text);
             }
 
-            // Normal chat with real-time streaming and tokens/sec visual indicator
+            // 4. Normal chat with real-time streaming and tokens/sec indicator
             openWorkspace();
             addMessage('user', renderText(text));
             input.value = '';
@@ -2967,9 +3310,7 @@
                     : '';
                 loadingEl.innerHTML = renderText(answer) + statsBadge;
                 attachExport(loadingEl, answer, 'quanta-answer');
-                if (typeof window.persistTurn === 'function') {
-                    window.persistTurn(text, answer);
-                }
+                persistTurn(text, answer);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
@@ -3038,6 +3379,7 @@
                     : '';
                 loadingEl.innerHTML = renderText(answer) + statsBadge;
                 attachExport(loadingEl, answer, 'quanta-doc-' + file.name);
+                persistTurn(`📄 Документ: ${file.name}`, answer);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка обработки документа: ' + escapeHtml(e.message);
             }
@@ -3080,6 +3422,7 @@
                     : '';
                 loadingEl.innerHTML = statsHtml + renderText(answer) + statsBadge;
                 attachExport(loadingEl, answer, 'quanta-table-analysis');
+                persistTurn(`📊 Таблица: ${file.name}`, answer);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка анализа таблицы: ' + escapeHtml(e.message);
             }
@@ -3116,6 +3459,7 @@
                 const blob = await pptx.write({ outputType: 'blob' });
                 const url = URL.createObjectURL(blob);
                 loadingEl.innerHTML = `✅ Презентация готова: <b>${escapeHtml(data.title || text)}</b><br><a class="ws-download" href="${url}" download="presentation.pptx">💾 Скачать .pptx</a>`;
+                persistTurn('Презентация: ' + text, `Готова презентация "${data.title || text}" (5 слайдов).`);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка генерации презентации: ' + escapeHtml(e.message);
             }
@@ -3134,6 +3478,7 @@
                 const answer = await askAI(`Проведи всестороннее исследование по теме: "${text}". Разбей ответ на: Введение, Ключевые аспекты, Тренды и выводы.`, { useHistory: true });
                 loadingEl.innerHTML = renderText(answer);
                 attachExport(loadingEl, answer, 'quanta-research');
+                persistTurn('Исследование: ' + text, answer);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка исследования: ' + escapeHtml(e.message);
             }
@@ -3160,6 +3505,7 @@
                 const answer = await askAI(`Сделай краткую сводку страницы (${url}):\n\n${cleanText}`);
                 loadingEl.innerHTML = renderText(answer);
                 attachExport(loadingEl, answer, 'quanta-site');
+                persistTurn('Анализ сайта: ' + url, answer);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка скрапинга сайта: ' + escapeHtml(e.message);
             }
@@ -3174,6 +3520,7 @@
                 const answer = await askAI(prompt, { useHistory: true });
                 loadingEl.innerHTML = renderText(answer);
                 attachExport(loadingEl, answer, 'quanta-cluster');
+                persistTurn('Кластерный анализ: ' + (text || 'обзор'), answer);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
@@ -3192,12 +3539,15 @@
                 const answer = await askAI(sys + text, { useHistory: true });
                 loadingEl.innerHTML = renderText(answer);
                 attachExport(loadingEl, answer, 'quanta-' + kind);
+                persistTurn(text, answer);
             } catch (e) {
                 loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
             }
         }
 
-        // Initialize greeting & UI state
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
         document.addEventListener('DOMContentLoaded', () => {
             const greetingEl = document.getElementById('dynamicGreeting');
             if (greetingEl) {
@@ -3207,23 +3557,14 @@
             refreshSettingsUI();
 
             const savedModel = localStorage.getItem('quanta_selected_model');
-            if (savedModel) {
+            if (savedModel && FREE_MODELS_CATALOG[savedModel]) {
                 window.selectedFreeModel = savedModel;
-                const modelNames = {
-                    'openrouter/free': 'Автовыбор (Free)',
-                    'nvidia/nemotron-3-super-120b-a12b:free': 'Nemotron 3',
-                    'cohere/north-mini-code:free': 'Cohere Code',
-                    'inclusionai/ling-3.0-flash-fin:free': 'Ling Flash',
-                    'dots-studio/dots-3-note-preview:free': 'Dots 3',
-                    'flux/image-gen': 'Flux Art'
-                };
+                const label = FREE_MODELS_CATALOG[savedModel].name;
                 const modeEl = document.getElementById('modeLabel');
-                if (modeEl && modelNames[savedModel]) {
-                    modeEl.textContent = modelNames[savedModel];
+                if (modeEl) {
+                    modeEl.textContent = label.length > 15 ? label.slice(0, 14) + '…' : label;
                     modeEl.style.color = 'var(--text-secondary)';
                 }
-                const btn = document.getElementById('modelDropdownBtn');
-                if (btn) btn.style.color = 'var(--text-secondary)';
             }
 
             // Restore desktop sidebar collapsed state
@@ -3231,26 +3572,27 @@
                 document.getElementById('sidebar')?.classList.add('collapsed');
             }
 
-            // Global Keyboard Shortcuts (Desktop Optimization)
+            // Global Keyboard Shortcuts
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
-                    // Close lightbox
                     const lb = document.getElementById('imageLightbox');
                     if (lb && lb.classList.contains('open')) {
                         closeImageLightbox();
                         return;
                     }
-                    // Close settings
                     const sm = document.getElementById('settingsModal');
                     if (sm && sm.classList.contains('open')) {
                         closeSettingsModal();
                         return;
                     }
-                    // Close model dropdown
+                    const cm = document.getElementById('confirmClearModal');
+                    if (cm && cm.classList.contains('open')) {
+                        closeConfirmClearModal();
+                        return;
+                    }
                     const md = document.getElementById('modelDropdownMenu');
                     if (md) md.style.display = 'none';
                 }
-                // Ctrl+K / Cmd+K -> New Chat
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
                     e.preventDefault();
                     startNewChat();
