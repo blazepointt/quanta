@@ -50,23 +50,29 @@
         }
 
         html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
             height: 100%;
             height: 100dvh;
-            max-width: 100vw;
             background: var(--bg-primary);
             color: var(--text-primary);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow: hidden;
+            box-sizing: border-box;
             display: flex;
         }
 
         /* ===== Layout ===== */
         .app-root {
             display: flex;
+            margin: 0;
+            padding: 0;
             width: 100%;
             height: 100%;
             height: 100dvh;
             overflow: hidden;
+            box-sizing: border-box;
             position: relative;
         }
 
@@ -372,6 +378,7 @@
         /* ===== Main Application Area ===== */
         .app-main {
             flex: 1;
+            width: 100%;
             height: 100%;
             height: 100dvh;
             display: flex;
@@ -474,20 +481,21 @@
         /* ===== Main Scrollable View ===== */
         .chat-container {
             flex: 1;
+            width: 100%;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
             position: relative;
-            padding: 16px 16px 8px;
+            padding: 16px 20px 8px;
         }
 
-        /* Welcome view (when no messages) */
+        /* Welcome view */
         .welcome-view {
             margin: auto;
             width: 100%;
-            max-width: 680px;
+            max-width: 720px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -564,7 +572,7 @@
         /* ===== Workspace / Messages View ===== */
         .workspace {
             width: 100%;
-            max-width: 780px;
+            max-width: 960px;
             margin: 0 auto;
             flex: 1;
             display: flex;
@@ -793,7 +801,7 @@
             50% { opacity: 0.35; transform: scale(0.75); }
         }
 
-        /* ===== Bottom Input Area (Mobile-Optimized) ===== */
+        /* ===== Bottom Input Area ===== */
         .bottom-bar {
             width: 100%;
             background: var(--bg-primary);
@@ -807,7 +815,7 @@
 
         .input-container {
             width: 100%;
-            max-width: 780px;
+            max-width: 960px;
         }
 
         .image-preview-bar {
@@ -935,7 +943,7 @@
             font-size: 0.78rem;
             cursor: pointer;
             transition: all 0.15s;
-            max-width: 180px;
+            max-width: 200px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -952,7 +960,7 @@
             border: 1px solid var(--border-light);
             border-radius: 12px;
             padding: 6px;
-            width: min(290px, 92vw);
+            width: min(300px, 92vw);
             max-height: 340px;
             overflow-y: auto;
             box-shadow: 0 12px 36px rgba(0,0,0,0.6);
@@ -1014,7 +1022,7 @@
         .send-btn:active { transform: scale(0.95); }
         .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-        /* ===== Modals (Settings & Confirm) ===== */
+        /* ===== Modals ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -1290,7 +1298,7 @@
             background: var(--accent-hover);
         }
 
-        /* ===== Lightbox Modal (Fullscreen Image Viewer) ===== */
+        /* ===== Lightbox Modal ===== */
         .lightbox-modal {
             display: none;
             position: fixed;
@@ -1343,9 +1351,7 @@
 
         /* ===== Responsive Breakpoints ===== */
         @media (max-width: 768px) {
-            .mobile-menu-btn { display: flex; }
             .sidebar-close-btn { display: flex; }
-
             .sidebar-overlay { display: block; }
             .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
             .sidebar-overlay:not(.open) { pointer-events: none; }
@@ -1378,7 +1384,7 @@
             }
 
             .model-btn-badge {
-                max-width: 120px;
+                max-width: 130px;
                 padding: 5px 8px;
                 font-size: 0.74rem;
             }
@@ -1554,7 +1560,7 @@
                 </button>
             </div>
 
-            <!-- Mobile-Optimized Input Bar -->
+            <!-- Mobile & Desktop Input Bar -->
             <div class="bottom-bar">
                 <div class="input-container">
                     <div class="image-preview-bar" id="imagePreviewBar">
@@ -1603,14 +1609,14 @@
                             <div class="input-right-tools">
                                 <div class="model-select-wrapper">
                                     <button class="model-btn-badge" id="modelDropdownBtn" type="button" onclick="toggleModelDropdown()">
-                                        <span id="modeLabel">Автовыбор (Free)</span>
+                                        <span id="modeLabel">Nemotron 3 Ultra</span>
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                                     </button>
                                     <div class="model-dropdown-menu" id="modelDropdownMenu">
-                                        <div class="dropdown-item" onclick="selectModel('openrouter/free', 'Автовыбор (Free)')">
-                                            <span class="model-brand-dot" style="background:#a855f7; color:#a855f7;"></span>
-                                            <span class="model-item-name" style="color:#a855f7;">Автовыбор</span>
-                                            <span class="model-item-tag">(Free Router)</span>
+                                        <div class="dropdown-item" onclick="selectModel('nvidia/nemotron-3-ultra-550b-a55b:free', 'Nemotron 3 Ultra')">
+                                            <span class="model-brand-dot" style="background:#76b900; color:#76b900;"></span>
+                                            <span class="model-item-name" style="color:#76b900;">Nemotron 3 Ultra</span>
+                                            <span class="model-item-tag">(NVIDIA)</span>
                                         </div>
                                         <div class="dropdown-item" onclick="selectModel('meta-llama/llama-3.3-70b-instruct:free', 'Llama 3.3 70B')">
                                             <span class="model-brand-dot" style="background:#3b82f6; color:#3b82f6;"></span>
@@ -1622,10 +1628,10 @@
                                             <span class="model-item-name" style="color:#06b6d4;">DeepSeek R1</span>
                                             <span class="model-item-tag">(Рассуждения)</span>
                                         </div>
-                                        <div class="dropdown-item" onclick="selectModel('nvidia/nemotron-3-super-120b-a12b:free', 'Nemotron 3')">
-                                            <span class="model-brand-dot" style="background:#76b900; color:#76b900;"></span>
-                                            <span class="model-item-name" style="color:#76b900;">Nemotron 3</span>
-                                            <span class="model-item-tag">(NVIDIA)</span>
+                                        <div class="dropdown-item" onclick="selectModel('openrouter/free', 'Автовыбор (Free Router)')">
+                                            <span class="model-brand-dot" style="background:#a855f7; color:#a855f7;"></span>
+                                            <span class="model-item-name" style="color:#a855f7;">Автовыбор</span>
+                                            <span class="model-item-tag">(Free Router)</span>
                                         </div>
                                         <div class="dropdown-item" onclick="selectModel('cohere/north-mini-code:free', 'Cohere Code')">
                                             <span class="model-brand-dot" style="background:#ff725c; color:#ff725c;"></span>
@@ -1692,7 +1698,7 @@
 
             <div class="modal-field">
                 <label for="settingsModelName">Название модели (опционально)</label>
-                <input type="text" id="settingsModelName" placeholder="openrouter/free или gpt-4o-mini">
+                <input type="text" id="settingsModelName" placeholder="nvidia/nemotron-3-ultra-550b-a55b:free">
             </div>
 
             <div class="modal-actions">
@@ -1786,11 +1792,8 @@
         };
 
         // ==========================================
-        // MULTI-TIER CHAT STORAGE (BOUND TO GOOGLE ACCOUNT)
+        // MULTI-TIER CHAT STORAGE
         // ==========================================
-        // Guarantee: Chats are strictly separated and bound to currentUser.uid.
-        // Fallback: Synchronized with localStorage so chats are NEVER lost, even if
-        // Firestore rules or offline network block remote DB writes.
         const ChatStorage = {
             getKey: function(uid) {
                 const targetUid = uid || (window.currentUser ? window.currentUser.uid : 'guest');
@@ -1837,13 +1840,11 @@
                     chats.unshift(chat);
                 } else {
                     chat.updatedAt = Date.now();
-                    // Update title if it was default
                     if (chat.title === 'Новый диалог' || chat.messages.length === 0) {
                         chat.title = titleText;
                     }
                 }
 
-                // Add messages
                 if (userMsg) {
                     chat.messages.push({
                         role: 'user',
@@ -1863,14 +1864,10 @@
                     });
                 }
 
-                // Sort chats by updatedAt desc
                 chats.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
                 this.saveAllLocal(chats, uid);
-
-                // Update UI list immediately
                 renderChatHistoryList(chats);
 
-                // Sync to Cloud Firestore if user is authenticated
                 if (window.currentUser && db) {
                     try {
                         const chatDocRef = db.collection('users').doc(window.currentUser.uid)
@@ -1900,7 +1897,7 @@
                             });
                         }
                     } catch (fsErr) {
-                        console.info('Firestore cloud sync notice (local backup active):', fsErr.message);
+                        console.info('Firestore cloud sync notice:', fsErr.message);
                     }
                 }
 
@@ -1913,14 +1910,12 @@
                 chats = chats.filter(c => c.id !== chatId);
                 this.saveAllLocal(chats, uid);
 
-                // If deleted chat was open, reset workspace
                 if (window.currentChatId === chatId) {
                     startNewChat();
                 }
 
                 renderChatHistoryList(chats);
 
-                // Delete from Firestore
                 if (window.currentUser && db) {
                     try {
                         await db.collection('users').doc(window.currentUser.uid)
@@ -1939,7 +1934,6 @@
                 startNewChat();
                 renderChatHistoryList([]);
 
-                // Delete from Firestore
                 if (window.currentUser && db) {
                     try {
                         const batch = db.batch();
@@ -1964,7 +1958,6 @@
             try {
                 await auth.signInWithPopup(googleProvider);
             } catch (e) {
-                console.warn('Popup error, trying redirect:', e);
                 try {
                     await auth.signInWithRedirect(googleProvider);
                 } catch (e2) {
@@ -2050,11 +2043,9 @@
                 }
 
                 if (user) {
-                    // Instantly display user's isolated local chat history
                     const localChats = ChatStorage.getAllLocal(user.uid);
                     renderChatHistoryList(localChats);
 
-                    // Subscribe to Firestore cloud updates in parallel
                     if (db) {
                         subscribeToChatHistory(user.uid);
                     }
@@ -2094,7 +2085,6 @@
                                 messages: d.messages || []
                             });
                         });
-                        // Merge cloud with local
                         const local = ChatStorage.getAllLocal(uid);
                         const mergedMap = new Map();
                         local.forEach(c => mergedMap.set(c.id, c));
@@ -2108,13 +2098,10 @@
                         ChatStorage.saveAllLocal(merged, uid);
                         renderChatHistoryList(merged);
                     }, function (e) {
-                        console.info('Using local account storage for chats:', e.message);
-                        // Still load local account chats smoothly
                         const local = ChatStorage.getAllLocal(uid);
                         renderChatHistoryList(local);
                     });
             } catch (e) {
-                console.warn('Firestore subscribe error:', e);
                 const local = ChatStorage.getAllLocal(uid);
                 renderChatHistoryList(local);
             }
@@ -2168,7 +2155,6 @@
             const body = document.getElementById('workspaceBody');
             body.innerHTML = '';
 
-            // If Firestore is available and chat has few messages locally, attempt to fetch messages from cloud
             if (window.currentUser && db && (!chat.messages || !chat.messages.length)) {
                 try {
                     const snap = await db.collection('users').doc(window.currentUser.uid)
@@ -2193,7 +2179,6 @@
                 }
             }
 
-            // Render existing messages
             if (chat.messages && chat.messages.length) {
                 chat.messages.forEach(m => {
                     if (m.type === 'image' && m.imageUrl) {
@@ -2266,7 +2251,7 @@
         };
 
         // ==========================================
-        // UI, CHAT & RESPONSIVE HANDLING
+        // UI & RESPONSIVE HANDLING
         // ==========================================
         window.toggleSidebar = function(open) {
             const sidebar = document.getElementById('sidebar');
@@ -2411,7 +2396,6 @@
         function renderText(text) {
             if (!text) return '';
             let safe = escapeHtml(text);
-            // Responsive markdown tables
             safe = safe.replace(/(\|.+?\|\n)+/g, function(tableText) {
                 const lines = tableText.trim().split('\n');
                 if (lines.length < 2) return tableText;
@@ -2426,7 +2410,6 @@
                 return html;
             });
 
-            // Code blocks
             safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
                 const id = 'code_' + (++codeCounter);
                 const ext = lang || 'код';
@@ -2508,34 +2491,46 @@
         };
 
         // ==========================================
-        // SETTINGS & API CLIENT (SMART MULTI-MODEL FALLBACK)
+        // SETTINGS & MULTI-MODEL SMART ENGINE
         // ==========================================
         const API_SETTINGS_KEY = 'quanta_api_settings';
 
-        // Verified working free models list
+        // Verified working models catalog
         const FREE_MODELS_CATALOG = {
-            'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter' },
+            'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA' },
             'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI' },
             'deepseek/deepseek-r1:free': { name: 'DeepSeek R1', brand: 'DeepSeek' },
-            'nvidia/nemotron-3-super-120b-a12b:free': { name: 'Nemotron 3', brand: 'NVIDIA' },
+            'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter' },
             'cohere/north-mini-code:free': { name: 'Cohere Code', brand: 'Cohere' },
             'inclusionai/ling-3.0-flash-fin:free': { name: 'Ling Flash', brand: 'Inclusion' },
             'flux/image-gen': { name: 'Flux Art', brand: 'Flux / SDXL' }
         };
 
-        // Vision-capable models
+        // Family fallbacks: guarantees Llama stays on Llama, and Nemotron stays on Nemotron
+        const MODEL_FAMILY_FALLBACKS = {
+            'meta-llama/llama-3.3-70b-instruct:free': [
+                'meta-llama/llama-3.3-70b-instruct:free',
+                'meta-llama/llama-4-scout:free',
+                'meta-llama/llama-3.1-70b-instruct:free'
+            ],
+            'nvidia/nemotron-3-ultra-550b-a55b:free': [
+                'nvidia/nemotron-3-ultra-550b-a55b:free',
+                'nvidia/nemotron-3-super-120b-a12b:free',
+                'nvidia/llama-3.1-nemotron-ultra-253b:free'
+            ],
+            'deepseek/deepseek-r1:free': [
+                'deepseek/deepseek-r1:free',
+                'deepseek/deepseek-chat-v3-0324:free',
+                'deepseek/deepseek-chat:free'
+            ]
+        };
+
+        // Multimodal Vision models
         const VISION_MODELS_CHAIN = [
             'google/gemini-2.0-flash-exp:free',
             'meta-llama/llama-3.2-11b-vision-instruct:free',
             'inclusionai/ling-3.0-flash-vl:free',
             'openrouter/free'
-        ];
-
-        // Robust fallback text models
-        const FALLBACK_TEXT_MODELS = [
-            'openrouter/free',
-            'meta-llama/llama-3.3-70b-instruct:free',
-            'deepseek/deepseek-r1:free'
         ];
 
         function getApiSettings() {
@@ -2593,7 +2588,7 @@
         window.applyPreset = function(type) {
             if (type === 'openrouter') {
                 document.getElementById('settingsEndpoint').value = 'https://openrouter.ai/api/v1/chat/completions';
-                document.getElementById('settingsModelName').value = 'openrouter/free';
+                document.getElementById('settingsModelName').value = 'nvidia/nemotron-3-ultra-550b-a55b:free';
             } else if (type === 'ollama') {
                 document.getElementById('settingsEndpoint').value = 'http://localhost:11434/v1/chat/completions';
                 document.getElementById('settingsModelName').value = 'llama3';
@@ -2604,8 +2599,8 @@
             showToast('Пресет применен');
         };
 
-        // Model selector state
-        window.selectedFreeModel = localStorage.getItem('quanta_selected_model') || 'openrouter/free';
+        // Model selector state — defaults to top-tier Nemotron 3 Ultra
+        window.selectedFreeModel = localStorage.getItem('quanta_selected_model') || 'nvidia/nemotron-3-ultra-550b-a55b:free';
 
         window.toggleModelDropdown = function() {
             const menu = document.getElementById('modelDropdownMenu');
@@ -2617,7 +2612,7 @@
             localStorage.setItem('quanta_selected_model', modelId);
             const modeEl = document.getElementById('modeLabel');
             if (modeEl) {
-                modeEl.textContent = label.length > 15 ? label.slice(0, 14) + '…' : label;
+                modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
                 modeEl.style.color = 'var(--text-secondary)';
             }
             const input = document.getElementById('mainInput');
@@ -2711,22 +2706,24 @@
         };
 
         // ==========================================
-        // CALL OPENAI COMPATIBLE (WITH AUTOMATIC RETRY & FALLBACK)
+        // CALL OPENAI COMPATIBLE (ACCURATE ROUTING)
         // ==========================================
         async function callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
             const settings = getApiSettings();
             
-            // Determine primary model: NEVER send 'flux/image-gen' to LLM completions
-            let primaryModel = explicitModel || window.selectedFreeModel || settings.model || 'openrouter/free';
+            let primaryModel = explicitModel || window.selectedFreeModel || settings.model || 'nvidia/nemotron-3-ultra-550b-a55b:free';
             if (primaryModel === 'flux/image-gen') {
-                primaryModel = 'openrouter/free';
+                primaryModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
             }
 
-            // Candidates list: primary model first, then fallback models
-            const modelsToTry = [primaryModel];
-            for (const fb of FALLBACK_TEXT_MODELS) {
-                if (!modelsToTry.includes(fb)) modelsToTry.push(fb);
+            const modelsToTry = [];
+            if (MODEL_FAMILY_FALLBACKS[primaryModel]) {
+                modelsToTry.push(...MODEL_FAMILY_FALLBACKS[primaryModel]);
+            } else {
+                modelsToTry.push(primaryModel);
             }
+
+            if (!modelsToTry.includes('openrouter/free')) modelsToTry.push('openrouter/free');
 
             const headers = {
                 'Content-Type': 'application/json',
@@ -2774,16 +2771,15 @@
                             throw new Error('Требуется API-ключ. Настройте его в параметрах ⚙️');
                         }
 
-                        // If rate limit (429), not found (404), or server overload (502/503), try next fallback model
                         if ([404, 429, 500, 502, 503].includes(response.status) && i < modelsToTry.length - 1) {
-                            console.warn(`Model ${curModel} error (${response.status}). Retrying with fallback: ${modelsToTry[i + 1]}`);
+                            console.warn(`Model ${curModel} error (${response.status}). Retrying with: ${modelsToTry[i + 1]}`);
                             lastError = new Error(errText);
+                            showToast(`Модель перегружена, переключаю на резервную...`);
                             continue;
                         }
                         throw new Error(`Ошибка ${response.status}: ${errText || 'Сбой сервера'}`);
                     }
 
-                    // Handle streaming response
                     if (canStream && response.body && response.body.getReader) {
                         const reader = response.body.getReader();
                         const decoder = new TextDecoder('utf-8');
@@ -2848,7 +2844,6 @@
                         }
                     }
 
-                    // Fallback to json response
                     const data = await response.json();
                     const resultText = data?.choices?.[0]?.message?.content || data?.message?.content || data?.text || JSON.stringify(data);
                     const totalSec = Math.max(0.1, (performance.now() - startTime) / 1000);
@@ -2877,7 +2872,7 @@
                     }
                 }
             }
-            throw lastError || new Error('Не удалось получить ответ');
+            throw lastError || new Error('Не удалось получить ответ от нейросети');
         }
 
         async function askAI(prompt, opts = {}) {
@@ -2898,7 +2893,7 @@
             return answer;
         }
 
-        // Vision router: always uses a vision-capable multimodal model
+        // Multimodal Vision
         async function askVision(imageDataUrl, text, opts = {}) {
             const messages = [{
                 role: 'user',
@@ -2913,11 +2908,11 @@
                 try {
                     return await callOpenAICompatible(messages, opts.onProgress, vModel);
                 } catch (e) {
-                    console.warn(`Vision model ${vModel} failed, trying next:`, e);
+                    console.warn(`Vision model ${vModel} failed:`, e);
                     lastErr = e;
                 }
             }
-            throw lastErr || new Error('Ошибка анализа изображения мультимодальной моделью');
+            throw lastErr || new Error('Ошибка анализа изображения');
         }
 
         function isImagePrompt(text) {
@@ -2938,44 +2933,46 @@
         }
 
         // ==========================================
-        // PROMPT TRANSLATOR FOR HIGH QUALITY DIFFUSION (RUSSIAN -> ENGLISH)
+        // PROMPT TRANSLATOR (INTELLECTUAL PROMPT ENGINEERING)
         // ==========================================
         const PROMPT_TRANSLATION_DICT = {
-            'зимний лес': 'winter forest, snow-covered pine trees, frozen winter landscape, soft warm sunlight filtering through branches, hyperrealistic, 8k resolution, cinematic atmosphere',
-            'лес': 'lush dense forest, tall evergreen trees, sunbeams breaking through canopy, nature photography, highly detailed, 8k resolution',
+            'зимний лес': 'winter forest, snow-covered pine trees, frozen winter landscape, soft warm sunlight filtering through branches, raw photo, natural soft lighting, photorealistic, 8k resolution',
+            'лес': 'lush dense forest, tall evergreen trees, sunbeams breaking through canopy, raw photo, photorealistic, highly detailed, 8k resolution',
             'небо': 'clear blue sky with soft white clouds, bright natural daylight, expansive atmospheric depth, photorealistic, 8k resolution',
-            'ночное небо': 'starry night sky, milky way galaxy, deep cosmos, glittering bright stars, cinematic astrophotography, 8k resolution',
-            'звездное небо': 'starry night sky, milky way galaxy, glittering stars, nebula, cosmic horizon, ultra realistic, 8k',
-            'закат': 'majestic sunset on horizon, golden hour, deep orange and purple twilight sky, cinematic natural lighting, 8k resolution',
-            'рассвет': 'peaceful sunrise, golden dawn mist, soft morning sun rays, scenic landscape, 8k resolution',
-            'море': 'vibrant blue ocean waves, calm sea horizon, sunlight reflecting on water surface, photorealistic, 8k',
-            'океан': 'deep blue majestic ocean waves, crystal clear water, expansive sea horizon, dramatic lighting, 8k',
-            'пляж': 'tropical sunny beach, golden sand, turquoise ocean water, palm trees, paradise resort view, 8k resolution',
-            'горы': 'magnificent mountain range, snow-capped alpine peaks, dramatic clouds, breathtaking scenic view, 8k',
-            'озеро': 'serene mountain lake, crystal clear water reflecting surrounding scenery, calm peaceful nature, 8k',
-            'река': 'clear flowing river through beautiful green valley, smooth water ripples, nature photography, 8k',
-            'город': 'modern metropolis cityscape, sleek skyscrapers, urban architecture, cinematic lighting, 8k resolution',
+            'ночное небо': 'starry night sky, milky way galaxy, deep cosmos, glittering bright stars, cinematic astrophotography, raw photo, 8k resolution',
+            'звездное небо': 'starry night sky, milky way galaxy, glittering stars, nebula, cosmic horizon, ultra realistic, raw photo, 8k',
+            'закат': 'majestic sunset on horizon, golden hour, deep orange and purple twilight sky, cinematic natural lighting, raw photo, 8k resolution',
+            'рассвет': 'peaceful sunrise, golden dawn mist, soft morning sun rays, scenic landscape, raw photo, 8k resolution',
+            'море': 'vibrant blue ocean waves, calm sea horizon, sunlight reflecting on water surface, photorealistic, raw photo, 8k',
+            'океан': 'deep blue majestic ocean waves, crystal clear water, expansive sea horizon, dramatic lighting, raw photo, 8k',
+            'пляж': 'tropical sunny beach, golden sand, turquoise ocean water, palm trees, paradise resort view, raw photo, 8k resolution',
+            'горы': 'magnificent mountain range, snow-capped alpine peaks, dramatic clouds, breathtaking scenic view, raw photo, 8k',
+            'озеро': 'serene mountain lake, crystal clear water reflecting surrounding scenery, calm peaceful nature, raw photo, 8k',
+            'река': 'clear flowing river through beautiful green valley, smooth water ripples, nature photography, raw photo, 8k',
+            'город': 'modern metropolis cityscape, sleek skyscrapers, urban architecture, cinematic lighting, raw photo, 8k resolution',
             'ночной город': 'cyberpunk night city, neon lights, dark rainy asphalt reflections, towering skyscrapers, cinematic, 8k',
             'космос': 'deep outer space, vibrant colorful nebula, distant galaxies, cosmic dust, stars, breathtaking astronomical view, 8k',
-            'луна': 'detailed full moon in dark starry space, detailed lunar craters, celestial photography, 8k',
-            'кот': 'cute fluffy domestic cat, sharp focus on eyes, detailed soft fur, warm cozy lighting, portrait photography, 8k',
-            'кошка': 'beautiful cute cat, highly detailed fur, expressive glowing eyes, studio lighting, photorealistic portrait, 8k',
-            'котенок': 'adorable little kitten, fluffy fur, playful cute expression, warm lighting, close up portrait, 8k',
-            'собака': 'cute loyal dog, highly detailed fur and eyes, happy expression, natural outdoor lighting, 8k',
-            'щенок': 'adorable puppy, big cute eyes, soft fluffy fur, bright daylight, charming portrait, 8k',
-            'волк': 'wild majestic wolf, piercing gaze, detailed fur in snowy winter wilderness, cinematic, 8k',
-            'лиса': 'vibrant red fox in a forest, bushy tail, sharp eyes, nature wildlife photography, 8k',
-            'машина': 'modern luxury sports car, sleek aerodynamic design, metallic paint reflections, studio lighting, 8k',
-            'автомобиль': 'high-end supercar, modern glossy finish, dramatic commercial photography lighting, 8k',
-            'девушка': 'portrait of a beautiful young woman, delicate facial features, natural daylight, professional photography, 8k',
-            'парень': 'portrait of a handsome young man, sharp features, cinematic lighting, professional photography, 8k',
-            'цветы': 'bouquet of fresh blooming flowers, vibrant petals, morning dew drops, soft macro photography, 8k',
-            'розы': 'gorgeous red roses in soft morning dew, macro flower photography, elegant petals, romantic lighting, 8k',
-            'дом': 'cozy modern country cottage, warm glowing windows, scenic garden, peaceful sunset atmosphere, 8k',
-            'киберпанк': 'cyberpunk concept art, futuristic sci-fi city, glowing neon signs, rain slicked streets, high tech',
-            'аниме': 'high quality anime illustration, vibrant expressive colors, detailed background, Makoto Shinkai style, 8k',
-            'пицца': 'delicious freshly baked hot pizza, melted mozzarella cheese, fresh basil, appetizing food photography, 8k',
-            'кофе': 'steaming cup of fresh cappuccino, beautiful latte art, cozy wooden cafe table, warm lighting, 8k'
+            'луна': 'detailed full moon in dark starry space, detailed lunar craters, celestial photography, raw photo, 8k',
+            'кот': 'cute fluffy domestic cat, sharp focus on eyes, detailed soft fur, warm cozy lighting, portrait photography, raw photo, 8k',
+            'кошка': 'beautiful cute cat, highly detailed fur, expressive glowing eyes, studio lighting, photorealistic portrait, raw photo, 8k',
+            'котенок': 'adorable little kitten, fluffy fur, playful cute expression, warm lighting, close up portrait, raw photo, 8k',
+            'собака': 'cute loyal dog, highly detailed fur and eyes, happy expression, natural outdoor lighting, raw photo, 8k',
+            'щенок': 'adorable puppy, big cute eyes, soft fluffy fur, bright daylight, charming portrait, raw photo, 8k',
+            'волк': 'wild majestic wolf, piercing gaze, detailed fur in snowy winter wilderness, cinematic, raw photo, 8k',
+            'лиса': 'vibrant red fox in a forest, bushy tail, sharp eyes, nature wildlife photography, raw photo, 8k',
+            'машина': 'modern luxury sports car, sleek aerodynamic design, metallic paint reflections, studio lighting, raw photo, 8k',
+            'автомобиль': 'high-end supercar, modern glossy finish, dramatic commercial photography lighting, raw photo, 8k',
+            'девушка': 'portrait of a beautiful young woman, delicate facial features, natural daylight, professional photography, raw photo, 8k',
+            'парень': 'portrait of a handsome young man, sharp features, cinematic lighting, professional photography, raw photo, 8k',
+            'цветы': 'bouquet of fresh blooming flowers, vibrant petals, morning dew drops, soft macro photography, raw photo, 8k',
+            'розы': 'gorgeous red roses in soft morning dew, macro flower photography, elegant petals, romantic lighting, raw photo, 8k',
+            'дом': 'cozy modern country cottage, warm glowing windows, scenic garden, peaceful sunset atmosphere, raw photo, 8k',
+            'киберпанк': 'cyberpunk concept art, futuristic sci-fi city, glowing neon signs, rain slicked streets, high tech, 8k',
+            'аниме': 'anime aesthetic, 2D illustration, beautiful anime scene, key visual, highres, vibrant colors, clean linework',
+            'юно гасай': 'Yuno Gasai from Mirai Nikki / Future Diary, pink hair in twin tails, expressive pink eyes, yandere expression, school uniform, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece',
+            'yuno gasai': 'Yuno Gasai from Mirai Nikki / Future Diary, pink hair in twin tails, expressive pink eyes, yandere expression, school uniform, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece',
+            'пицца': 'delicious freshly baked hot pizza, melted mozzarella cheese, fresh basil, appetizing food photography, raw photo, 8k',
+            'кофе': 'steaming cup of fresh cappuccino, beautiful latte art, cozy wooden cafe table, warm lighting, raw photo, 8k'
         };
 
         const WORD_MAP = {
@@ -2989,7 +2986,8 @@
             'собака': 'cute dog', 'щенок': 'puppy', 'машина': 'sports car', 'автомобиль': 'car',
             'девушка': 'young woman', 'парень': 'young man', 'робот': 'robot cyborg',
             'дом': 'house cottage', 'замок': 'castle', 'цветы': 'flowers', 'розы': 'roses',
-            'очки': 'sunglasses', 'очках': 'wearing sunglasses', 'шляпа': 'hat'
+            'очки': 'sunglasses', 'очках': 'wearing sunglasses', 'шляпа': 'hat',
+            'аниме': 'anime aesthetic, 2D illustration', 'тян': 'anime girl, 2D illustration', 'кун': 'anime boy, 2D illustration'
         };
 
         async function translateImagePrompt(rawPrompt) {
@@ -2998,45 +2996,74 @@
 
             const cleanLower = clean.toLowerCase();
 
-            // 1. Direct dictionary match
+            // Быстрая проверка точного словаря
             if (PROMPT_TRANSLATION_DICT[cleanLower]) {
                 return PROMPT_TRANSLATION_DICT[cleanLower];
             }
-
-            // 2. Partial prefix check
             for (const [key, val] of Object.entries(PROMPT_TRANSLATION_DICT)) {
                 if (cleanLower === key || cleanLower === 'нарисуй ' + key || cleanLower === key + ' фото') {
                     return val;
                 }
             }
 
-            // 3. If prompt is pure Latin / English already
-            const hasCyrillic = /[а-яё]/i.test(clean);
-            if (!hasCyrillic) {
-                return `${clean}, photorealistic, highly detailed, 8k resolution, cinematic lighting`;
-            }
-
-            // 4. Online fast translation via askAI with fallback text model (NEVER image model)
+            // Интеллектуальный Prompt Engineering через meta-llama/llama-3.3-70b-instruct:free
             try {
-                const sysTranslate = "Translate the following Russian text into a concise 10-25 word English image prompt for an AI image generator (like Flux/SDXL). Output ONLY the English prompt keywords, no quotes, no conversational filler:";
-                const quickEn = await askAI(`${sysTranslate}\n"${clean}"`, { useHistory: false, model: 'openrouter/free' });
-                if (quickEn && quickEn.trim() && !/[а-яё]/i.test(quickEn) && quickEn.length < 280) {
-                    return `${quickEn.trim().replace(/^["']|["']$/g, '')}, photorealistic, 8k resolution, cinematic lighting`;
+                const systemPrompt = `You are an expert AI image prompt engineer for Flux and SDXL image generators.
+Convert or enrich the user input into an optimized English image generation prompt (20-40 descriptive keywords).
+
+CRITICAL RULES:
+1. ANIME / 2D / MANGA / FICTIONAL CHARACTERS:
+   If the request is about anime, manga, 2D art, cartoon, or specific characters (e.g. "Юно Гасай" / "Yuno Gasai", "Наруто", "Genshin", "waifu", etc.):
+   - Include character English name and franchise (e.g., "Yuno Gasai from Future Diary / Mirai Nikki").
+   - Detail visual markers: hair color/style, eye color, canonical outfit, emotion/expression.
+   - Append 2D tags: "anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece, clean linework".
+   - STRICTLY FORBIDDEN: NEVER include "photorealistic", "realistic photo", "photography", "camera", or "raw photo" for 2D/anime prompts.
+2. REALISTIC PHOTOS / LANDSCAPES / NATURE / OBJECTS:
+   If the request is for realistic photos, people, landscapes, animals, or objects:
+   - Append photographic tags: "photorealistic, raw photo, natural soft lighting, 8k, highly detailed, sharp focus".
+3. OUTPUT FORMAT:
+   - Output ONLY the prompt string (comma-separated English keywords). No introductory phrases, no quotes, no markdown headers.`;
+
+                const enriched = await askAI([
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: clean }
+                ], { useHistory: false, model: 'meta-llama/llama-3.3-70b-instruct:free' });
+
+                if (enriched && enriched.trim()) {
+                    let res = enriched.trim().replace(/^["'`]+|["'`]+$/g, '');
+                    res = res.replace(/^(Prompt|English Prompt|Generated Prompt|Image Prompt):\s*/i, '');
+                    if (!/[а-яё]/i.test(res) && res.length > 5) {
+                        return res;
+                    }
                 }
             } catch (e) {
-                console.info('Offline prompt mapping used:', e.message);
+                console.info('LLM prompt enrichment fallback:', e.message);
             }
 
-            // 5. Fallback word mapping
+            // Офлайн-фоллбэк с разделением на Аниме vs Фото
+            const isAnimeTopic = /аниме|манга|тян|вайфу|юно|yuno|anime|manga|2d|illustration/i.test(cleanLower);
+            const hasCyrillic = /[а-яё]/i.test(clean);
+
+            if (!hasCyrillic) {
+                if (isAnimeTopic) {
+                    return `${clean}, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece`;
+                }
+                return `${clean}, photorealistic, raw photo, natural soft lighting, 8k, highly detailed`;
+            }
+
             const words = cleanLower.split(/[\s,.-]+/).filter(Boolean);
             const translatedWords = words.map(w => WORD_MAP[w] || '');
             const combinedMapped = translatedWords.filter(Boolean).join(' ');
+            const baseFallback = combinedMapped || clean;
 
-            return `${combinedMapped || clean}, ultra detailed, 8k resolution, photorealistic, cinematic atmosphere`;
+            if (isAnimeTopic) {
+                return `${baseFallback}, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece`;
+            }
+            return `${baseFallback}, photorealistic, raw photo, natural soft lighting, 8k resolution`;
         }
 
         // ==========================================
-        // IMAGE LIGHTBOX & DOWNLOAD HANDLERS
+        // LIGHTBOX & DOWNLOAD
         // ==========================================
         window.openImageLightbox = function(src, caption) {
             const box = document.getElementById('imageLightbox');
@@ -3086,7 +3113,6 @@
                     showToast('Файл сохранен!');
                 })
                 .catch(() => {
-                    // Canvas fallback for cross-origin images
                     const img = new Image();
                     img.crossOrigin = 'anonymous';
                     img.onload = function() {
@@ -3122,7 +3148,7 @@
         };
 
         // ==========================================
-        // IMAGE GENERATION ENGINE (MULTI-PROVIDER)
+        // IMAGE GENERATION
         // ==========================================
         window.startImageGeneration = async function(promptText) {
             if (!promptText || !promptText.trim()) {
@@ -3135,7 +3161,7 @@
             addMessage('user', `🎨 Генерация: <b>${escapeHtml(promptDisplay)}</b>`);
 
             const genId = 'img_' + Math.floor(Math.random() * 1000000);
-            const loadingEl = addLoading('🎨 Подготовка запроса для нейросети...');
+            const loadingEl = addLoading('🎨 Подготовка и обогащение промпта...');
 
             let englishPrompt = '';
             try {
@@ -3144,11 +3170,15 @@
                 englishPrompt = promptDisplay;
             }
 
+            // Автоматический выбор модели рендера (flux-anime для аниме/2D, flux для фото)
+            const isAnime = /\b(anime|manga|2d|illustration|cartoon|chibi|waifu|yuno|gasai|mirai nikki|genshin|vtuber|key visual|comic)\b/i.test(englishPrompt) ||
+                            /аниме|манга|тян|вайфу|юно гасай|иллюстраци|мультяшн/i.test(promptDisplay);
+            const renderModel = isAnime ? 'flux-anime' : 'flux';
+            const modelLabel = isAnime ? 'Flux Anime' : 'Flux Art / SDXL';
+
             const seed = Math.floor(Math.random() * 9999999);
             const encoded = encodeURIComponent(englishPrompt);
-
-            // Primary Flux URL + Turbo & alternative fallback
-            const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
+            const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true&model=${renderModel}`;
             const safeDisplay = escapeHtml(promptDisplay).replace(/'/g, "\\'");
 
             loadingEl.innerHTML = `
@@ -3157,7 +3187,7 @@
                         <div class="img-skeleton" id="skel-${genId}" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:44px 16px; width:100%; gap:12px; text-align:center;">
                             <div class="spinner" style="width:32px; height:32px;"></div>
                             <span style="font-size:0.86rem; color:var(--text-secondary);">Нейросеть генерирует «<b>${escapeHtml(promptDisplay)}</b>»...</span>
-                            <span style="font-size:0.75rem; color:var(--text-muted); max-width:80%;">Flux Art / SDXL</span>
+                            <span style="font-size:0.75rem; color:var(--text-muted); max-width:80%;">${modelLabel}</span>
                         </div>
                         <img class="generated-img-element"
                              id="img-el-${genId}"
@@ -3194,8 +3224,6 @@
                 </div>
             `;
             scrollToBottom();
-
-            // Persist turn to Google-bound history
             persistTurn(`🎨 Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
         };
 
@@ -3204,13 +3232,11 @@
             if (attempt === 0) {
                 img.dataset.attempt = '1';
                 const fallbackSeed = Math.floor(Math.random() * 888888);
-                // Try Turbo model
                 img.src = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&seed=${fallbackSeed}&nologo=true&model=turbo`;
                 return;
             } else if (attempt === 1) {
                 img.dataset.attempt = '2';
                 const fallbackSeed = Math.floor(Math.random() * 888888);
-                // Try standard endpoint
                 img.src = `https://pollinations.ai/p/${encoded}?width=800&height=800&seed=${fallbackSeed}`;
                 return;
             }
@@ -3225,14 +3251,14 @@
         };
 
         // ==========================================
-        // MAIN SEND HANDLER (Touch & Desktop)
+        // MAIN SEND HANDLER
         // ==========================================
         window.handleSend = async function() {
             const input = document.getElementById('mainInput');
             const text = input.value.trim();
             const textLower = text.toLowerCase();
 
-            // 1. Vision / image upload analysis
+            // 1. Vision / Image upload
             if (window.pendingImage) {
                 const img = window.pendingImage;
                 removePendingImage();
@@ -3562,17 +3588,19 @@
                 const label = FREE_MODELS_CATALOG[savedModel].name;
                 const modeEl = document.getElementById('modeLabel');
                 if (modeEl) {
-                    modeEl.textContent = label.length > 15 ? label.slice(0, 14) + '…' : label;
+                    modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
                     modeEl.style.color = 'var(--text-secondary)';
                 }
+            } else {
+                window.selectedFreeModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+                const modeEl = document.getElementById('modeLabel');
+                if (modeEl) modeEl.textContent = 'Nemotron 3 Ultra';
             }
 
-            // Restore desktop sidebar collapsed state
             if (window.innerWidth > 768 && localStorage.getItem('quanta_sidebar_collapsed') === '1') {
                 document.getElementById('sidebar')?.classList.add('collapsed');
             }
 
-            // Global Keyboard Shortcuts
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     const lb = document.getElementById('imageLightbox');
