@@ -50,6 +50,11 @@ window.currentUser = null;
 window.currentChatId = null;
 let unsubscribeChatsListener = null;
 
+window.errHtml = function (prefix, e) {
+    if (e && e.isUserAbort) return icon('square', 14) + ' Генерация остановлена';
+    return icon('alert') + ' ' + prefix + escapeHtml(e && e.message);
+};
+
 window.escapeHtml = function(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, function (c) {
@@ -64,6 +69,7 @@ const ICONS = {
     'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
     'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
     'x': '<path d="M18 6 6 18M6 6l12 12"/>',
+    'square': '<rect x="6" y="6" width="12" height="12" rx="2"/>',
     'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
     'copy': '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
     'logout': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
@@ -676,8 +682,8 @@ function addLoading(label) {
     const el = addMessage('ai', '');
     el.innerHTML = `
         <div class="ws-loading">
-            <div class="spinner"></div>
-            <span class="ws-loading-label">${label || 'Думаю...'}</span>
+            <span class="typing-dots" role="status" aria-label="Загрузка"><i></i><i></i><i></i></span>
+            ${label === '' ? '' : `<span class="ws-loading-label">${label || 'Думаю...'}</span>`}
             <span class="gen-speed-badge" style="display:none;">
                 <span class="gen-speed-pulse"></span>
                 <span class="gen-speed-text">0.0 ток/с</span>
@@ -1019,7 +1025,68 @@ window.startVoiceInput = function() {
 // ==========================================
 // CALL OPENAI COMPATIBLE (ACCURATE ROUTING)
 // ==========================================
+// ==========================================
+// GENERATION CONTROL (кнопка отправки <-> стоп)
+// ==========================================
+const STOP_ICON_HTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>';
+let _sendIconHtml = null;
+window.genAbort = null;
+
+function userAbortError() {
+    const e = new Error('Генерация остановлена');
+    e.isUserAbort = true;
+    return e;
+}
+
+function setSendButtonMode(mode) {
+    const btn = document.getElementById('sendBtn');
+    if (!btn) return;
+    if (_sendIconHtml === null) _sendIconHtml = btn.innerHTML;
+    if (mode === 'stop') {
+        btn.innerHTML = STOP_ICON_HTML;
+        btn.classList.add('is-stop');
+        btn.title = 'Остановить генерацию';
+        btn.setAttribute('aria-label', 'Остановить генерацию');
+    } else {
+        btn.innerHTML = _sendIconHtml;
+        btn.classList.remove('is-stop');
+        btn.title = 'Отправить';
+        btn.setAttribute('aria-label', 'Отправить');
+    }
+}
+
+window.beginGeneration = function () {
+    window.genAbort = new AbortController();
+    setSendButtonMode('stop');
+    return window.genAbort;
+};
+
+window.endGeneration = function () {
+    window.genAbort = null;
+    setSendButtonMode('send');
+};
+
+window.stopGeneration = function () {
+    if (window.genAbort) window.genAbort.abort();
+};
+
+window.handleSendOrStop = function () {
+    if (window.genAbort) window.stopGeneration();
+    else window.handleSend();
+};
+
+// Внешняя обёртка: включает режим «стоп» на время запроса
 async function callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
+    const own = !window.genAbort;
+    if (own) beginGeneration();
+    try {
+        return await _callOpenAICompatible(messages, onProgress, explicitModel);
+    } finally {
+        if (own) endGeneration();
+    }
+}
+
+async function _callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
     const settings = getApiSettings();
     
     let primaryModel = explicitModel || window.selectedFreeModel || settings.model || 'nvidia/nemotron-3-ultra-550b-a55b:free';
@@ -1058,6 +1125,14 @@ async function callOpenAICompatible(messages, onProgress = null, explicitModel =
         const timer = setTimeout(() => controller.abort(), 85000);
         const startTime = performance.now();
         let firstChunkTime = null;
+        let fullText = '';
+        let tokenCount = 0;
+
+        const userSignal = window.genAbort ? window.genAbort.signal : null;
+        if (userSignal) {
+            if (userSignal.aborted) { clearTimeout(timer); throw userAbortError(); }
+            userSignal.addEventListener('abort', () => controller.abort(), { once: true });
+        }
 
         try {
             const response = await fetch(settings.endpoint, {
@@ -1094,9 +1169,9 @@ async function callOpenAICompatible(messages, onProgress = null, explicitModel =
             if (canStream && response.body && response.body.getReader) {
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
-                let fullText = '';
+                fullText = '';
                 let buffer = '';
-                let tokenCount = 0;
+                tokenCount = 0;
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -1173,6 +1248,24 @@ async function callOpenAICompatible(messages, onProgress = null, explicitModel =
             return resultText;
         } catch (err) {
             clearTimeout(timer);
+            if (userSignal && userSignal.aborted) {
+                if (fullText.trim()) {
+                    const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
+                    const stoppedTokens = Math.max(tokenCount, 1);
+                    if (onProgress) {
+                        onProgress({
+                            text: fullText,
+                            tokens: stoppedTokens,
+                            speed: parseFloat((stoppedTokens / totalSec).toFixed(1)),
+                            elapsedSec: totalSec.toFixed(1),
+                            isDone: true,
+                            stopped: true
+                        });
+                    }
+                    return fullText;
+                }
+                throw userAbortError();
+            }
             lastError = err;
             if (err.name === 'AbortError') {
                 if (i < modelsToTry.length - 1) continue;
@@ -1206,6 +1299,16 @@ async function askAI(prompt, opts = {}) {
 
 // Multimodal Vision
 async function askVision(imageDataUrl, text, opts = {}) {
+    const own = !window.genAbort;
+    if (own) beginGeneration();
+    try {
+        return await _askVision(imageDataUrl, text, opts);
+    } finally {
+        if (own) endGeneration();
+    }
+}
+
+async function _askVision(imageDataUrl, text, opts = {}) {
     const messages = [{
         role: 'user',
         content: [
@@ -1219,6 +1322,7 @@ async function askVision(imageDataUrl, text, opts = {}) {
         try {
             return await callOpenAICompatible(messages, opts.onProgress, vModel);
         } catch (e) {
+            if (e && e.isUserAbort) throw e;
             console.warn(`Vision model ${vModel} failed:`, e);
             lastErr = e;
         }
@@ -1466,6 +1570,10 @@ window.startImageGeneration = async function(promptText) {
         showToast('Введите описание картинки');
         return;
     }
+    if (window.genAbort) {
+        showToast('Идёт генерация — нажмите «стоп», чтобы остановить');
+        return;
+    }
     openWorkspace();
     const clean = cleanImagePrompt(promptText).trim();
     const promptDisplay = clean || promptText.trim();
@@ -1473,12 +1581,19 @@ window.startImageGeneration = async function(promptText) {
 
     const genId = 'img_' + Math.floor(Math.random() * 1000000);
     const loadingEl = addLoading('Подготовка и обогащение промпта...');
+    const gen = beginGeneration();
 
     let englishPrompt = '';
     try {
         englishPrompt = await translateImagePrompt(promptDisplay);
     } catch (e) {
         englishPrompt = promptDisplay;
+    }
+
+    if (gen.signal.aborted) {
+        loadingEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" onclick="startImageGeneration('${escapeHtml(promptDisplay).replace(/'/g, "\\'")}')">${icon('refresh')} Повторить генерацию</button>`;
+        endGeneration();
+        return;
     }
 
     // Автоматический выбор модели рендера (flux-anime для аниме/2D, flux для фото)
@@ -1535,7 +1650,27 @@ window.startImageGeneration = async function(promptText) {
         </div>
     `;
     scrollToBottom();
-    persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
+
+    const imgEl = document.getElementById('img-el-' + genId);
+    const finishImageGen = () => { if (window.genAbort === gen) endGeneration(); };
+    if (imgEl) {
+        imgEl.addEventListener('load', () => {
+            persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
+            finishImageGen();
+        }, { once: true });
+        gen.signal.addEventListener('abort', () => {
+            imgEl.onload = null;
+            imgEl.onerror = null;
+            imgEl.removeAttribute('onerror');
+            imgEl.src = 'data:,';
+            loadingEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" onclick="startImageGeneration('${safeDisplay}')">${icon('refresh')} Повторить генерацию</button>`;
+            finishImageGen();
+        }, { once: true });
+        setTimeout(finishImageGen, 120000);
+    } else {
+        finishImageGen();
+        persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
+    }
 };
 
 window.handleImageFallback = function(img, encoded, genId, safePrompt) {
@@ -1552,6 +1687,7 @@ window.handleImageFallback = function(img, encoded, genId, safePrompt) {
         return;
     }
 
+    if (window.genAbort) endGeneration();
     const sk = document.getElementById(`skel-${genId}`);
     if (sk) {
         sk.innerHTML = `
@@ -1565,6 +1701,10 @@ window.handleImageFallback = function(img, encoded, genId, safePrompt) {
 // MAIN SEND HANDLER
 // ==========================================
 window.handleSend = async function() {
+    if (window.genAbort) {
+        showToast('Идёт генерация — нажмите «стоп», чтобы остановить');
+        return;
+    }
     const input = document.getElementById('mainInput');
     const text = input.value.trim();
     const textLower = text.toLowerCase();
@@ -1592,13 +1732,13 @@ window.handleSend = async function() {
                 }
             });
             const statsBadge = lastSpeedStats
-                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
                 : '';
             loadingEl.innerHTML = renderText(answer) + statsBadge;
             attachExport(loadingEl, answer, 'quanta-vision');
             persistTurn(text || 'Анализ фото', answer);
         } catch (e) {
-            loadingEl.innerHTML = icon('alert') + ' Ошибка анализа: ' + escapeHtml(e.message);
+            loadingEl.innerHTML = errHtml('Ошибка анализа: ', e);
         }
         return;
     }
@@ -1625,7 +1765,7 @@ window.handleSend = async function() {
     addMessage('user', renderText(text));
     input.value = '';
     input.style.height = 'auto';
-    const loadingEl = addLoading('Подключение к нейросети...');
+    const loadingEl = addLoading('');
 
     try {
         let lastSpeedStats = null;
@@ -1643,13 +1783,13 @@ window.handleSend = async function() {
         });
 
         const statsBadge = lastSpeedStats
-            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
+            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
             : '';
         loadingEl.innerHTML = renderText(answer) + statsBadge;
         attachExport(loadingEl, answer, 'quanta-answer');
         persistTurn(text, answer);
     } catch (e) {
-        loadingEl.innerHTML = icon('alert') + ' Ошибка: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = errHtml('Ошибка: ', e);
     }
 };
 
@@ -1714,13 +1854,13 @@ async function handleDocument(file, ext) {
             }
         });
         const statsBadge = lastSpeedStats
-            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
+            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
             : '';
         loadingEl.innerHTML = renderText(answer) + statsBadge;
         attachExport(loadingEl, answer, 'quanta-doc-' + file.name);
         persistTurn(`Документ: ${file.name}`, answer);
     } catch (e) {
-        loadingEl.innerHTML = icon('alert') + ' Ошибка обработки документа: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = errHtml('Ошибка обработки документа: ', e);
     }
 }
 
@@ -1759,13 +1899,13 @@ async function handleSpreadsheet(file) {
             }
         });
         const statsBadge = lastSpeedStats
-            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
+            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
             : '';
         loadingEl.innerHTML = statsHtml + renderText(answer) + statsBadge;
         attachExport(loadingEl, answer, 'quanta-table-analysis');
         persistTurn(`Таблица: ${file.name}`, answer);
     } catch (e) {
-        loadingEl.innerHTML = icon('alert') + ' Ошибка анализа таблицы: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = errHtml('Ошибка анализа таблицы: ', e);
     }
 }
 
@@ -1803,7 +1943,7 @@ async function handleSlides(text) {
         loadingEl.innerHTML = `${icon('check')} Презентация готова: <b>${escapeHtml(data.title || text)}</b><br><a class="ws-download" href="${url}" download="presentation.pptx">${icon('download')} Скачать .pptx</a>`;
         persistTurn('Презентация: ' + text, `Готова презентация "${data.title || text}" (5 слайдов).`);
     } catch (e) {
-        loadingEl.innerHTML = icon('alert') + ' Ошибка генерации презентации: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = errHtml('Ошибка генерации презентации: ', e);
     }
 }
 
@@ -1822,7 +1962,7 @@ async function handleResearch(text) {
         attachExport(loadingEl, answer, 'quanta-research');
         persistTurn('Исследование: ' + text, answer);
     } catch (e) {
-        loadingEl.innerHTML = icon('alert') + ' Ошибка исследования: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = errHtml('Ошибка исследования: ', e);
     }
 }
 
@@ -1849,7 +1989,7 @@ async function handleWebsite(text) {
         attachExport(loadingEl, answer, 'quanta-site');
         persistTurn('Анализ сайта: ' + url, answer);
     } catch (e) {
-        loadingEl.innerHTML = icon('alert') + ' Ошибка скрапинга сайта: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = errHtml('Ошибка скрапинга сайта: ', e);
     }
 }
 
@@ -1864,7 +2004,7 @@ async function handleClusterAnalysis(text) {
         attachExport(loadingEl, answer, 'quanta-cluster');
         persistTurn('Кластерный анализ: ' + (text || 'обзор'), answer);
     } catch (e) {
-        loadingEl.innerHTML = icon('alert') + ' Ошибка: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = errHtml('Ошибка: ', e);
     }
 }
 
@@ -1883,7 +2023,7 @@ async function handleGenericMode(text, kind, title, sys) {
         attachExport(loadingEl, answer, 'quanta-' + kind);
         persistTurn(text, answer);
     } catch (e) {
-        loadingEl.innerHTML = icon('alert') + ' Ошибка: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = errHtml('Ошибка: ', e);
     }
 }
 
