@@ -1457,3 +1457,13 @@ img, svg, video { max-width: 100%; }
     box-shadow: none !important;
     border-color: var(--border-light) !important;
 }
+
+
+/* =====================================================================
+   Monochrome inline icons (replace emoji). Colour follows currentColor.
+   ===================================================================== */
+.ico { display: inline-block; vertical-align: -0.16em; flex-shrink: 0; }
+.code-action-btn, .auth-user-menu button, .modal-header h2 { display: inline-flex; align-items: center; gap: 6px; }
+.modal-header h2 { gap: 8px; }
+.image-preview-remove, .lightbox-close-btn { display: inline-flex; align-items: center; justify-content: center; }
+.generated-prompt-badge > span:first-child { display: inline-flex; align-items: center; }

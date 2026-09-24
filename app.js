@@ -58,6 +58,57 @@ window.escapeHtml = function(str) {
 };
 
 // ==========================================
+// MONOCHROME ICONS (замена смайликов)
+// ==========================================
+const ICONS = {
+    'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+    'x': '<path d="M18 6 6 18M6 6l12 12"/>',
+    'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+    'copy': '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    'logout': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+    'sparkles': '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
+    'search': '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    'maximize': '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+    'file': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8M16 13H8M16 17H8"/>',
+    'pen': '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+    'palette': '<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>',
+    'zap': '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+    'alert': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+    'refresh': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    'table': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M12 3v18"/>',
+    'check': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'
+};
+
+window.icon = function (name, size) {
+    size = size || 15;
+    const body = ICONS[name] || '';
+    return '<svg class="ico" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
+};
+
+// Диапазоны эмодзи/пиктограмм + служебные символы (VS16, ZWJ)
+const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}][\uFE0F\u200D]*|[\uFE0F\u200D]/gu;
+const EMOJI_ICON_MAP = {
+    '\u{1F3A8}': 'palette', '\u{1F4C4}': 'file', '\u{1F4DD}': 'pen', '\u{1F4CA}': 'table',
+    '\u26A1': 'zap', '\u26A0': 'alert', '\u2728': 'sparkles', '\u2705': 'check',
+    '\u{1F4BE}': 'download', '\u{1F4CB}': 'copy', '\u{1F50D}': 'search', '\u{1F504}': 'refresh',
+    '\u{1F5D1}': 'trash', '\u2699': 'settings', '\u{1F6AA}': 'logout', '\u2715': 'x'
+};
+
+// Убирает эмодзи из простого текста (заголовки чатов и т.п.)
+window.stripEmoji = function (str) {
+    return String(str == null ? '' : str).replace(EMOJI_RE, '').replace(/\s{2,}/g, ' ').trim();
+};
+
+// Заменяет эмодзи в HTML: известные -> ч/б иконка, остальные удаляются
+window.iconizeEmoji = function (html) {
+    return html.replace(EMOJI_RE, function (m) {
+        const base = String.fromCodePoint(m.codePointAt(0));
+        return EMOJI_ICON_MAP[base] ? window.icon(EMOJI_ICON_MAP[base], 15) : '';
+    });
+};
+
+// ==========================================
 // MULTI-TIER CHAT STORAGE
 // ==========================================
 const ChatStorage = {
@@ -281,7 +332,7 @@ function renderAuthUI(user) {
                 ${photo ? `<img class="auth-avatar" src="${photo}" alt="avatar" referrerpolicy="no-referrer">` : `<div class="auth-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--bg-hover);font-size:0.8rem;color:var(--text-primary);">${escapeHtml(name[0] || 'U')}</div>`}
                 <span class="auth-user-name">${escapeHtml(name)}</span>
                 <div class="auth-user-menu" id="authUserMenu">
-                    <button onclick="event.stopPropagation(); window.signOutUser();">🚪 Выйти из аккаунта</button>
+                    <button onclick="event.stopPropagation(); window.signOutUser();">${icon('logout')} Выйти из аккаунта</button>
                 </div>
             </div>`;
     } else {
@@ -391,7 +442,7 @@ function renderChatHistoryList(chats) {
     if (clearBtn) clearBtn.style.display = 'inline-flex';
 
     list.innerHTML = chats.map(function (chat) {
-        const title = chat.title || 'Диалог';
+        const title = stripEmoji(chat.title) || 'Диалог';
         const active = chat.id === window.currentChatId ? ' active' : '';
         return `
             <div class="sidebar-item${active}" onclick="window.openLocalChat('${chat.id}')" title="${escapeHtml(title)}">
@@ -461,10 +512,10 @@ window.openLocalChat = async function(chatId) {
                             </div>
                         </div>
                         <div class="generated-img-footer">
-                            <div class="generated-prompt-badge"><span>✨</span> <b>${safeDisplay}</b></div>
+                            <div class="generated-prompt-badge"><span>${icon('sparkles')}</span> <b>${safeDisplay}</b></div>
                             <div class="generated-img-btns">
-                                <button class="img-action-btn img-action-btn-primary" onclick="downloadGeneratedImage('${m.imageUrl}', 'quanta-${genId}.jpg')">💾 Скачать</button>
-                                <button class="img-action-btn" onclick="openImageLightbox('${m.imageUrl}', '${safeDisplay}')">🔍 На весь экран</button>
+                                <button class="img-action-btn img-action-btn-primary" onclick="downloadGeneratedImage('${m.imageUrl}', 'quanta-${genId}.jpg')">${icon('download')} Скачать</button>
+                                <button class="img-action-btn" onclick="openImageLightbox('${m.imageUrl}', '${safeDisplay}')">${icon('maximize')} На весь экран</button>
                             </div>
                         </div>
                     </div>
@@ -647,6 +698,7 @@ let codeCounter = 0;
 function renderText(text) {
     if (!text) return '';
     let safe = escapeHtml(text);
+    safe = safe.split(/(```[\s\S]*?```)/g).map((part, i) => i % 2 ? part : iconizeEmoji(part)).join('');
     safe = safe.replace(/(\|.+?\|\n)+/g, function(tableText) {
         const lines = tableText.trim().split('\n');
         if (lines.length < 2) return tableText;
@@ -668,8 +720,8 @@ function renderText(text) {
             <div class="code-block-header">
                 <span style="text-transform:uppercase; font-weight:600;">${ext}</span>
                 <div style="display:flex; gap:6px;">
-                    <button class="code-action-btn" onclick="copyCodeBlock('${id}')">📋 Копировать</button>
-                    <button class="code-action-btn" onclick="downloadCodeBlock('${id}', '${ext}')">💾 Файл</button>
+                    <button class="code-action-btn" onclick="copyCodeBlock('${id}')">${icon('copy')} Копировать</button>
+                    <button class="code-action-btn" onclick="downloadCodeBlock('${id}', '${ext}')">${icon('download')} Файл</button>
                 </div>
             </div>
             <pre><code id="${id}">${code.trim()}</code></pre>
@@ -728,8 +780,8 @@ window.attachExport = function(el, text, filenameBase) {
     const bar = document.createElement('div');
     bar.style.cssText = 'margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;';
     bar.innerHTML = `
-        <button class="ws-download" onclick="exportFile('${id}', 'txt', '${filenameBase}')">📄 .txt</button>
-        <button class="ws-download" style="background:#2563eb;" onclick="exportFile('${id}', 'doc', '${filenameBase}')">📝 Word</button>
+        <button class="ws-download" onclick="exportFile('${id}', 'txt', '${filenameBase}')">${icon('file')} .txt</button>
+        <button class="ws-download" style="background:#2563eb;" onclick="exportFile('${id}', 'doc', '${filenameBase}')">${icon('pen')} Word</button>
     `;
     el.appendChild(bar);
 };
@@ -1027,7 +1079,7 @@ async function callOpenAICompatible(messages, onProgress = null, explicitModel =
 
                 if (response.status === 401) {
                     openSettingsModal();
-                    throw new Error('Требуется API-ключ. Настройте его в параметрах ⚙️');
+                    throw new Error('Требуется API-ключ. Откройте настройки и укажите ключ');
                 }
 
                 if ([404, 429, 500, 502, 503].includes(response.status) && i < modelsToTry.length - 1) {
@@ -1417,10 +1469,10 @@ window.startImageGeneration = async function(promptText) {
     openWorkspace();
     const clean = cleanImagePrompt(promptText).trim();
     const promptDisplay = clean || promptText.trim();
-    addMessage('user', `🎨 Генерация: <b>${escapeHtml(promptDisplay)}</b>`);
+    addMessage('user', `${icon('palette')} Генерация: <b>${escapeHtml(promptDisplay)}</b>`);
 
     const genId = 'img_' + Math.floor(Math.random() * 1000000);
-    const loadingEl = addLoading('🎨 Подготовка и обогащение промпта...');
+    const loadingEl = addLoading('Подготовка и обогащение промпта...');
 
     let englishPrompt = '';
     try {
@@ -1463,7 +1515,7 @@ window.startImageGeneration = async function(promptText) {
             </div>
             <div class="generated-img-footer" id="acts-${genId}" style="display:none;">
                 <div class="generated-prompt-badge">
-                    <span>✨</span> <b>${escapeHtml(promptDisplay)}</b>
+                    <span>${icon('sparkles')}</span> <b>${escapeHtml(promptDisplay)}</b>
                 </div>
                 <div class="generated-img-btns">
                     <button class="img-action-btn img-action-btn-primary" onclick="downloadGeneratedImage('${primaryUrl}', 'quanta-${genId}.jpg')">
@@ -1483,7 +1535,7 @@ window.startImageGeneration = async function(promptText) {
         </div>
     `;
     scrollToBottom();
-    persistTurn(`🎨 Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
+    persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
 };
 
 window.handleImageFallback = function(img, encoded, genId, safePrompt) {
@@ -1503,8 +1555,8 @@ window.handleImageFallback = function(img, encoded, genId, safePrompt) {
     const sk = document.getElementById(`skel-${genId}`);
     if (sk) {
         sk.innerHTML = `
-            <span style="color:var(--danger); font-size:0.85rem;">⚠️ Не удалось загрузить изображение. Проверьте соединение или повторите попытку.</span>
-            <button class="img-action-btn" style="margin-top:8px;" onclick="startImageGeneration('${safePrompt}')">🔄 Повторить генерацию</button>
+            <span style="color:var(--danger); font-size:0.85rem;">${icon('alert')} Не удалось загрузить изображение. Проверьте соединение или повторите попытку.</span>
+            <button class="img-action-btn" style="margin-top:8px;" onclick="startImageGeneration('${safePrompt}')">${icon('refresh')} Повторить генерацию</button>
         `;
     }
 };
@@ -1534,19 +1586,19 @@ window.handleSend = async function() {
                     loadingEl.innerHTML = renderText(prog.text) +
                         `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
                         `<span class="gen-speed-pulse"></span>` +
-                        `<span class="gen-speed-text">⚡ ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
                         `</span>`;
                     scrollToBottom();
                 }
             });
             const statsBadge = lastSpeedStats
-                ? `<br><span class="gen-speed-badge done">⚡ ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
                 : '';
             loadingEl.innerHTML = renderText(answer) + statsBadge;
             attachExport(loadingEl, answer, 'quanta-vision');
             persistTurn(text || 'Анализ фото', answer);
         } catch (e) {
-            loadingEl.innerHTML = '⚠️ Ошибка анализа: ' + escapeHtml(e.message);
+            loadingEl.innerHTML = icon('alert') + ' Ошибка анализа: ' + escapeHtml(e.message);
         }
         return;
     }
@@ -1584,20 +1636,20 @@ window.handleSend = async function() {
                 loadingEl.innerHTML = renderText(prog.text) +
                     `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
                     `<span class="gen-speed-pulse"></span>` +
-                    `<span class="gen-speed-text">⚡ ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                    `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
                     `</span>`;
                 scrollToBottom();
             }
         });
 
         const statsBadge = lastSpeedStats
-            ? `<br><span class="gen-speed-badge done">⚡ ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
+            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
             : '';
         loadingEl.innerHTML = renderText(answer) + statsBadge;
         attachExport(loadingEl, answer, 'quanta-answer');
         persistTurn(text, answer);
     } catch (e) {
-        loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = icon('alert') + ' Ошибка: ' + escapeHtml(e.message);
     }
 };
 
@@ -1624,7 +1676,7 @@ document.getElementById('fileInput').addEventListener('change', async function(e
 
 async function handleDocument(file, ext) {
     openWorkspace();
-    addMessage('user', `📄 Документ: <b>${escapeHtml(file.name)}</b>`);
+    addMessage('user', `${icon('file')} Документ: <b>${escapeHtml(file.name)}</b>`);
     const loadingEl = addLoading('Извлекаю текст из файла...');
     try {
         let content = '';
@@ -1656,25 +1708,25 @@ async function handleDocument(file, ext) {
                 loadingEl.innerHTML = renderText(prog.text) +
                     `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
                     `<span class="gen-speed-pulse"></span>` +
-                    `<span class="gen-speed-text">⚡ ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                    `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
                     `</span>`;
                 scrollToBottom();
             }
         });
         const statsBadge = lastSpeedStats
-            ? `<br><span class="gen-speed-badge done">⚡ ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
+            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
             : '';
         loadingEl.innerHTML = renderText(answer) + statsBadge;
         attachExport(loadingEl, answer, 'quanta-doc-' + file.name);
-        persistTurn(`📄 Документ: ${file.name}`, answer);
+        persistTurn(`Документ: ${file.name}`, answer);
     } catch (e) {
-        loadingEl.innerHTML = '⚠️ Ошибка обработки документа: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = icon('alert') + ' Ошибка обработки документа: ' + escapeHtml(e.message);
     }
 }
 
 async function handleSpreadsheet(file) {
     openWorkspace();
-    addMessage('user', `📊 Таблица: <b>${escapeHtml(file.name)}</b>`);
+    addMessage('user', `${icon('table')} Таблица: <b>${escapeHtml(file.name)}</b>`);
     const loadingEl = addLoading('Чтение таблицы...');
     try {
         let rows = [];
@@ -1701,19 +1753,19 @@ async function handleSpreadsheet(file) {
                 loadingEl.innerHTML = statsHtml + renderText(prog.text) +
                     `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
                     `<span class="gen-speed-pulse"></span>` +
-                    `<span class="gen-speed-text">⚡ ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                    `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
                     `</span>`;
                 scrollToBottom();
             }
         });
         const statsBadge = lastSpeedStats
-            ? `<br><span class="gen-speed-badge done">⚡ ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
+            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)</span>`
             : '';
         loadingEl.innerHTML = statsHtml + renderText(answer) + statsBadge;
         attachExport(loadingEl, answer, 'quanta-table-analysis');
-        persistTurn(`📊 Таблица: ${file.name}`, answer);
+        persistTurn(`Таблица: ${file.name}`, answer);
     } catch (e) {
-        loadingEl.innerHTML = '⚠️ Ошибка анализа таблицы: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = icon('alert') + ' Ошибка анализа таблицы: ' + escapeHtml(e.message);
     }
 }
 
@@ -1748,10 +1800,10 @@ async function handleSlides(text) {
 
         const blob = await pptx.write({ outputType: 'blob' });
         const url = URL.createObjectURL(blob);
-        loadingEl.innerHTML = `✅ Презентация готова: <b>${escapeHtml(data.title || text)}</b><br><a class="ws-download" href="${url}" download="presentation.pptx">💾 Скачать .pptx</a>`;
+        loadingEl.innerHTML = `${icon('check')} Презентация готова: <b>${escapeHtml(data.title || text)}</b><br><a class="ws-download" href="${url}" download="presentation.pptx">${icon('download')} Скачать .pptx</a>`;
         persistTurn('Презентация: ' + text, `Готова презентация "${data.title || text}" (5 слайдов).`);
     } catch (e) {
-        loadingEl.innerHTML = '⚠️ Ошибка генерации презентации: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = icon('alert') + ' Ошибка генерации презентации: ' + escapeHtml(e.message);
     }
 }
 
@@ -1770,7 +1822,7 @@ async function handleResearch(text) {
         attachExport(loadingEl, answer, 'quanta-research');
         persistTurn('Исследование: ' + text, answer);
     } catch (e) {
-        loadingEl.innerHTML = '⚠️ Ошибка исследования: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = icon('alert') + ' Ошибка исследования: ' + escapeHtml(e.message);
     }
 }
 
@@ -1797,7 +1849,7 @@ async function handleWebsite(text) {
         attachExport(loadingEl, answer, 'quanta-site');
         persistTurn('Анализ сайта: ' + url, answer);
     } catch (e) {
-        loadingEl.innerHTML = '⚠️ Ошибка скрапинга сайта: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = icon('alert') + ' Ошибка скрапинга сайта: ' + escapeHtml(e.message);
     }
 }
 
@@ -1812,7 +1864,7 @@ async function handleClusterAnalysis(text) {
         attachExport(loadingEl, answer, 'quanta-cluster');
         persistTurn('Кластерный анализ: ' + (text || 'обзор'), answer);
     } catch (e) {
-        loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = icon('alert') + ' Ошибка: ' + escapeHtml(e.message);
     }
 }
 
@@ -1831,7 +1883,7 @@ async function handleGenericMode(text, kind, title, sys) {
         attachExport(loadingEl, answer, 'quanta-' + kind);
         persistTurn(text, answer);
     } catch (e) {
-        loadingEl.innerHTML = '⚠️ Ошибка: ' + escapeHtml(e.message);
+        loadingEl.innerHTML = icon('alert') + ' Ошибка: ' + escapeHtml(e.message);
     }
 }
 
