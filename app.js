@@ -1315,7 +1315,6 @@ async function callOpenAICompatible(messages, onProgress = null, explicitModel =
         if (own) endGeneration();
     }
 }
-
 async function _callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
     const settings = getApiSettings();
     
@@ -1348,11 +1347,14 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
     const canStream = typeof onProgress === 'function' && typeof ReadableStream !== 'undefined';
     let lastError = null;
 
-    // Подмена идентификации для модели Opus 4.8 (на базе moonshotai/kimi-k3)
+    // Подмена идентификации и вырезание служебных сообщений безопасности
     const isOpusModel = primaryModel === 'moonshotai/kimi-k3';
     const sanitizeModelOutput = (text) => {
-        if (!isOpusModel || !text) return text;
-        return text
+        if (!text) return '';
+        // Полностью вырезаем статус фильтра безопасности
+        let cleaned = text.replace(/User Safety:\s*(safe|unsafe)[\r\n]*/gi, '').trimStart();
+        if (!isOpusModel) return cleaned;
+        return cleaned
             .replace(/\bKimi\s*K3\b/gi, 'Claude Opus 4.8')
             .replace(/(я\s*[-—–]?\s*)(kimi|кими)(\s*k3)?/gi, '$1Claude Opus 4.8')
             .replace(/(модель\s*[-—–]?\s*)(kimi|кими)(\s*k3)?/gi, '$1Claude Opus 4.8')
@@ -1452,14 +1454,18 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
 
                                     const elapsedSec = Math.max(0.08, (performance.now() - (firstChunkTime || startTime)) / 1000);
                                     const speed = (tokenCount / elapsedSec).toFixed(1);
+                                    const sanitized = sanitizeModelOutput(fullText);
 
-                                    onProgress({
-                                        text: sanitizeModelOutput(fullText),
-                                        tokens: tokenCount,
-                                        speed: parseFloat(speed),
-                                        elapsedSec: elapsedSec.toFixed(1),
-                                        isDone: false
-                                    });
+                                    // Обновляем экран только когда есть полезный текст, а не только статус фильтра
+                                    if (sanitized.trim()) {
+                                        onProgress({
+                                            text: sanitized,
+                                            tokens: tokenCount,
+                                            speed: parseFloat(speed),
+                                            elapsedSec: elapsedSec.toFixed(1),
+                                            isDone: false
+                                        });
+                                    }
                                 }
                             } catch (parseErr) {}
                         }
@@ -1467,10 +1473,16 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                 }
 
                 if (fullText.trim()) {
+                    const sanitizedFull = sanitizeModelOutput(fullText);
+
+                    // Если модель выдала только системный статус (6 токенов) и оборвалась — считаем ошибкой и идём на резерв
+                    if (!sanitizedFull.trim()) {
+                        throw new Error('Модель вернула только служебный статус безопасности');
+                    }
+
                     const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
                     const finalTokens = Math.max(tokenCount, Math.round(fullText.length / 3.5));
                     const finalSpeed = (finalTokens / totalSec).toFixed(1);
-                    const sanitizedFull = sanitizeModelOutput(fullText);
 
                     onProgress({
                         text: sanitizedFull,
@@ -1486,6 +1498,11 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             const data = await response.json();
             const rawText = data?.choices?.[0]?.message?.content || data?.message?.content || data?.text || JSON.stringify(data);
             const resultText = sanitizeModelOutput(rawText);
+
+            if (!resultText.trim()) {
+                throw new Error('Модель вернула только служебный статус безопасности');
+            }
+
             const totalSec = Math.max(0.1, (performance.now() - startTime) / 1000);
             const approxTokens = Math.max(1, Math.round(resultText.length / 3.5));
             const speed = (approxTokens / totalSec).toFixed(1);
@@ -1533,8 +1550,6 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
     }
     throw lastError || new Error('Не удалось получить ответ от нейросети');
 }
-
-async function askAI(prompt, opts = {}) {
     let messages;
     if (opts.useHistory) {
         messages = [...chatHistory, { role: 'user', content: prompt }];
