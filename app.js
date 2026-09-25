@@ -273,6 +273,42 @@ const ChatStorage = {
     }
 };
 
+// Гарантирует, что всегда есть "текущий" чат, видимый в истории —
+// переиспользует уже существующий пустой чат вместо создания дублей,
+// и создаёт новую пустую запись (локально + в облаке, если есть логин),
+// если пустого чата ещё нет.
+function ensureCurrentChat(uid) {
+    const targetUid = uid || (window.currentUser ? window.currentUser.uid : 'guest');
+    let chats = ChatStorage.getAllLocal(targetUid);
+    let chat = chats.find(c => !c.messages || c.messages.length === 0);
+
+    if (!chat) {
+        chat = {
+            id: 'chat_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+            title: 'Новый диалог',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            messages: []
+        };
+        chats.unshift(chat);
+        ChatStorage.saveAllLocal(chats, targetUid);
+
+        if (window.currentUser && db && targetUid === window.currentUser.uid) {
+            db.collection('users').doc(targetUid).collection('chats').doc(chat.id).set({
+                id: chat.id,
+                title: chat.title,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).catch(e => console.info('Firestore new chat notice:', e.message));
+        }
+    }
+
+    window.currentChatId = chat.id;
+    renderChatHistoryList(chats);
+    return chat.id;
+}
+window.ensureCurrentChat = ensureCurrentChat;
+
 window.signInWithGoogle = async function () {
     if (!auth || !googleProvider) {
         showToast('Firebase не инициализирован');
@@ -368,18 +404,16 @@ if (auth) {
         if (user) {
             const localChats = ChatStorage.getAllLocal(user.uid);
             renderChatHistoryList(localChats);
+            if (!window.currentChatId) ensureCurrentChat(user.uid);
 
             if (db) {
                 subscribeToChatHistory(user.uid);
             }
         } else {
+            // Гость (не вошёл через Google): показываем его локальную историю,
+            // а не заглушку "войдите" поверх реальных сохранённых чатов.
             window.currentChatId = null;
-            const list = document.getElementById('firebaseChatList');
-            const clearBtn = document.getElementById('clearHistoryBtn');
-            if (clearBtn) clearBtn.style.display = 'none';
-            if (list) {
-                list.innerHTML = '<div class="sidebar-item history-empty" id="chatHistoryPlaceholder">Войдите через Google, чтобы синхронизировать историю диалогов</div>';
-            }
+            ensureCurrentChat('guest');
         }
     });
 }
@@ -654,11 +688,17 @@ window.closeWorkspace = function() {
 window.startNewChat = function() {
     closeWorkspace();
     resetChatHistory();
-    window.currentChatId = null;
     document.getElementById('mainInput').value = '';
     document.getElementById('mainInput').style.height = 'auto';
     removePendingImage();
+
+    const uid = window.currentUser ? window.currentUser.uid : 'guest';
+    ensureCurrentChat(uid); // сразу создаёт/переиспользует запись и показывает её в истории
+
     document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(el => el.classList.remove('active'));
+    const targetEl = document.querySelector(`#firebaseChatList .sidebar-item[onclick*="${window.currentChatId}"]`);
+    if (targetEl) targetEl.classList.add('active');
+
     showToast('Начат новый диалог');
 };
 
@@ -2059,6 +2099,10 @@ async function handleGenericMode(text, kind, title, sys) {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     refreshSettingsUI();
+
+    // Сразу показываем в истории текущий чат (гостевой, пока не подтянулся логин Google) —
+    // если тот же самый пустой чат уже есть, новый не создаётся.
+    ensureCurrentChat('guest');
 
     const savedModel = localStorage.getItem('quanta_selected_model');
     if (savedModel && FREE_MODELS_CATALOG[savedModel]) {
