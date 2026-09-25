@@ -6,7 +6,8 @@ const LAZY_LIBS = {
     mammoth:['https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js', 'mammoth'],
     papa:   ['https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js', 'Papa'],
     xlsx:   ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX'],
-    pptx:   ['https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js', 'PptxGenJS']
+    pptx:   ['https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js', 'PptxGenJS'],
+    zip:    ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'JSZip']
 };
 const _libPromises = {};
 function loadLib(name) {
@@ -83,7 +84,9 @@ const ICONS = {
     'alert': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
     'refresh': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
     'table': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M12 3v18"/>',
-    'check': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'
+    'check': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    'archive': '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    'paperclip': '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>'
 };
 
 window.icon = function (name, size) {
@@ -1008,6 +1011,95 @@ window.removePendingImage = function() {
     document.getElementById('imagePreviewThumb').removeAttribute('src');
 };
 
+// ==========================================
+// ZIP ARCHIVE ATTACHMENT
+// ==========================================
+window.pendingZip = null;
+
+const ZIP_IGNORE_DIRS = ['node_modules/', '.git/', '__macosx/', '.svn/', '.idea/', '.vscode/', 'dist/', 'build/', '.next/', 'venv/', '__pycache__/'];
+const ZIP_TEXT_EXTENSIONS = ['js', 'jsx', 'ts', 'tsx', 'html', 'htm', 'css', 'scss', 'less', 'py', 'json', 'md', 'txt', 'yml', 'yaml', 'xml', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'rb', 'php', 'sh', 'sql', 'vue', 'svelte', 'env', 'ini', 'toml', 'gitignore', 'csv'];
+const ZIP_MAX_TOTAL_CHARS = 60000;
+const ZIP_MAX_PER_FILE_CHARS = 9000;
+
+function setFilePreview(name, hint) {
+    const bar = document.getElementById('filePreviewBar');
+    const nameEl = document.getElementById('filePreviewName');
+    const hintEl = document.getElementById('filePreviewHint');
+    if (nameEl) nameEl.textContent = name;
+    if (hintEl) hintEl.textContent = hint;
+    if (bar) bar.style.display = 'flex';
+}
+
+window.removePendingFile = function() {
+    window.pendingZip = null;
+    const bar = document.getElementById('filePreviewBar');
+    if (bar) bar.style.display = 'none';
+};
+
+async function handleZipFile(file) {
+    setFilePreview(file.name, 'Распаковка архива...');
+    try {
+        await loadLib('zip');
+        const zip = await JSZip.loadAsync(await file.arrayBuffer());
+
+        const entries = Object.values(zip.files).filter(f => !f.dir);
+        const collected = [];
+        let totalChars = 0;
+        let skippedBinary = 0;
+        let skippedIgnored = 0;
+
+        for (const entry of entries) {
+            const pathLower = entry.name.toLowerCase();
+            if (ZIP_IGNORE_DIRS.some(dir => pathLower.includes(dir))) {
+                skippedIgnored++;
+                continue;
+            }
+            const ext = pathLower.split('.').pop();
+            if (!ZIP_TEXT_EXTENSIONS.includes(ext)) {
+                skippedBinary++;
+                continue;
+            }
+            if (totalChars >= ZIP_MAX_TOTAL_CHARS) continue;
+
+            try {
+                let text = await entry.async('string');
+                if (text.length > ZIP_MAX_PER_FILE_CHARS) {
+                    text = text.slice(0, ZIP_MAX_PER_FILE_CHARS) + '\n... [файл обрезан по лимиту символов]';
+                }
+                const remaining = ZIP_MAX_TOTAL_CHARS - totalChars;
+                if (text.length > remaining) {
+                    text = text.slice(0, remaining) + '\n... [обрезано по общему лимиту]';
+                }
+                totalChars += text.length;
+                collected.push({ name: entry.name, content: text });
+            } catch (e) {
+                skippedBinary++;
+            }
+        }
+
+        if (!collected.length) {
+            throw new Error('В архиве не найдено текстовых или исходных файлов');
+        }
+
+        window.pendingZip = {
+            file,
+            name: file.name,
+            files: collected,
+            skippedBinary,
+            skippedIgnored
+        };
+
+        const hint = `Готово: ${collected.length} файл(ов), ~${totalChars.toLocaleString('ru-RU')} симв.`;
+        setFilePreview(file.name, hint);
+        document.getElementById('mainInput').focus();
+        showToast('Архив распакован');
+    } catch (e) {
+        window.pendingZip = null;
+        setFilePreview(file.name, 'Ошибка: ' + (e && e.message ? e.message : 'не удалось обработать архив'));
+        showToast('Не удалось распаковать архив');
+    }
+}
+
 window.triggerFileUpload = function() {
     document.getElementById('fileInput').click();
 };
@@ -1416,6 +1508,33 @@ function cleanImagePrompt(prompt) {
 }
 
 // ==========================================
+// AUTOMATIC FLUX MODEL SELECTION
+// ==========================================
+function pickFluxModel(promptDisplay, englishPrompt) {
+    const combined = `${promptDisplay} ${englishPrompt}`.toLowerCase();
+
+    const isAnime = /\b(anime|manga|2d|illustration|cartoon|chibi|waifu|yuno|gasai|mirai nikki|genshin|vtuber|key visual|comic|manhwa|manhua)\b/i.test(combined) ||
+                    /аниме|манга|тян|вайфу|юно гасай|иллюстраци|мультяшн|комикс/i.test(combined);
+    if (isAnime) {
+        return { renderModel: 'flux-anime', modelLabel: 'Flux Anime' };
+    }
+
+    const is3D = /\b(3d render|3d model|3d art|blender|octane render|cinema 4d|unreal engine|cgi|pixar style|disney 3d style|claymation|clay model|figurine|toy design|isometric render|zbrush)\b/i.test(combined) ||
+                 /3d\s*рендер|3д\s*рендер|рендер\s*3d|3д\s*модель|фигурка|мультфильм\s*3d|стиль\s*pixar|октейн/i.test(combined);
+    if (is3D) {
+        return { renderModel: 'flux-3d', modelLabel: 'Flux 3D' };
+    }
+
+    const isRealisticPortrait = /\b(portrait|headshot|human face|photo of a (man|woman|person)|realistic (skin|photo)|dslr|photojournalism|studio photography)\b/i.test(combined) ||
+                                 /портрет|фотография (человека|девушки|парня|лица)|реалистичн(ое|ая) фото/i.test(combined);
+    if (isRealisticPortrait) {
+        return { renderModel: 'flux-realism', modelLabel: 'Flux Realism' };
+    }
+
+    return { renderModel: 'flux', modelLabel: 'Flux Art / SDXL' };
+}
+
+// ==========================================
 // PROMPT TRANSLATOR (INTELLECTUAL PROMPT ENGINEERING)
 // ==========================================
 const PROMPT_TRANSLATION_DICT = {
@@ -1491,21 +1610,31 @@ async function translateImagePrompt(rawPrompt) {
 
     // Интеллектуальный Prompt Engineering через meta-llama/llama-3.3-70b-instruct:free
     try {
-        const systemPrompt = `You are an expert AI image prompt engineer for Flux and SDXL image generators.
-Convert or enrich the user input into an optimized English image generation prompt (20-40 descriptive keywords).
+        const systemPrompt = `You are an elite cinematic prompt engineer for the Flux/SDXL family of image generators (used at a level comparable to Midjourney and DALL-E 3 prompting).
+Convert or enrich the user input into one rich, optimized English image generation prompt (30-60 descriptive keywords/phrases, comma-separated).
 
-CRITICAL RULES:
+CRITICAL RULES BY CATEGORY:
 1. ANIME / 2D / MANGA / FICTIONAL CHARACTERS:
    If the request is about anime, manga, 2D art, cartoon, or specific characters (e.g. "Юно Гасай" / "Yuno Gasai", "Наруто", "Genshin", "waifu", etc.):
    - Include character English name and franchise (e.g., "Yuno Gasai from Future Diary / Mirai Nikki").
-   - Detail visual markers: hair color/style, eye color, canonical outfit, emotion/expression.
-   - Append 2D tags: "anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece, clean linework".
+   - Detail visual markers: hair color/style, eye color, canonical outfit, emotion/expression, pose.
+   - Append 2D tags: "anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece, clean linework, cel shading".
    - STRICTLY FORBIDDEN: NEVER include "photorealistic", "realistic photo", "photography", "camera", or "raw photo" for 2D/anime prompts.
-2. REALISTIC PHOTOS / LANDSCAPES / NATURE / OBJECTS:
-   If the request is for realistic photos, people, landscapes, animals, or objects:
-   - Append photographic tags: "photorealistic, raw photo, natural soft lighting, 8k, highly detailed, sharp focus".
-3. OUTPUT FORMAT:
-   - Output ONLY the prompt string (comma-separated English keywords). No introductory phrases, no quotes, no markdown headers.`;
+2. 3D RENDER / CGI / PIXAR-STYLE / PRODUCT OR CHARACTER RENDER:
+   If the request implies a 3D render, CGI character, toy/figurine, claymation, or Pixar/Disney-style 3D look:
+   - Describe materials and surface detail (subsurface scattering on skin, glossy plastic, matte clay, metallic sheen).
+   - Specify render engine quality tags: "octane render, unreal engine 5, cinema 4d, ray tracing, ambient occlusion, subsurface scattering, 8k render, studio product lighting".
+   - Include composition/style: "isometric" or "three-quarter view" where relevant, "vibrant color palette", "soft global illumination".
+3. REALISTIC PHOTOS / PORTRAITS / LANDSCAPES / NATURE / OBJECTS:
+   If the request is for realistic photos, people, landscapes, animals, or objects, write like a professional photography brief:
+   - Camera & optics: specify a plausible lens/focal length and aperture (e.g. "shot on 85mm f/1.4", "35mm lens", "shallow depth of field", "bokeh").
+   - Lighting: name a specific lighting setup (e.g. "golden hour rim light", "soft diffused studio softbox", "dramatic chiaroscuro", "overcast natural light").
+   - Detail & finish: "photorealistic, raw photo, hyperdetailed skin texture / material texture, sharp focus, natural color grading, 8k resolution".
+   - Add a mood/atmosphere phrase (e.g. "cinematic atmosphere", "melancholic mood", "epic scale") when it fits the subject.
+4. GENERAL COMPOSITION (apply to all categories where relevant):
+   - Mention framing/composition (close-up, wide shot, rule of thirds) and color palette when it strengthens the image.
+5. OUTPUT FORMAT:
+   - Output ONLY the prompt string (comma-separated English keywords/phrases). No introductory phrases, no quotes, no markdown headers, no category labels.`;
 
         const enriched = await askAI([
             { role: 'system', content: systemPrompt },
@@ -1664,10 +1793,7 @@ window.startImageGeneration = async function(promptText) {
         return;
     }
 
-    const isAnime = /\b(anime|manga|2d|illustration|cartoon|chibi|waifu|yuno|gasai|mirai nikki|genshin|vtuber|key visual|comic)\b/i.test(englishPrompt) ||
-                    /аниме|манга|тян|вайфу|юно гасай|иллюстраци|мультяшн/i.test(promptDisplay);
-    const renderModel = isAnime ? 'flux-anime' : 'flux';
-    const modelLabel = isAnime ? 'Flux Anime' : 'Flux Art / SDXL';
+    const { renderModel, modelLabel } = pickFluxModel(promptDisplay, englishPrompt);
 
     const seed = Math.floor(Math.random() * 9999999);
     const encoded = encodeURIComponent(englishPrompt);
@@ -1776,7 +1902,45 @@ window.handleSend = async function() {
     const text = input.value.trim();
     const textLower = text.toLowerCase();
 
-    // 1. Vision / Image upload
+    // 1. ZIP archive attachment
+    if (window.pendingZip) {
+        const zip = window.pendingZip;
+        removePendingFile();
+        input.value = '';
+        input.style.height = 'auto';
+        openWorkspace();
+        addMessage('user', `${icon('archive')} Архив: <b>${escapeHtml(zip.name)}</b> (${zip.files.length} файл(ов))<br>${renderText(text || 'Проанализируй код из архива')}`);
+        const loadingEl = addLoading('Анализирую файлы архива...');
+        try {
+            const codeBlock = zip.files.map(f => `--- ${f.name} ---\n${f.content}`).join('\n\n');
+            const userTask = text || 'Проанализируй содержимое архива, опиши структуру проекта и назначение файлов.';
+            const prompt = `Задание пользователя: ${userTask}\n\nСодержимое распакованного архива "${zip.name}" (${zip.files.length} файл(ов)):\n\n${codeBlock}`;
+            let lastSpeedStats = null;
+            const answer = await askAI(prompt, {
+                useHistory: true,
+                onProgress: (prog) => {
+                    lastSpeedStats = prog;
+                    loadingEl.innerHTML = renderText(prog.text) +
+                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `<span class="gen-speed-pulse"></span>` +
+                        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                        `</span>`;
+                    scrollToBottom();
+                }
+            });
+            const statsBadge = lastSpeedStats
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+                : '';
+            loadingEl.innerHTML = renderText(answer) + statsBadge;
+            attachExport(loadingEl, answer, 'quanta-archive-' + zip.name);
+            persistTurn(`Архив: ${zip.name}`, answer);
+        } catch (e) {
+            loadingEl.innerHTML = errHtml('Ошибка анализа архива: ', e);
+        }
+        return;
+    }
+
+    // 2. Vision / Image upload
     if (window.pendingImage) {
         const img = window.pendingImage;
         removePendingImage();
@@ -1815,19 +1979,19 @@ window.handleSend = async function() {
         return;
     }
 
-    // 2. Quick branching for slides
+    // 3. Quick branching for slides
     if (textLower.includes('презентаци') || textLower.includes('слайды')) {
         return handleSlides(text);
     }
 
-    // 3. Image generation trigger
+    // 4. Image generation trigger
     if (isImagePrompt(text)) {
         input.value = '';
         input.style.height = 'auto';
         return startImageGeneration(text);
     }
 
-    // 4. Normal chat with real-time streaming and tokens/sec indicator
+    // 5. Normal chat with real-time streaming and tokens/sec indicator
     openWorkspace();
     addMessage('user', renderText(text));
     input.value = '';
@@ -1872,6 +2036,8 @@ document.getElementById('fileInput').addEventListener('change', async function(e
         reader.onload = () => setPendingImage(file, reader.result);
         reader.readAsDataURL(file);
         showToast('Фото прикреплено');
+    } else if (ext === 'zip') {
+        await handleZipFile(file);
     } else if (['csv', 'xlsx', 'xls'].includes(ext)) {
         await handleSpreadsheet(file);
     } else if (['pdf', 'docx', 'txt', 'md', 'html', 'js', 'json'].includes(ext)) {

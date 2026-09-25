@@ -163,6 +163,17 @@
                         <button class="image-preview-remove" onclick="removePendingImage()" title="Удалить фото" aria-label="Удалить фото"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
                     </div>
 
+                    <div class="image-preview-bar" id="filePreviewBar">
+                        <div class="file-preview-icon" id="filePreviewIcon">
+                            <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                        </div>
+                        <div class="image-preview-info">
+                            <div class="image-preview-name" id="filePreviewName">file.zip</div>
+                            <div class="image-preview-hint" id="filePreviewHint">Обрабатываю файл...</div>
+                        </div>
+                        <button class="image-preview-remove" onclick="removePendingFile()" title="Удалить файл" aria-label="Удалить файл"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+                    </div>
+
                     <div class="input-wrapper">
                         <textarea
                             class="input-textarea" enterkeyhint="send" autocomplete="off" 
@@ -327,7 +338,7 @@
     </div>
 
     <div class="toast" id="toast"></div>
-    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.html,.htm,.js,.css,image/*">
+    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.html,.htm,.js,.css,.json,.zip,image/*">
 
     <!-- Firebase (auth + sync). Heavy file libs (pdf/docx/xlsx/csv/pptx) are loaded on demand in app.js -->
     <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>

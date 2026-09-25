@@ -730,6 +730,17 @@ code {
     object-fit: cover;
     border: 1px solid var(--border);
 }
+.file-preview-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 7px;
+    background: var(--accent, #2563eb);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
 .image-preview-info { flex: 1; min-width: 0; }
 .image-preview-name {
     font-size: 0.82rem;
