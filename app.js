@@ -1012,8 +1012,9 @@ window.removePendingImage = function() {
 };
 
 // ==========================================
-// ZIP ARCHIVE ATTACHMENT
+// UNIVERSAL FILE & ARCHIVE ATTACHMENT
 // ==========================================
+window.pendingFile = null; // { name, ext, text, type, file }
 window.pendingZip = null;
 
 const ZIP_IGNORE_DIRS = ['node_modules/', '.git/', '__macosx/', '.svn/', '.idea/', '.vscode/', 'dist/', 'build/', '.next/', 'venv/', '__pycache__/'];
@@ -1031,10 +1032,52 @@ function setFilePreview(name, hint) {
 }
 
 window.removePendingFile = function() {
+    window.pendingFile = null;
     window.pendingZip = null;
     const bar = document.getElementById('filePreviewBar');
     if (bar) bar.style.display = 'none';
 };
+
+// Извлечение текста из документов (PDF, DOCX, TXT, таблицы и т.д.)
+async function extractTextFromFile(file, ext) {
+    if (ext === 'pdf') {
+        await loadLib('pdf');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+        let content = '';
+        const maxPages = Math.min(pdf.numPages, 40);
+        for (let i = 1; i <= maxPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            content += textContent.items.map(it => it.str).join(' ') + '\n';
+        }
+        return content.trim();
+    } 
+    
+    if (ext === 'docx') {
+        await loadLib('mammoth');
+        const res = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+        return (res.value || '').trim();
+    }
+
+    if (['csv', 'xlsx', 'xls'].includes(ext)) {
+        let rows = [];
+        if (ext === 'csv') {
+            await loadLib('papa');
+            rows = Papa.parse(await file.text(), { header: true, skipEmptyLines: true, dynamicTyping: true }).data;
+        } else {
+            await loadLib('xlsx');
+            const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+            rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
+        }
+        if (!rows.length) return 'Таблица пуста.';
+        const cols = Object.keys(rows[0] || {});
+        const previewRows = rows.slice(0, 35);
+        return `Количество строк: ${rows.length}, столбцов: ${cols.length}\nКолонки: ${cols.join(', ')}\n\nДанные (выборка):\n` + JSON.stringify(previewRows, null, 2);
+    }
+
+    return await file.text();
+}
 
 async function handleZipFile(file) {
     setFilePreview(file.name, 'Распаковка архива...');
@@ -1100,6 +1143,57 @@ async function handleZipFile(file) {
     }
 }
 
+// Единая точка прикрепления файла (из проводника или через скрепку)
+async function processAndAttachFile(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    // 1. Картинка
+    if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext) || file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            setPendingImage(file, reader.result);
+            showToast('Фото прикреплено');
+        };
+        reader.readAsDataURL(file);
+        return;
+    }
+
+    // 2. ZIP
+    if (ext === 'zip') {
+        await handleZipFile(file);
+        return;
+    }
+
+    // 3. Документы, код, таблицы
+    setFilePreview(file.name, 'Извлечение содержимого...');
+    try {
+        let text = await extractTextFromFile(file, ext);
+        if (!text) throw new Error('Файл пуст или текст не распознан');
+
+        if (text.length > 55000) {
+            text = text.slice(0, 55000) + '\n... [текст сокращен по лимиту контекста]';
+        }
+
+        window.pendingFile = {
+            name: file.name,
+            ext,
+            text,
+            type: ['csv', 'xlsx', 'xls'].includes(ext) ? 'table' : 'doc',
+            file
+        };
+
+        const sizeKb = Math.round(file.size / 1024);
+        setFilePreview(file.name, `Готов к отправке (${sizeKb} КБ)`);
+        document.getElementById('mainInput').focus();
+        showToast(`Файл «${file.name}» прикреплен! Напишите задачу.`);
+    } catch (e) {
+        window.pendingFile = null;
+        setFilePreview(file.name, 'Ошибка: ' + (e.message || 'не удалось прочитать файл'));
+        showToast('Не удалось прочитать файл');
+    }
+}
+
 window.triggerFileUpload = function() {
     document.getElementById('fileInput').click();
 };
@@ -1156,6 +1250,7 @@ window.startVoiceInput = function() {
     recognition.onend = () => { btn.style.color = ''; };
     recognition.start();
 };
+
 
 // ==========================================
 // CALL OPENAI COMPATIBLE (ACCURATE ROUTING)
@@ -1891,7 +1986,7 @@ window.handleImageFallback = function(img, encoded, genId, safePrompt) {
 };
 
 // ==========================================
-// MAIN SEND HANDLER
+// MAIN SEND HANDLER (ВИДИТ ФАЙЛЫ И ЗАДАЧУ)
 // ==========================================
 window.handleSend = async function() {
     if (window.genAbort) {
@@ -1902,19 +1997,60 @@ window.handleSend = async function() {
     const text = input.value.trim();
     const textLower = text.toLowerCase();
 
-    // 1. ZIP archive attachment
+    // 1. Прикреплен текстовый документ, код или таблица
+    if (window.pendingFile) {
+        const attached = window.pendingFile;
+        removePendingFile();
+        input.value = '';
+        input.style.height = 'auto';
+        openWorkspace();
+
+        const userTask = text || 'Внимательно изучи содержимое прикрепленного файла, выдели главное и объясни ключевые моменты.';
+        const iconType = attached.type === 'table' ? icon('table') : icon('file');
+        addMessage('user', `${iconType} Файл: <b>${escapeHtml(attached.name)}</b><br>${renderText(text || 'Анализ файла')}`);
+
+        const loadingEl = addLoading('Анализирую файл с учётом задачи...');
+        try {
+            const prompt = `Пользователь прикрепил файл: "${attached.name}".\n\nЗАДАЧА ПОЛЬЗОВАТЕЛЯ:\n${userTask}\n\n--- СОДЕРЖИМОЕ ФАЙЛА ---\n${attached.text}`;
+            let lastSpeedStats = null;
+            const answer = await askAI(prompt, {
+                useHistory: true,
+                onProgress: (prog) => {
+                    lastSpeedStats = prog;
+                    loadingEl.innerHTML = renderText(prog.text) +
+                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `<span class="gen-speed-pulse"></span>` +
+                        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                        `</span>`;
+                    scrollToBottom();
+                }
+            });
+            const statsBadge = lastSpeedStats
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+                : '';
+            loadingEl.innerHTML = renderText(answer) + statsBadge;
+            attachExport(loadingEl, answer, 'quanta-' + attached.name);
+            persistTurn(`Файл: ${attached.name} (${userTask})`, answer);
+        } catch (e) {
+            loadingEl.innerHTML = errHtml('Ошибка обработки файла: ', e);
+        }
+        return;
+    }
+
+    // 2. ZIP archive attachment
     if (window.pendingZip) {
         const zip = window.pendingZip;
         removePendingFile();
         input.value = '';
         input.style.height = 'auto';
         openWorkspace();
-        addMessage('user', `${icon('archive')} Архив: <b>${escapeHtml(zip.name)}</b> (${zip.files.length} файл(ов))<br>${renderText(text || 'Проанализируй код из архива')}`);
+
+        const userTask = text || 'Проанализируй код и файлы из архива, опиши архитектуру и назначение файлов.';
+        addMessage('user', `${icon('archive')} Архив: <b>${escapeHtml(zip.name)}</b> (${zip.files.length} файл(ов))<br>${renderText(text || 'Анализ архива')}`);
         const loadingEl = addLoading('Анализирую файлы архива...');
         try {
             const codeBlock = zip.files.map(f => `--- ${f.name} ---\n${f.content}`).join('\n\n');
-            const userTask = text || 'Проанализируй содержимое архива, опиши структуру проекта и назначение файлов.';
-            const prompt = `Задание пользователя: ${userTask}\n\nСодержимое распакованного архива "${zip.name}" (${zip.files.length} файл(ов)):\n\n${codeBlock}`;
+            const prompt = `ЗАДАЧА ПОЛЬЗОВАТЕЛЯ:\n${userTask}\n\nСодержимое распакованного архива "${zip.name}" (${zip.files.length} файл(ов)):\n\n${codeBlock}`;
             let lastSpeedStats = null;
             const answer = await askAI(prompt, {
                 useHistory: true,
@@ -1933,25 +2069,26 @@ window.handleSend = async function() {
                 : '';
             loadingEl.innerHTML = renderText(answer) + statsBadge;
             attachExport(loadingEl, answer, 'quanta-archive-' + zip.name);
-            persistTurn(`Архив: ${zip.name}`, answer);
+            persistTurn(`Архив: ${zip.name} (${userTask})`, answer);
         } catch (e) {
             loadingEl.innerHTML = errHtml('Ошибка анализа архива: ', e);
         }
         return;
     }
 
-    // 2. Vision / Image upload
+    // 3. Vision / Image upload
     if (window.pendingImage) {
         const img = window.pendingImage;
         removePendingImage();
         input.value = '';
         input.style.height = 'auto';
         openWorkspace();
+        const userTask = text || 'Подробно проанализируй и опиши это изображение.';
         addMessage('user', `<img class="chat-attached-img" src="${img.dataUrl}" onclick="openImageLightbox('${img.dataUrl}', 'Загруженное фото')" alt="Прикрепленное изображение"><br>${renderText(text || 'Анализ изображения')}`);
-        const loadingEl = addLoading('Анализирую изображение мультимодальной нейросетью...');
+        const loadingEl = addLoading('Анализирую изображение...');
         try {
             let lastSpeedStats = null;
-            const answer = await askVision(img.dataUrl, text, {
+            const answer = await askVision(img.dataUrl, userTask, {
                 onProgress: (prog) => {
                     lastSpeedStats = prog;
                     loadingEl.innerHTML = renderText(prog.text) +
@@ -1979,19 +2116,19 @@ window.handleSend = async function() {
         return;
     }
 
-    // 3. Quick branching for slides
+    // 4. Презентации
     if (textLower.includes('презентаци') || textLower.includes('слайды')) {
         return handleSlides(text);
     }
 
-    // 4. Image generation trigger
+    // 5. Картинки
     if (isImagePrompt(text)) {
         input.value = '';
         input.style.height = 'auto';
         return startImageGeneration(text);
     }
 
-    // 5. Normal chat with real-time streaming and tokens/sec indicator
+    // 6. Обычный текстовый чат
     openWorkspace();
     addMessage('user', renderText(text));
     input.value = '';
@@ -2024,123 +2161,13 @@ window.handleSend = async function() {
     }
 };
 
-// File Handler
+// Обработчик выбора файла через диалог скрепки
 document.getElementById('fileInput').addEventListener('change', async function(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const ext = file.name.split('.').pop().toLowerCase();
     e.target.value = '';
-
-    if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext) || file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = () => setPendingImage(file, reader.result);
-        reader.readAsDataURL(file);
-        showToast('Фото прикреплено');
-    } else if (ext === 'zip') {
-        await handleZipFile(file);
-    } else if (['csv', 'xlsx', 'xls'].includes(ext)) {
-        await handleSpreadsheet(file);
-    } else if (['pdf', 'docx', 'txt', 'md', 'html', 'js', 'json'].includes(ext)) {
-        await handleDocument(file, ext);
-    } else {
-        showToast('Формат файла пока не поддерживается');
-    }
+    await processAndAttachFile(file);
 });
-
-async function handleDocument(file, ext) {
-    openWorkspace();
-    addMessage('user', `${icon('file')} Документ: <b>${escapeHtml(file.name)}</b>`);
-    const loadingEl = addLoading('Извлекаю текст из файла...');
-    try {
-        let content = '';
-        if (ext === 'pdf') {
-            await loadLib('pdf');
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-            for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                content += textContent.items.map(it => it.str).join(' ') + '\n';
-            }
-        } else if (ext === 'docx') {
-            await loadLib('mammoth');
-            content = (await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value;
-        } else {
-            content = await file.text();
-        }
-
-        content = content.trim().slice(0, 14000);
-        if (!content) throw new Error('Файл пуст или текст не распознан');
-
-        loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую содержание...</div>';
-        let lastSpeedStats = null;
-        const answer = await askAI('Сделай подробную структурированную сводку документа:\n\n' + content, {
-            useHistory: true,
-            onProgress: (prog) => {
-                lastSpeedStats = prog;
-                loadingEl.innerHTML = renderText(prog.text) +
-                    `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
-                    `<span class="gen-speed-pulse"></span>` +
-                    `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
-                    `</span>`;
-                scrollToBottom();
-            }
-        });
-        const statsBadge = lastSpeedStats
-            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
-            : '';
-        loadingEl.innerHTML = renderText(answer) + statsBadge;
-        attachExport(loadingEl, answer, 'quanta-doc-' + file.name);
-        persistTurn(`Документ: ${file.name}`, answer);
-    } catch (e) {
-        loadingEl.innerHTML = errHtml('Ошибка обработки документа: ', e);
-    }
-}
-
-async function handleSpreadsheet(file) {
-    openWorkspace();
-    addMessage('user', `${icon('table')} Таблица: <b>${escapeHtml(file.name)}</b>`);
-    const loadingEl = addLoading('Чтение таблицы...');
-    try {
-        let rows = [];
-        if (file.name.toLowerCase().endsWith('.csv')) {
-            await loadLib('papa');
-            rows = Papa.parse(await file.text(), { header: true, skipEmptyLines: true, dynamicTyping: true }).data;
-        } else {
-            await loadLib('xlsx');
-            const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-            rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
-        }
-        if (!rows.length) throw new Error('Таблица пуста');
-
-        const columns = Object.keys(rows[0]);
-        let statsHtml = `<b>Строк:</b> ${rows.length} • <b>Столбцов:</b> ${columns.length}<br><br>`;
-        loadingEl.innerHTML = statsHtml + '<div class="ws-loading"><div class="spinner"></div>Формирую анализ данных...</div>';
-
-        const sample = JSON.stringify(rows.slice(0, 25));
-        let lastSpeedStats = null;
-        const answer = await askAI(`Проанализируй таблицу (${rows.length} строк, колонки: ${columns.join(', ')}). Данные (выборка):\n${sample}`, {
-            useHistory: true,
-            onProgress: (prog) => {
-                lastSpeedStats = prog;
-                loadingEl.innerHTML = statsHtml + renderText(prog.text) +
-                    `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
-                    `<span class="gen-speed-pulse"></span>` +
-                    `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
-                    `</span>`;
-                scrollToBottom();
-            }
-        });
-        const statsBadge = lastSpeedStats
-            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
-            : '';
-        loadingEl.innerHTML = statsHtml + renderText(answer) + statsBadge;
-        attachExport(loadingEl, answer, 'quanta-table-analysis');
-        persistTurn(`Таблица: ${file.name}`, answer);
-    } catch (e) {
-        loadingEl.innerHTML = errHtml('Ошибка анализа таблицы: ', e);
-    }
-}
 
 async function handleSlides(text) {
     if (!text) {
@@ -2266,8 +2293,6 @@ async function handleGenericMode(text, kind, title, sys) {
 document.addEventListener('DOMContentLoaded', () => {
     refreshSettingsUI();
 
-    // Сразу показываем в истории текущий чат (гостевой, пока не подтянулся логин Google) —
-    // если тот же самый пустой чат уже есть, новый не создаётся.
     ensureCurrentChat('guest');
 
     const savedModel = localStorage.getItem('quanta_selected_model');
@@ -2289,6 +2314,42 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.innerWidth > 768 && localStorage.getItem('quanta_sidebar_collapsed') === '1') {
         document.getElementById('sidebar')?.classList.add('collapsed');
     }
+
+    // Слушатели перетаскивания файлов (Drag & Drop)
+    const dropOverlay = document.getElementById('dragDropOverlay');
+    let dragCounter = 0;
+
+    window.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+            dropOverlay?.classList.add('active');
+        }
+    });
+
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    window.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            dropOverlay?.classList.remove('active');
+        }
+    });
+
+    window.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        dropOverlay?.classList.remove('active');
+
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            await processAndAttachFile(file);
+        }
+    });
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
