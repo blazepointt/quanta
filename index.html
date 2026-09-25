@@ -228,6 +228,10 @@
                                             <span class="model-item-name">Ling Flash</span>
                                             <span class="model-item-tag">(Быстрая)</span>
                                         </div>
+                                        <div class="dropdown-item" role="option" data-model="moonshotai/kimi-k3" onclick="selectModel('moonshotai/kimi-k3', 'Opus 4.8')">
+                                            <span class="model-item-name">Opus 4.8</span>
+                                            <span class="model-item-tag">(платная, нужен баланс на API-ключе)</span>
+                                        </div>
                                         <div class="dropdown-item" role="option" data-model="flux/image-gen" onclick="selectModel('flux/image-gen', 'Flux Art')">
                                             <span class="model-item-name">Flux Art</span>
                                             <span class="model-item-tag">(Картинки)</span>
@@ -324,7 +328,6 @@
 
     <div class="toast" id="toast"></div>
     <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.html,.htm,.js,.css,image/*">
-
 
     <!-- Firebase (auth + sync). Heavy file libs (pdf/docx/xlsx/csv/pptx) are loaded on demand in app.js -->
     <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
