@@ -39,6 +39,168 @@ function loadLib(name) {
 }
 
 // ==========================================
+// 🌐 WEB SEARCH MODULE
+// ==========================================
+window.webSearchEnabled = false;
+
+window.toggleWebSearch = function() {
+    window.webSearchEnabled = !window.webSearchEnabled;
+    try {
+        localStorage.setItem('quanta_web_search_enabled', window.webSearchEnabled ? '1' : '0');
+    } catch (e) {
+        console.warn('Failed to save web search state:', e);
+    }
+    
+    const btn = document.getElementById('webSearchToggle');
+    if (btn) {
+        btn.classList.toggle('active', window.webSearchEnabled);
+        btn.title = window.webSearchEnabled 
+            ? 'Веб-поиск включен (свежие данные из интернета)' 
+            : 'Веб-поиск (поиск свежей информации в интернете)';
+    }
+    
+    showToast(window.webSearchEnabled ? 'Веб-поиск включен' : 'Веб-поиск выключен');
+};
+
+async function searchWeb(query) {
+    const SEARCH_TIMEOUT = 8000;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SEARCH_TIMEOUT);
+    
+    try {
+        const encodedQuery = encodeURIComponent(query);
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://html.duckduckgo.com/html/?q=' + encodedQuery)}`;
+        
+        const response = await fetch(proxyUrl, { 
+            signal: controller.signal,
+            headers: { 'Accept': 'text/html' }
+        });
+        
+        clearTimeout(timeout);
+        
+        if (!response.ok) {
+            throw new Error(`Поисковый сервис недоступен (${response.status})`);
+        }
+        
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        const results = [];
+        const resultElements = doc.querySelectorAll('.result, .web-result');
+        
+        for (let i = 0; i < Math.min(resultElements.length, 5); i++) {
+            const el = resultElements[i];
+            
+            const titleEl = el.querySelector('.result__a, .result__title a, a.result__url');
+            const snippetEl = el.querySelector('.result__snippet, .result__body');
+            const urlEl = el.querySelector('.result__url, .result__extras__url a');
+            
+            if (!titleEl) continue;
+            
+            let title = titleEl.textContent.trim();
+            let snippet = snippetEl ? snippetEl.textContent.trim() : '';
+            let url = titleEl.href || (urlEl ? urlEl.href : '');
+            
+            // Очистка URL от DuckDuckGo redirect
+            if (url.includes('duckduckgo.com/l/?')) {
+                try {
+                    const urlObj = new URL(url);
+                    url = urlObj.searchParams.get('uddg') || url;
+                } catch (e) {
+                    console.warn('URL parse error:', e);
+                }
+            }
+            
+            if (!url.startsWith('http')) {
+                url = 'https://' + url;
+            }
+            
+            if (title && url) {
+                results.push({
+                    title: title.slice(0, 200),
+                    snippet: snippet.slice(0, 300),
+                    url: url.slice(0, 500)
+                });
+            }
+        }
+        
+        return results.length > 0 ? results : null;
+        
+    } catch (error) {
+        clearTimeout(timeout);
+        
+        if (error.name === 'AbortError') {
+            throw new Error('Превышено время ожидания поиска');
+        }
+        throw error;
+    }
+}
+
+function buildWebSearchContext(results, userQuery) {
+    if (!results || results.length === 0) return '';
+    
+    let context = '\n\n[АКТУАЛЬНЫЕ РЕЗУЛЬТАТЫ ПОИСКА В СЕТИ]:\n';
+    context += `Запрос пользователя: "${userQuery}"\n\n`;
+    
+    results.forEach((result, index) => {
+        context += `${index + 1}. Источник: ${result.title}\n`;
+        context += `   URL: ${result.url}\n`;
+        if (result.snippet) {
+            context += `   Описание: ${result.snippet}\n`;
+        }
+        context += '\n';
+    });
+    
+    context += '\nИнструкция: Ответь пользователю на русском языке, опираясь на эти свежие данные из интернета. ';
+    context += 'Указывай кликабельные сноски на источники в формате Markdown: [Название источника](URL). ';
+    context += 'Приводи конкретные факты из найденных результатов.\n';
+    
+    return context;
+}
+
+function renderWebSourcesCard(results) {
+    if (!results || !results.length) return '';
+
+    const itemsHtml = results.map(result => {
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(result.url);
+        } catch (_) {
+            return '';
+        }
+
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) return '';
+
+        const domain = parsedUrl.hostname.replace(/^www\./, '');
+        const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
+        const title = result.title || domain;
+
+        return `
+            <a href="${escapeAttr(parsedUrl.href)}" target="_blank" rel="noopener noreferrer" class="web-source-item">
+                <img src="${escapeAttr(favicon)}" alt="" class="web-source-favicon" onerror="this.style.display='none'">
+                <span class="web-source-title">${escapeHtml(title)}</span>
+                <span class="web-source-domain">${escapeHtml(domain)}</span>
+            </a>
+        `;
+    }).filter(Boolean).join('');
+
+    if (!itemsHtml) return '';
+
+    return `
+        <div class="web-sources-card">
+            <div class="web-sources-header" onclick="this.parentElement.querySelector('.web-sources-list').classList.toggle('collapsed')">
+                ${icon('search', 14)}
+                <span>Использованы источники из сети (${results.length})</span>
+                <span class="web-sources-toggle">▼</span>
+            </div>
+            <div class="web-sources-list">
+                ${itemsHtml}
+            </div>
+        </div>
+    `;
+}
+// ==========================================
 // FIREBASE INITIALIZATION & SYNC
 // ==========================================
 const firebaseConfig = {
@@ -1175,16 +1337,24 @@ async function extractTextFromFile(file, ext) {
     if (ext === 'pdf') {
         await loadLib('pdf');
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-        let content = '';
-        const maxPages = Math.min(pdf.numPages, 40);
-        for (let i = 1; i <= maxPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            content += textContent.items.map(it => it.str).join(' ') + '\n';
+        const task = pdfjsLib.getDocument({ 
+            data: await file.arrayBuffer(),
+            isEvalSupported: false 
+        });
+        try {
+            const pdf = await task.promise;
+            let content = '';
+            const maxPages = Math.min(pdf.numPages, 40);
+            for (let i = 1; i <= maxPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                content += textContent.items.map(it => it.str).join(' ') + '\n';
+            }
+            return content.trim();
+        } finally {
+            try { await task.destroy(); } catch (_) {}
         }
-        return content.trim();
-    } 
+    }
     
     if (ext === 'docx') {
         await loadLib('mammoth');
@@ -1351,13 +1521,17 @@ window.triggerImageGen = function() {
 };
 
 window.runQuickAction = function(kind) {
+    if (window.genAbort) {
+        showToast('Дождитесь завершения текущей генерации');
+        return;
+    }
     const text = mainInput ? mainInput.value.trim() : '';
 
     if (kind === 'cluster') handleClusterAnalysis(text);
     else if (kind === 'slides') handleSlides(text);
     else if (kind === 'research') handleResearch(text);
     else if (kind === 'website') handleWebsite(text);
-    else if (kind === 'code') handleGenericMode(text, 'code', 'Кодинг', 'Ты senior-разработчик. Пиши чистый, полный код в блоках с указанием языка. Запрос: ');
+    else if (kind === 'code') handleGenericMode(text, 'code', 'Кодер', 'Ты senior-разработчик. Пиши чистый, точный код в блоках с указанием языка. Запрос: ');
     else if (kind === 'table') triggerFileUpload();
 };
 
@@ -1607,7 +1781,10 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                     for (const line of lines) {
                         const trimmed = line.trim();
                         if (!trimmed || trimmed.startsWith(':')) continue;
-                        if (trimmed === 'data: [DONE]') continue;
+                        if (trimmed === 'data: [DONE]') {
+    try { await reader.cancel(); } catch (_) {}
+    break;
+}
 
                         if (trimmed.startsWith('data:')) {
                             const jsonStr = trimmed.slice(5).trim();
@@ -2128,8 +2305,18 @@ window.startImageGeneration = async function(promptText) {
             imgEl.style.display = 'block';
             if (skelEl) skelEl.remove();
             if (actsEl) actsEl.style.display = 'flex';
+            
+            // Фиксируем реальный URL (с учетом возможного fallback)
+            const actualUrl = imgEl.currentSrc || imgEl.src;
+            loadingEl.querySelectorAll('[data-download-img]').forEach(btn => {
+                btn.dataset.downloadImg = actualUrl;
+            });
+            loadingEl.querySelectorAll('[data-lightbox-img]').forEach(btn => {
+                btn.dataset.lightboxImg = actualUrl;
+            });
+
             showToast('Изображение готово!');
-            persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
+            persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: actualUrl });
             finishImageGen();
         };
 
@@ -2138,12 +2325,12 @@ window.startImageGeneration = async function(promptText) {
             if (attempt === 0) {
                 imgEl.dataset.attempt = '1';
                 const fallbackSeed = Math.floor(Math.random() * 888888);
-                imgEl.src = `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&seed=${fallbackSeed}&nologo=true&enhance=false&model=flux`;
+                imgEl.src = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&seed=${fallbackSeed}&nologo=true&model=turbo`;
                 return;
             } else if (attempt === 1) {
                 imgEl.dataset.attempt = '2';
                 const fallbackSeed = Math.floor(Math.random() * 888888);
-                imgEl.src = `https://pollinations.ai/p/${encoded}?width=${width}&height=${height}&seed=${fallbackSeed}`;
+                imgEl.src = `https://pollinations.ai/p/${encoded}?width=800&height=800&seed=${fallbackSeed}`;
                 return;
             }
 
@@ -2158,8 +2345,7 @@ window.startImageGeneration = async function(promptText) {
                 });
             }
         };
-
-        gen.signal.addEventListener('abort', () => {
+           gen.signal.addEventListener('abort', () => {
             imgEl.onload = null;
             imgEl.onerror = null;
             imgEl.removeAttribute('onerror');
@@ -2183,7 +2369,7 @@ window.startImageGeneration = async function(promptText) {
 };
 
 // ==========================================
-// MAIN SEND HANDLER
+// 🌐 MAIN SEND HANDLER WITH WEB SEARCH
 // ==========================================
 window.handleSend = async function() {
     if (window.genAbort) {
@@ -2290,7 +2476,7 @@ window.handleSend = async function() {
                 onProgress: (prog) => {
                     lastSpeedStats = prog;
                     loadingEl.innerHTML = renderText(prog.text) +
-                        `br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
                         `<span class="gen-speed-pulse"></span>` +
                         `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
                         `</span>`;
@@ -2324,6 +2510,84 @@ window.handleSend = async function() {
         return startImageGeneration(text);
     }
 
+    // 🌐 WEB SEARCH INTEGRATION
+    let webSearchResults = null;
+    let webSearchContext = '';
+
+    if (window.webSearchEnabled) {
+        openWorkspace();
+        addMessage('user', renderText(text));
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
+
+        const searchLoadingEl = addLoading('Ищу информацию в сети...');
+
+        try {
+            webSearchResults = await searchWeb(text);
+            
+            if (webSearchResults && webSearchResults.length > 0) {
+                webSearchContext = buildWebSearchContext(webSearchResults, text);
+                
+                searchLoadingEl.innerHTML = `${icon('check', 14)} Найдено ${webSearchResults.length} актуальных источников`;
+                
+                setTimeout(() => {
+                    searchLoadingEl.remove();
+                }, 800);
+            } else {
+                searchLoadingEl.innerHTML = `${icon('alert', 14)} Поиск не дал результатов, отвечаю на основе базы знаний`;
+                setTimeout(() => {
+                    searchLoadingEl.remove();
+                }, 1500);
+            }
+        } catch (searchError) {
+            console.warn('Web search failed:', searchError);
+            searchLoadingEl.innerHTML = `${icon('alert', 14)} Поиск временно недоступен, отвечаю без актуальных данных`;
+            setTimeout(() => {
+                searchLoadingEl.remove();
+            }, 1500);
+            showToast('Веб-поиск недоступен, продолжаю без него');
+        }
+
+        const answerLoadingEl = addLoading('');
+
+        try {
+            const enhancedPrompt = webSearchContext 
+                ? text + webSearchContext 
+                : text;
+
+            let lastSpeedStats = null;
+            const answer = await askAI(enhancedPrompt, {
+                useHistory: true,
+                onProgress: (prog) => {
+                    lastSpeedStats = prog;
+                    answerLoadingEl.innerHTML = renderText(prog.text) +
+                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `<span class="gen-speed-pulse"></span>` +
+                        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                        `</span>`;
+                    scrollToBottom();
+                }
+            });
+
+            const statsBadge = lastSpeedStats
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+                : '';
+
+            const sourcesCard = webSearchResults && webSearchResults.length > 0
+                ? renderWebSourcesCard(webSearchResults)
+                : '';
+
+            answerLoadingEl.innerHTML = renderText(answer) + statsBadge + sourcesCard;
+            attachExport(answerLoadingEl, answer, 'quanta-answer');
+            persistTurn(text, answer);
+        } catch (e) {
+            answerLoadingEl.innerHTML = errHtml('Ошибка: ', e);
+        }
+
+        return;
+    }
+
+    // Regular flow without web search
     openWorkspace();
     addMessage('user', renderText(text));
     mainInput.value = '';
@@ -2489,6 +2753,21 @@ async function handleGenericMode(text, kind, title, sys) {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     refreshSettingsUI();
+
+    // 🌐 Restore web search toggle state
+    try {
+        const savedWebSearch = localStorage.getItem('quanta_web_search_enabled');
+        if (savedWebSearch === '1') {
+            window.webSearchEnabled = true;
+            const btn = document.getElementById('webSearchToggle');
+            if (btn) {
+                btn.classList.add('active');
+                btn.title = 'Веб-поиск включен (свежие данные из интернета)';
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to restore web search state:', e);
+    }
 
     ensureCurrentChat('guest');
 

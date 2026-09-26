@@ -62,7 +62,7 @@ html, body {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.72);
-        z-index: 900;
+    z-index: 900;
     opacity: 0;
     transition: opacity 0.25s ease;
 }
@@ -104,7 +104,6 @@ html, body {
     color: var(--text-primary);
     text-decoration: none;
 }
-
 
 .sidebar-close-btn {
     display: none;
@@ -403,7 +402,6 @@ header {
     text-decoration: none;
 }
 
-
 .header-actions {
     display: flex;
     align-items: center;
@@ -459,10 +457,6 @@ header {
     padding: 20px 12px;
     text-align: center;
 }
-
-
-
-
 
 /* ===== Workspace / Messages View ===== */
 .workspace {
@@ -1279,7 +1273,6 @@ code {
 
     .chat-container { padding: 12px 12px 6px; }
 
-
     .model-btn-badge {
         max-width: 130px;
         padding: 5px 8px;
@@ -1295,7 +1288,6 @@ code {
         border-radius: 14px;
     }
 }
-
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -1361,7 +1353,7 @@ header {
 .send-btn:hover { background: #e5e5e5; }
 .send-btn:disabled { opacity: .3; }
 
-/* Model selector: bright white text, emphasised active model */
+/* Model selector */
 .model-select-wrapper { min-width: 0; }
 .model-btn-badge {
     background: transparent;
@@ -1404,7 +1396,7 @@ header {
 .dropdown-item.active .model-item-name { font-weight: 700; }
 .dropdown-item.active::after { opacity: 1; }
 
-/* Monochrome fixes for elements that used the old indigo accent */
+/* Monochrome elements */
 .msg-user .msg-role { color: var(--text-secondary); }
 .code-action-btn, .ws-download, .modal-btn-primary, .img-action-btn-primary { color: var(--on-accent); }
 .img-action-btn-primary { border-color: var(--accent); }
@@ -1412,7 +1404,7 @@ header {
 .gen-speed-badge { background: rgba(255,255,255,.06); color: var(--text-secondary); border-color: var(--border-light); }
 .new-chat-btn:hover, .modal-field input:focus, .img-action-btn:hover { border-color: #5a5a5a; }
 
-/* Touch devices: comfortable targets, no iOS focus-zoom */
+/* Touch devices */
 @media (pointer: coarse) {
     .sidebar-toggle-btn, .header-icon-btn, .sidebar-close-btn { width: 44px; height: 44px; }
     .tool-btn { width: 40px; height: 40px; }
@@ -1444,12 +1436,7 @@ img, svg, video { max-width: 100%; }
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
-
-/* =====================================================================
-   FIX: no focus ring on composer (textarea + wrapper)
-   Глобальное :focus-visible { outline: 2px solid #fff } перебивало
-   .input-textarea { outline: none } — снимаем явно и с запасом.
-   ===================================================================== */
+/* Fix composer focus rings */
 .input-textarea,
 .input-textarea:focus,
 .input-textarea:focus-visible,
@@ -1469,26 +1456,19 @@ img, svg, video { max-width: 100%; }
     border-color: var(--border-light) !important;
 }
 
-
-/* =====================================================================
-   Monochrome inline icons (replace emoji). Colour follows currentColor.
-   ===================================================================== */
+/* Monochrome inline icons */
 .ico { display: inline-block; vertical-align: -0.16em; flex-shrink: 0; }
 .code-action-btn, .auth-user-menu button, .modal-header h2 { display: inline-flex; align-items: center; gap: 6px; }
 .modal-header h2 { gap: 8px; }
 .image-preview-remove, .lightbox-close-btn { display: inline-flex; align-items: center; justify-content: center; }
 .generated-prompt-badge > span:first-child { display: inline-flex; align-items: center; }
 
-
 /* Send <-> Stop button */
 .send-btn.is-stop { background: #fff; color: #000; }
 .send-btn.is-stop svg { display: block; }
 .send-btn.is-stop:hover { background: #e5e5e5; }
 
-
-/* =====================================================================
-   Typing dots — индикатор ожидания ответа (вместо спиннера и надписи)
-   ===================================================================== */
+/* Typing dots */
 .typing-dots {
     display: inline-flex;
     align-items: center;
@@ -1529,6 +1509,7 @@ img, svg, video { max-width: 100%; }
     .typing-dots i:nth-child(3) { animation-delay: .4s; }
     @keyframes typingFade { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 }
+
 /* ===== Drag and Drop Overlay ===== */
 .drag-drop-overlay {
     position: fixed;
@@ -1582,4 +1563,128 @@ img, svg, video { max-width: 100%; }
 @keyframes pulseBorder {
     0%, 100% { border-color: rgba(255, 255, 255, 0.5); transform: scale(1); }
     50% { border-color: #ffffff; transform: scale(1.02); }
+}
+
+/* =====================================================================
+   WEB SEARCH & SOURCES (INTEGRATED EXTENSION)
+   ===================================================================== */
+/* Web Search Toggle Active State */
+.tool-btn#webSearchToggle.active,
+.tool-btn#webSearchToggleBtn.active,
+#webSearchToggleBtn.active {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: 0 0 14px rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Web Sources Card & Container */
+.web-sources-card {
+    margin: 12px 0 4px;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    font-size: 0.86rem;
+}
+
+.web-sources-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.web-sources-header svg {
+    flex-shrink: 0;
+}
+
+.web-sources-toggle {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.web-sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.web-source-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s ease;
+}
+
+.web-source-item:hover {
+    background: var(--bg-hover);
+    border-color: #5a5a5a;
+}
+
+.web-source-favicon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border-radius: 3px;
+}
+
+.web-source-title {
+    flex: 1;
+    font-size: 0.84rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.web-source-domain {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+
+/* Chip Fallback Layout */
+.web-sources-box {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.web-sources-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.web-source-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    font-size: 0.76rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+.web-source-chip:hover {
+    background: var(--bg-hover);
+    border-color: #5a5a5a;
 }
