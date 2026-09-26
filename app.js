@@ -11,15 +11,31 @@ const LAZY_LIBS = {
 };
 const _libPromises = {};
 function loadLib(name) {
+    if (!LAZY_LIBS[name]) {
+        return Promise.reject(new Error('Неизвестная библиотека: ' + name));
+    }
     const [src, globalName] = LAZY_LIBS[name];
     if (window[globalName]) return Promise.resolve();
-    return _libPromises[name] || (_libPromises[name] = new Promise((resolve, reject) => {
+    if (_libPromises[name]) return _libPromises[name];
+    
+    _libPromises[name] = new Promise((resolve, reject) => {
         const s = document.createElement('script');
         s.src = src;
-        s.onload = resolve;
-        s.onerror = () => { delete _libPromises[name]; reject(new Error('Не удалось загрузить библиотеку ' + name)); };
+        s.onload = () => {
+            if (window[globalName]) {
+                resolve();
+            } else {
+                delete _libPromises[name];
+                reject(new Error('Библиотека ' + name + ' не загрузилась корректно'));
+            }
+        };
+        s.onerror = () => {
+            delete _libPromises[name];
+            reject(new Error('Не удалось загрузить библиотеку ' + name));
+        };
         document.head.appendChild(s);
-    }));
+    });
+    return _libPromises[name];
 }
 
 // ==========================================
@@ -53,10 +69,18 @@ let unsubscribeChatsListener = null;
 
 window.errHtml = function (prefix, e) {
     if (e && e.isUserAbort) return icon('square', 14) + ' Генерация остановлена';
-    return icon('alert') + ' ' + prefix + escapeHtml(e && e.message);
+    const msg = e && e.message ? escapeHtml(e.message) : 'Неизвестная ошибка';
+    return icon('alert') + ' ' + escapeHtml(prefix) + msg;
 };
 
 window.escapeHtml = function(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+};
+
+window.escapeAttr = function(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, function (c) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -126,8 +150,10 @@ const ChatStorage = {
     getAllLocal: function(uid) {
         try {
             const raw = localStorage.getItem(this.getKey(uid));
-            return raw ? JSON.parse(raw) : [];
+            if (!raw) return [];
+            return JSON.parse(raw);
         } catch (e) {
+            console.warn('localStorage parse error:', e);
             return [];
         }
     },
@@ -136,7 +162,19 @@ const ChatStorage = {
         try {
             localStorage.setItem(this.getKey(uid), JSON.stringify(chats));
         } catch (e) {
-            console.warn('LocalStorage save error:', e);
+            if (e.name === 'QuotaExceededError') {
+                console.warn('LocalStorage quota exceeded. Trying to trim oldest chats...');
+                try {
+                    const trimmed = chats.slice(0, Math.floor(chats.length * 0.7));
+                    localStorage.setItem(this.getKey(uid), JSON.stringify(trimmed));
+                    showToast('История сокращена из-за лимита памяти');
+                } catch (e2) {
+                    console.error('Failed to save even after trimming:', e2);
+                    showToast('Не удалось сохранить историю: переполнение памяти');
+                }
+            } else {
+                console.warn('LocalStorage save error:', e);
+            }
         }
     },
 
@@ -150,12 +188,12 @@ const ChatStorage = {
         let chats = this.getAllLocal(uid);
         let chat = chats.find(c => c.id === chatId);
 
-        const titleText = userMsg.length > 45 ? userMsg.slice(0, 45) + '…' : userMsg;
+        const titleText = userMsg ? (userMsg.length > 45 ? userMsg.slice(0, 45) + '…' : userMsg) : 'Новый диалог';
 
         if (!chat) {
             chat = {
                 id: chatId || ('chat_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
-                title: titleText || 'Новый диалог',
+                title: titleText,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 messages: []
@@ -353,7 +391,7 @@ document.addEventListener('click', function (e) {
     }
     const modelMenu = document.getElementById('modelDropdownMenu');
     const modelBtn = document.getElementById('modelDropdownBtn');
-    if (modelMenu && modelMenu.style.display === 'block' && !modelMenu.contains(e.target) && !modelBtn.contains(e.target)) {
+    if (modelMenu && modelMenu.style.display === 'block' && !modelMenu.contains(e.target) && modelBtn && !modelBtn.contains(e.target)) {
         modelMenu.style.display = 'none';
     }
 });
@@ -365,10 +403,12 @@ function renderAuthUI(user) {
     if (user) {
         const photo = user.photoURL || '';
         const name = user.displayName || user.email || 'Пользователь';
+        const safeName = escapeHtml(name);
+        const safePhoto = escapeAttr(photo);
         container.innerHTML = `
-            <div class="auth-user-row" id="authUserRow" onclick="toggleAuthUserMenu()" title="Профиль: ${escapeHtml(name)}">
-                ${photo ? `<img class="auth-avatar" src="${photo}" alt="avatar" referrerpolicy="no-referrer">` : `<div class="auth-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--bg-hover);font-size:0.8rem;color:var(--text-primary);">${escapeHtml(name[0] || 'U')}</div>`}
-                <span class="auth-user-name">${escapeHtml(name)}</span>
+            <div class="auth-user-row" id="authUserRow" onclick="toggleAuthUserMenu()" title="Профиль: ${safeName}">
+                ${photo ? `<img class="auth-avatar" src="${safePhoto}" alt="avatar" referrerpolicy="no-referrer">` : `<div class="auth-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--bg-hover);font-size:0.8rem;color:var(--text-primary);">${escapeHtml(name[0] || 'U')}</div>`}
+                <span class="auth-user-name">${safeName}</span>
                 <div class="auth-user-menu" id="authUserMenu">
                     <button onclick="event.stopPropagation(); window.signOutUser();">${icon('logout')} Выйти из аккаунта</button>
                 </div>
@@ -449,10 +489,12 @@ function subscribeToChatHistory(uid) {
                 ChatStorage.saveAllLocal(merged, uid);
                 renderChatHistoryList(merged);
             }, function (e) {
+                console.warn('Firestore snapshot listener error:', e);
                 const local = ChatStorage.getAllLocal(uid);
                 renderChatHistoryList(local);
             });
     } catch (e) {
+        console.error('Failed to subscribe to chat history:', e);
         const local = ChatStorage.getAllLocal(uid);
         renderChatHistoryList(local);
     }
@@ -478,13 +520,15 @@ function renderChatHistoryList(chats) {
     list.innerHTML = chats.map(function (chat) {
         const title = stripEmoji(chat.title) || 'Диалог';
         const active = chat.id === window.currentChatId ? ' active' : '';
+        const safeId = escapeAttr(chat.id);
+        const safeTitle = escapeHtml(title);
         return `
-            <div class="sidebar-item${active}" onclick="window.openLocalChat('${chat.id}')" title="${escapeHtml(title)}">
+            <div class="sidebar-item${active}" data-chat-id="${safeId}" title="${safeTitle}">
                 <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
-                <span class="chat-item-text">${escapeHtml(title)}</span>
-                <button class="chat-delete-btn" onclick="window.deleteSingleChat('${chat.id}', event)" title="Удалить этот чат" aria-label="Удалить чат">
+                <span class="chat-item-text">${safeTitle}</span>
+                <button class="chat-delete-btn" data-delete-chat-id="${safeId}" title="Удалить этот чат" aria-label="Удалить чат">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18 6 6 18M6 6l12 12"/>
                     </svg>
@@ -492,6 +536,27 @@ function renderChatHistoryList(chats) {
             </div>
         `;
     }).join('');
+
+    list.querySelectorAll('.sidebar-item').forEach(el => {
+        const chatId = el.dataset.chatId;
+        if (chatId) {
+            el.addEventListener('click', (e) => {
+                if (!e.target.closest('.chat-delete-btn')) {
+                    window.openLocalChat(chatId);
+                }
+            });
+        }
+    });
+
+    list.querySelectorAll('.chat-delete-btn').forEach(btn => {
+        const chatId = btn.dataset.deleteChatId;
+        if (chatId) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.deleteSingleChat(chatId);
+            });
+        }
+    });
 }
 
 window.openLocalChat = async function(chatId) {
@@ -534,12 +599,13 @@ window.openLocalChat = async function(chatId) {
         chat.messages.forEach(m => {
             if (m.type === 'image' && m.imageUrl) {
                 const safeDisplay = escapeHtml(m.content || 'Изображение');
+                const safeUrl = escapeAttr(m.imageUrl);
                 const genId = 'img_hist_' + Math.floor(Math.random() * 100000);
                 const el = addMessage('ai', '');
                 el.innerHTML = `
                     <div class="generated-img-card" id="${genId}">
-                        <div class="generated-img-view" onclick="openImageLightbox('${m.imageUrl}', '${safeDisplay}')">
-                            <img class="generated-img-element" src="${m.imageUrl}" alt="${safeDisplay}" />
+                        <div class="generated-img-view">
+                            <img class="generated-img-element" src="${safeUrl}" alt="${safeDisplay}" />
                             <div class="generated-img-overlay">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                                 <span>Нажмите для зума</span>
@@ -548,12 +614,25 @@ window.openLocalChat = async function(chatId) {
                         <div class="generated-img-footer">
                             <div class="generated-prompt-badge"><span>${icon('sparkles')}</span> <b>${safeDisplay}</b></div>
                             <div class="generated-img-btns">
-                                <button class="img-action-btn img-action-btn-primary" onclick="downloadGeneratedImage('${m.imageUrl}', 'quanta-${genId}.jpg')">${icon('download')} Скачать</button>
-                                <button class="img-action-btn" onclick="openImageLightbox('${m.imageUrl}', '${safeDisplay}')">${icon('maximize')} На весь экран</button>
+                                <button class="img-action-btn img-action-btn-primary" data-download-img="${safeUrl}" data-download-name="quanta-${genId}.jpg">${icon('download')} Скачать</button>
+                                <button class="img-action-btn" data-lightbox-img="${safeUrl}" data-lightbox-caption="${safeDisplay}">${icon('maximize')} На весь экран</button>
                             </div>
                         </div>
                     </div>
                 `;
+                el.querySelector('.generated-img-view').addEventListener('click', () => {
+                    openImageLightbox(m.imageUrl, m.content || 'Изображение');
+                });
+                el.querySelectorAll('[data-download-img]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        downloadGeneratedImage(btn.dataset.downloadImg, btn.dataset.downloadName);
+                    });
+                });
+                el.querySelectorAll('[data-lightbox-img]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        openImageLightbox(btn.dataset.lightboxImg, btn.dataset.lightboxCaption);
+                    });
+                });
             } else {
                 addMessage(m.role === 'assistant' ? 'ai' : 'user', renderText(m.content));
             }
@@ -562,15 +641,14 @@ window.openLocalChat = async function(chatId) {
     }
 
     document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(el => el.classList.remove('active'));
-    const targetEl = document.querySelector(`#firebaseChatList .sidebar-item[onclick*="${chatId}"]`);
+    const targetEl = document.querySelector(`#firebaseChatList .sidebar-item[data-chat-id="${escapeAttr(chatId)}"]`);
     if (targetEl) targetEl.classList.add('active');
 
     toggleSidebar(false);
     scrollToBottom();
 };
 
-window.deleteSingleChat = function(chatId, event) {
-    if (event) event.stopPropagation();
+window.deleteSingleChat = function(chatId) {
     ChatStorage.deleteChat(chatId);
     showToast('Чат удален');
 };
@@ -626,7 +704,9 @@ window.toggleSidebar = function(open) {
         sidebar.classList.toggle('collapsed', willCollapse);
         try {
             localStorage.setItem('quanta_sidebar_collapsed', willCollapse ? '1' : '0');
-        } catch (e) {}
+        } catch (e) {
+            console.warn('Failed to save sidebar state:', e);
+        }
     }
 };
 
@@ -639,20 +719,23 @@ window.showToast = function(message) {
 };
 
 const mainInput = document.getElementById('mainInput');
-mainInput.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 160) + 'px';
-});
+if (mainInput) {
+    mainInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+    });
 
-mainInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-        if (window.innerWidth > 768 || (!('ontouchstart' in window) && navigator.maxTouchPoints === 0)) {
-            e.preventDefault();
-            handleSend();
+    mainInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+            if (window.innerWidth > 768 || (!('ontouchstart' in window) && navigator.maxTouchPoints === 0)) {
+                e.preventDefault();
+                handleSend();
+            }
         }
-    }
-});
+    });
+}
 
+let userHasScrolledUp = false;
 const chatContainerEl = document.getElementById('chatContainer');
 const scrollBtnEl = document.getElementById('scrollBottomBtn');
 if (chatContainerEl && scrollBtnEl) {
@@ -660,8 +743,10 @@ if (chatContainerEl && scrollBtnEl) {
         const distanceToBottom = chatContainerEl.scrollHeight - chatContainerEl.scrollTop - chatContainerEl.clientHeight;
         if (distanceToBottom > 150) {
             scrollBtnEl.classList.add('show');
+            userHasScrolledUp = true;
         } else {
             scrollBtnEl.classList.remove('show');
+            userHasScrolledUp = false;
         }
     });
 }
@@ -677,20 +762,24 @@ window.closeWorkspace = function() {
     document.getElementById('workspace').style.display = 'none';
     document.getElementById('workspaceBody').innerHTML = '';
     document.getElementById('welcomeScreen').style.display = 'flex';
+    userHasScrolledUp = false;
 };
 
 window.startNewChat = function() {
     closeWorkspace();
     resetChatHistory();
-    document.getElementById('mainInput').value = '';
-    document.getElementById('mainInput').style.height = 'auto';
+    if (mainInput) {
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
+    }
     removePendingImage();
+    removePendingFile();
 
     const uid = window.currentUser ? window.currentUser.uid : 'guest';
     ensureCurrentChat(uid);
 
     document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(el => el.classList.remove('active'));
-    const targetEl = document.querySelector(`#firebaseChatList .sidebar-item[onclick*="${window.currentChatId}"]`);
+    const targetEl = document.querySelector(`#firebaseChatList .sidebar-item[data-chat-id="${escapeAttr(window.currentChatId)}"]`);
     if (targetEl) targetEl.classList.add('active');
 
     showToast('Начат новый диалог');
@@ -717,7 +806,7 @@ function addLoading(label) {
     el.innerHTML = `
         <div class="ws-loading">
             <span class="typing-dots" role="status" aria-label="Загрузка"><i></i><i></i><i></i></span>
-            ${label === '' ? '' : `<span class="ws-loading-label">${label || 'Думаю...'}</span>`}
+            ${label === '' ? '' : `<span class="ws-loading-label">${escapeHtml(label || 'Думаю...')}</span>`}
             <span class="gen-speed-badge" style="display:none;">
                 <span class="gen-speed-pulse"></span>
                 <span class="gen-speed-text">0.0 ток/с</span>
@@ -728,7 +817,9 @@ function addLoading(label) {
 }
 
 function scrollToBottom() {
+    if (userHasScrolledUp) return;
     const container = document.getElementById('chatContainer');
+    if (!container) return;
     setTimeout(() => {
         container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     }, 30);
@@ -739,15 +830,16 @@ function renderText(text) {
     if (!text) return '';
     let safe = escapeHtml(text);
     safe = safe.split(/(```[\s\S]*?```)/g).map((part, i) => i % 2 ? part : iconizeEmoji(part)).join('');
+    
     safe = safe.replace(/(\|.+?\|\n)+/g, function(tableText) {
         const lines = tableText.trim().split('\n');
-        if (lines.length < 2) return tableText;
+        if (lines.length < 2) return escapeHtml(tableText);
         let html = '<div class="table-responsive"><table>';
         lines.forEach((line, idx) => {
             if (line.includes('---')) return;
             const cells = line.split('|').filter((_, cIdx, arr) => cIdx > 0 && cIdx < arr.length - 1);
             const tag = idx === 0 ? 'th' : 'td';
-            html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+            html += '<tr>' + cells.map(c => `<${tag}>${escapeHtml(c.trim())}</${tag}>`).join('') + '</tr>';
         });
         html += '</table></div>';
         return html;
@@ -755,16 +847,17 @@ function renderText(text) {
 
     safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
         const id = 'code_' + (++codeCounter);
-        const ext = lang || 'код';
+        const ext = escapeHtml(lang || 'код');
+        const safeCode = escapeHtml(code.trim());
         return `<div class="code-block-wrapper">
             <div class="code-block-header">
                 <span style="text-transform:uppercase; font-weight:600;">${ext}</span>
                 <div style="display:flex; gap:6px;">
-                    <button class="code-action-btn" onclick="copyCodeBlock('${id}')">${icon('copy')} Копировать</button>
-                    <button class="code-action-btn" onclick="downloadCodeBlock('${id}', '${ext}')">${icon('download')} Файл</button>
+                    <button class="code-action-btn" data-copy-code="${id}">${icon('copy')} Копировать</button>
+                    <button class="code-action-btn" data-download-code="${id}" data-code-ext="${ext}">${icon('download')} Файл</button>
                 </div>
             </div>
-            <pre><code id="${id}">${code.trim()}</code></pre>
+            <pre><code id="${id}">${safeCode}</code></pre>
         </div>`;
     });
 
@@ -772,6 +865,23 @@ function renderText(text) {
     safe = safe.replace(/\*(.+?)\*/g, '<i>$1</i>');
     return safe;
 }
+
+document.addEventListener('click', function(e) {
+    const copyBtn = e.target.closest('[data-copy-code]');
+    if (copyBtn) {
+        const id = copyBtn.dataset.copyCode;
+        window.copyCodeBlock(id);
+        return;
+    }
+
+    const dlBtn = e.target.closest('[data-download-code]');
+    if (dlBtn) {
+        const id = dlBtn.dataset.downloadCode;
+        const ext = dlBtn.dataset.codeExt;
+        window.downloadCodeBlock(id, ext);
+        return;
+    }
+});
 
 window.copyCodeBlock = function(id) {
     const el = document.getElementById(id);
@@ -818,17 +928,23 @@ window.attachExport = function(el, text, filenameBase) {
     const bar = document.createElement('div');
     bar.style.cssText = 'margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;';
     bar.innerHTML = `
-        <button class="ws-download" onclick="exportFile('${id}', 'txt', '${filenameBase}')">${icon('file')} .txt</button>
-        <button class="ws-download" style="background:#2563eb;" onclick="exportFile('${id}', 'doc', '${filenameBase}')">${icon('pen')} Word</button>
+        <button class="ws-download" data-export-id="${id}" data-export-type="txt" data-export-name="${escapeAttr(filenameBase)}">${icon('file')} .txt</button>
+        <button class="ws-download" style="background:#2563eb;" data-export-id="${id}" data-export-type="doc" data-export-name="${escapeAttr(filenameBase)}">${icon('pen')} Word</button>
     `;
     el.appendChild(bar);
+    bar.querySelectorAll('[data-export-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            window.exportFile(btn.dataset.exportId, btn.dataset.exportType, btn.dataset.exportName);
+        });
+    });
 };
 
 window.exportFile = function(id, type, filenameBase) {
     const text = _exportRegistry[id];
     if (!text) return;
-    if (type === 'txt') triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filenameBase + '.txt');
-    if (type === 'doc') {
+    if (type === 'txt') {
+        triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filenameBase + '.txt');
+    } else if (type === 'doc') {
         const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
         const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>' + body + '</body></html>';
         triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filenameBase + '.doc');
@@ -840,7 +956,6 @@ window.exportFile = function(id, type, filenameBase) {
 // ==========================================
 const API_SETTINGS_KEY = 'quanta_api_settings';
 
-// Verified working models catalog
 const FREE_MODELS_CATALOG = {
     'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA' },
     'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI' },
@@ -852,7 +967,6 @@ const FREE_MODELS_CATALOG = {
     'flux/image-gen': { name: 'Flux Art', brand: 'Flux / SDXL' }
 };
 
-// Family fallbacks
 const MODEL_FAMILY_FALLBACKS = {
     'meta-llama/llama-3.3-70b-instruct:free': [
         'meta-llama/llama-3.3-70b-instruct:free',
@@ -876,7 +990,6 @@ const MODEL_FAMILY_FALLBACKS = {
     ]
 };
 
-// Multimodal Vision models
 const VISION_MODELS_CHAIN = [
     'google/gemini-2.0-flash-exp:free',
     'meta-llama/llama-3.2-11b-vision-instruct:free',
@@ -886,13 +999,16 @@ const VISION_MODELS_CHAIN = [
 
 function getApiSettings() {
     try {
-        const s = JSON.parse(localStorage.getItem(API_SETTINGS_KEY)) || {};
+        const raw = localStorage.getItem(API_SETTINGS_KEY);
+        if (!raw) return { endpoint: 'https://openrouter.ai/api/v1/chat/completions' };
+        const s = JSON.parse(raw);
         if (!s.endpoint) s.endpoint = 'https://openrouter.ai/api/v1/chat/completions';
         if (s.apiKey) {
             s.apiKey = String(s.apiKey).replace(/[^\x00-\x7F]/g, '').trim();
         }
         return s;
     } catch (e) {
+        console.warn('Failed to parse API settings:', e);
         return { endpoint: 'https://openrouter.ai/api/v1/chat/completions' };
     }
 }
@@ -908,20 +1024,30 @@ function refreshSettingsUI() {
 
 window.openSettingsModal = function() {
     const s = getApiSettings();
-    document.getElementById('settingsApiKey').value = s.apiKey || '';
-    document.getElementById('settingsEndpoint').value = s.endpoint || 'https://openrouter.ai/api/v1/chat/completions';
-    document.getElementById('settingsModelName').value = s.model || '';
-    document.getElementById('settingsModal').classList.add('open');
+    const keyInput = document.getElementById('settingsApiKey');
+    const endpointInput = document.getElementById('settingsEndpoint');
+    const modelInput = document.getElementById('settingsModelName');
+    if (keyInput) keyInput.value = s.apiKey || '';
+    if (endpointInput) endpointInput.value = s.endpoint || 'https://openrouter.ai/api/v1/chat/completions';
+    if (modelInput) modelInput.value = s.model || '';
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.add('open');
 };
 
 window.closeSettingsModal = function() {
-    document.getElementById('settingsModal').classList.remove('open');
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.remove('open');
 };
 
 window.saveApiSettings = function() {
-    let apiKey = document.getElementById('settingsApiKey').value.trim();
-    const endpoint = document.getElementById('settingsEndpoint').value.trim();
-    const model = document.getElementById('settingsModelName').value.trim();
+    const keyInput = document.getElementById('settingsApiKey');
+    const endpointInput = document.getElementById('settingsEndpoint');
+    const modelInput = document.getElementById('settingsModelName');
+    
+    let apiKey = keyInput ? keyInput.value.trim() : '';
+    const endpoint = endpointInput ? endpointInput.value.trim() : '';
+    const model = modelInput ? modelInput.value.trim() : '';
+    
     if (!endpoint) {
         showToast('Укажите эндпоинт API');
         return;
@@ -930,28 +1056,34 @@ window.saveApiSettings = function() {
         apiKey = apiKey.replace(/[^\x00-\x7F]/g, '').trim();
         showToast('Ключ очищен от спецсимволов');
     }
-    localStorage.setItem(API_SETTINGS_KEY, JSON.stringify({ apiKey, endpoint, model }));
-    refreshSettingsUI();
-    closeSettingsModal();
-    showToast('Настройки сохранены');
+    try {
+        localStorage.setItem(API_SETTINGS_KEY, JSON.stringify({ apiKey, endpoint, model }));
+        refreshSettingsUI();
+        closeSettingsModal();
+        showToast('Настройки сохранены');
+    } catch (e) {
+        console.error('Failed to save API settings:', e);
+        showToast('Ошибка сохранения настроек');
+    }
 };
 
 window.applyPreset = function(type) {
+    const endpointInput = document.getElementById('settingsEndpoint');
+    const modelInput = document.getElementById('settingsModelName');
     if (type === 'openrouter') {
-        document.getElementById('settingsEndpoint').value = 'https://openrouter.ai/api/v1/chat/completions';
-        document.getElementById('settingsModelName').value = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+        if (endpointInput) endpointInput.value = 'https://openrouter.ai/api/v1/chat/completions';
+        if (modelInput) modelInput.value = 'nvidia/nemotron-3-ultra-550b-a55b:free';
     } else if (type === 'ollama') {
-        document.getElementById('settingsEndpoint').value = 'http://localhost:11434/v1/chat/completions';
-        document.getElementById('settingsModelName').value = 'llama3';
+        if (endpointInput) endpointInput.value = 'http://localhost:11434/v1/chat/completions';
+        if (modelInput) modelInput.value = 'llama3';
     } else if (type === 'groq') {
-        document.getElementById('settingsEndpoint').value = 'https://api.groq.com/openai/v1/chat/completions';
-        document.getElementById('settingsModelName').value = 'llama-3.3-70b-versatile';
+        if (endpointInput) endpointInput.value = 'https://api.groq.com/openai/v1/chat/completions';
+        if (modelInput) modelInput.value = 'llama-3.3-70b-versatile';
     }
     showToast('Пресет применен');
 };
 
-// Model selector state
-window.selectedFreeModel = localStorage.getItem('quanta_selected_model') || 'nvidia/nemotron-3-ultra-550b-a55b:free';
+window.selectedFreeModel = null;
 
 function markActiveModel(id) {
     document.querySelectorAll('#modelDropdownMenu .dropdown-item').forEach(el => {
@@ -963,44 +1095,53 @@ function markActiveModel(id) {
 
 window.toggleModelDropdown = function() {
     const menu = document.getElementById('modelDropdownMenu');
+    if (!menu) return;
     menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
 };
 
 window.selectModel = function(modelId, label) {
     window.selectedFreeModel = modelId;
-    localStorage.setItem('quanta_selected_model', modelId);
+    try {
+        localStorage.setItem('quanta_selected_model', modelId);
+    } catch (e) {
+        console.warn('Failed to save selected model:', e);
+    }
     markActiveModel(modelId);
     const modeEl = document.getElementById('modeLabel');
     if (modeEl) {
         modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
     }
-    const input = document.getElementById('mainInput');
-    if (input) {
+    if (mainInput) {
         if (modelId === 'flux/image-gen') {
-            input.placeholder = 'Опишите что нарисовать и нажмите Отправить...';
+            mainInput.placeholder = 'Опишите что нарисовать и нажмите Отправить...';
         } else {
-            input.placeholder = 'Задайте вопрос или прикрепите файл...';
+            mainInput.placeholder = 'Задайте вопрос или прикрепите файл...';
         }
     }
-    document.getElementById('modelDropdownMenu').style.display = 'none';
+    const menu = document.getElementById('modelDropdownMenu');
+    if (menu) menu.style.display = 'none';
     showToast(`Модель: ${label}`);
 };
 
-// Image attachment
 window.pendingImage = null;
 
 function setPendingImage(file, dataUrl) {
     window.pendingImage = { file, dataUrl, name: file.name };
-    document.getElementById('imagePreviewThumb').src = dataUrl;
-    document.getElementById('imagePreviewName').textContent = file.name;
-    document.getElementById('imagePreviewBar').style.display = 'flex';
-    document.getElementById('mainInput').focus();
+    const thumb = document.getElementById('imagePreviewThumb');
+    const nameEl = document.getElementById('imagePreviewName');
+    const bar = document.getElementById('imagePreviewBar');
+    if (thumb) thumb.src = dataUrl;
+    if (nameEl) nameEl.textContent = file.name;
+    if (bar) bar.style.display = 'flex';
+    if (mainInput) mainInput.focus();
 }
 
 window.removePendingImage = function() {
     window.pendingImage = null;
-    document.getElementById('imagePreviewBar').style.display = 'none';
-    document.getElementById('imagePreviewThumb').removeAttribute('src');
+    const bar = document.getElementById('imagePreviewBar');
+    if (bar) bar.style.display = 'none';
+    const thumb = document.getElementById('imagePreviewThumb');
+    if (thumb) thumb.removeAttribute('src');
 };
 
 // ==========================================
@@ -1125,11 +1266,12 @@ async function handleZipFile(file) {
 
         const hint = `Готово: ${collected.length} файл(ов), ~${totalChars.toLocaleString('ru-RU')} симв.`;
         setFilePreview(file.name, hint);
-        document.getElementById('mainInput').focus();
+        if (mainInput) mainInput.focus();
         showToast('Архив распакован');
     } catch (e) {
         window.pendingZip = null;
-        setFilePreview(file.name, 'Ошибка: ' + (e && e.message ? e.message : 'не удалось обработать архив'));
+        const msg = e && e.message ? e.message : 'не удалось обработать архив';
+        setFilePreview(file.name, 'Ошибка: ' + msg);
         showToast('Не удалось распаковать архив');
     }
 }
@@ -1143,6 +1285,9 @@ async function processAndAttachFile(file) {
         reader.onload = () => {
             setPendingImage(file, reader.result);
             showToast('Фото прикреплено');
+        };
+        reader.onerror = () => {
+            showToast('Ошибка чтения изображения');
         };
         reader.readAsDataURL(file);
         return;
@@ -1172,39 +1317,41 @@ async function processAndAttachFile(file) {
 
         const sizeKb = Math.round(file.size / 1024);
         setFilePreview(file.name, `Готов к отправке (${sizeKb} КБ)`);
-        document.getElementById('mainInput').focus();
+        if (mainInput) mainInput.focus();
         showToast(`Файл «${file.name}» прикреплен! Напишите задачу.`);
     } catch (e) {
         window.pendingFile = null;
-        setFilePreview(file.name, 'Ошибка: ' + (e.message || 'не удалось прочитать файл'));
+        const msg = e && e.message ? e.message : 'не удалось прочитать файл';
+        setFilePreview(file.name, 'Ошибка: ' + msg);
         showToast('Не удалось прочитать файл');
     }
 }
 
 window.triggerFileUpload = function() {
-    document.getElementById('fileInput').click();
+    const input = document.getElementById('fileInput');
+    if (input) input.click();
 };
 
 window.triggerImageGen = function() {
-    const input = document.getElementById('mainInput');
-    const text = input ? input.value.trim() : '';
+    const text = mainInput ? mainInput.value.trim() : '';
     if (text) {
-        input.value = '';
-        input.style.height = 'auto';
+        if (mainInput) {
+            mainInput.value = '';
+            mainInput.style.height = 'auto';
+        }
         startImageGeneration(text);
         return;
     }
     selectModel('flux/image-gen', 'Flux Art');
-    if (input) {
-        input.placeholder = 'Опишите что нарисовать (например: зимний лес, закат, космос)...';
-        input.focus();
+    if (mainInput) {
+        mainInput.placeholder = 'Опишите что нарисовать (например: зимний лес, закат, космос)...';
+        mainInput.focus();
     }
     showToast('Режим генерации картинок: введите описание');
 };
 
 window.runQuickAction = function(kind) {
-    const input = document.getElementById('mainInput');
-    const text = input.value.trim();
+    const text = mainInput ? mainInput.value.trim() : '';
 
     if (kind === 'cluster') handleClusterAnalysis(text);
     else if (kind === 'slides') handleSlides(text);
@@ -1224,17 +1371,18 @@ window.startVoiceInput = function() {
     recognition.lang = 'ru-RU';
     recognition.interimResults = false;
     const btn = document.getElementById('voiceBtn');
-    btn.style.color = 'var(--danger)';
+    if (btn) btn.style.color = 'var(--danger)';
     showToast('Слушаю... Говорите');
 
     recognition.onresult = (e) => {
         const transcript = e.results[0][0].transcript;
-        const input = document.getElementById('mainInput');
-        input.value += (input.value ? ' ' : '') + transcript;
-        input.dispatchEvent(new Event('input'));
+        if (mainInput) {
+            mainInput.value += (mainInput.value ? ' ' : '') + transcript;
+            mainInput.dispatchEvent(new Event('input'));
+        }
     };
     recognition.onerror = () => showToast('Ошибка распознавания речи');
-    recognition.onend = () => { btn.style.color = ''; };
+    recognition.onend = () => { if (btn) btn.style.color = ''; };
     recognition.start();
 };
 
@@ -1260,23 +1408,29 @@ function setSendButtonMode(mode) {
         btn.classList.add('is-stop');
         btn.title = 'Остановить генерацию';
         btn.setAttribute('aria-label', 'Остановить генерацию');
+        btn.disabled = false;
     } else {
         btn.innerHTML = _sendIconHtml;
         btn.classList.remove('is-stop');
         btn.title = 'Отправить';
         btn.setAttribute('aria-label', 'Отправить');
+        btn.disabled = false;
     }
 }
 
 window.beginGeneration = function () {
     window.genAbort = new AbortController();
     setSendButtonMode('stop');
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) sendBtn.disabled = false;
+    if (mainInput) mainInput.disabled = true;
     return window.genAbort;
 };
 
 window.endGeneration = function () {
     window.genAbort = null;
     setSendButtonMode('send');
+    if (mainInput) mainInput.disabled = false;
 };
 
 window.stopGeneration = function () {
@@ -1287,6 +1441,8 @@ window.handleSendOrStop = function () {
     if (window.genAbort) window.stopGeneration();
     else window.handleSend();
 };
+
+const _activeTimers = new Set();
 
 async function callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
     const own = !window.genAbort;
@@ -1330,7 +1486,6 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
     const canStream = typeof onProgress === 'function' && typeof ReadableStream !== 'undefined';
     let lastError = null;
 
-    // Подмена идентификации и вырезание служебных сообщений безопасности и точек детекции
     const isOpusModel = primaryModel.includes('kimi');
     const sanitizeModelOutput = (text) => {
         if (!text) return '';
@@ -1348,7 +1503,6 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             .replace(/\b(Moonshot\s*AI|Moonshot)\b/gi, 'Anthropic');
     };
 
-    // Динамическая дата и время с устройства
     const now = new Date();
     const currentDateStr = now.toLocaleDateString('ru-RU', { 
         weekday: 'long', 
@@ -1381,7 +1535,12 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
         const curModel = modelsToTry[i];
         const body = { model: curModel, messages: effectiveMessages, stream: canStream };
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 85000);
+        const timer = setTimeout(() => {
+            _activeTimers.delete(timer);
+            controller.abort();
+        }, 85000);
+        _activeTimers.add(timer);
+
         const startTime = performance.now();
         let firstChunkTime = null;
         let fullText = '';
@@ -1389,7 +1548,11 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
 
         const userSignal = window.genAbort ? window.genAbort.signal : null;
         if (userSignal) {
-            if (userSignal.aborted) { clearTimeout(timer); throw userAbortError(); }
+            if (userSignal.aborted) {
+                clearTimeout(timer);
+                _activeTimers.delete(timer);
+                throw userAbortError();
+            }
             userSignal.addEventListener('abort', () => controller.abort(), { once: true });
         }
 
@@ -1401,6 +1564,7 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                 signal: controller.signal
             });
             clearTimeout(timer);
+            _activeTimers.delete(timer);
 
             if (!response.ok) {
                 let errText = '';
@@ -1471,7 +1635,9 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                                         });
                                     }
                                 }
-                            } catch (parseErr) {}
+                            } catch (parseErr) {
+                                console.warn('Stream chunk parse error:', parseErr);
+                            }
                         }
                     }
                 }
@@ -1522,6 +1688,8 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             return resultText;
         } catch (err) {
             clearTimeout(timer);
+            _activeTimers.delete(timer);
+
             if (userSignal && userSignal.aborted) {
                 if (fullText.trim()) {
                     const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
@@ -1572,7 +1740,6 @@ async function askAI(prompt, opts = {}) {
     return answer;
 }
 
-// Multimodal Vision
 async function askVision(imageDataUrl, text, opts = {}) {
     const own = !window.genAbort;
     if (own) beginGeneration();
@@ -1636,9 +1803,24 @@ function cleanImagePrompt(prompt) {
         .trim() || prompt.trim();
 }
 
-// ==========================================
-// AUTOMATIC FLUX MODEL SELECTION
-// ==========================================
+function determineAspectRatio(promptText) {
+    const lowerText = promptText.toLowerCase();
+
+    if (/\b(обои на пк|обои для пк|обои компьютер|обои рабочий стол|desktop wallpaper|pc wallpaper|пейзаж|landscape|синематик|cinematic|широкий кадр|wide shot|ultra wide|ultrawide|панорама)\b/i.test(lowerText)) {
+        return { width: 1344, height: 768, label: '16:9 (обои ПК/пейзаж)' };
+    }
+
+    if (/\b(обои на телефон|обои для телефона|обои смартфон|mobile wallpaper|phone wallpaper|сторис|stories|instagram stories|в полный рост|full body|вертикальн|vertical)\b/i.test(lowerText)) {
+        return { width: 768, height: 1344, label: '9:16 (телефон/сторис)' };
+    }
+
+    if (/\b(портрет|portrait|headshot|лицо|face|аватарка|avatar|студийн(ое|ая) фото|studio photo|профил(ь|ьное фото)|profile)\b/i.test(lowerText)) {
+        return { width: 896, height: 1152, label: '3:4 (портрет)' };
+    }
+
+    return { width: 1024, height: 1024, label: '1:1 (квадрат)' };
+}
+
 function pickFluxModel(promptDisplay, englishPrompt) {
     const combined = `${promptDisplay} ${englishPrompt}`.toLowerCase();
 
@@ -1663,103 +1845,41 @@ function pickFluxModel(promptDisplay, englishPrompt) {
     return { renderModel: 'flux', modelLabel: 'Flux Art / SDXL' };
 }
 
-// ==========================================
-// PROMPT TRANSLATOR (INTELLECTUAL PROMPT ENGINEERING)
-// ==========================================
-const PROMPT_TRANSLATION_DICT = {
-    'зимний лес': 'winter forest, snow-covered pine trees, frozen winter landscape, soft warm sunlight filtering through branches, raw photo, natural soft lighting, photorealistic, 8k resolution',
-    'лес': 'lush dense forest, tall evergreen trees, sunbeams breaking through canopy, raw photo, photorealistic, highly detailed, 8k resolution',
-    'небо': 'clear blue sky with soft white clouds, bright natural daylight, expansive atmospheric depth, photorealistic, 8k resolution',
-    'ночное небо': 'starry night sky, milky way galaxy, deep cosmos, glittering bright stars, cinematic astrophotography, raw photo, 8k resolution',
-    'звездное небо': 'starry night sky, milky way galaxy, glittering stars, nebula, cosmic horizon, ultra realistic, raw photo, 8k',
-    'закат': 'majestic sunset on horizon, golden hour, deep orange and purple twilight sky, cinematic natural lighting, raw photo, 8k resolution',
-    'рассвет': 'peaceful sunrise, golden dawn mist, soft morning sun rays, scenic landscape, raw photo, 8k resolution',
-    'море': 'vibrant blue ocean waves, calm sea horizon, sunlight reflecting on water surface, photorealistic, raw photo, 8k',
-    'океан': 'deep blue majestic ocean waves, crystal clear water, expansive sea horizon, dramatic lighting, raw photo, 8k',
-    'пляж': 'tropical sunny beach, golden sand, turquoise ocean water, palm trees, paradise resort view, raw photo, 8k resolution',
-    'горы': 'magnificent mountain range, snow-capped alpine peaks, dramatic clouds, breathtaking scenic view, raw photo, 8k',
-    'озеро': 'serene mountain lake, crystal clear water reflecting surrounding scenery, calm peaceful nature, raw photo, 8k',
-    'река': 'clear flowing river through beautiful green valley, smooth water ripples, nature photography, raw photo, 8k',
-    'город': 'modern metropolis cityscape, sleek skyscrapers, urban architecture, cinematic lighting, raw photo, 8k resolution',
-    'ночной город': 'cyberpunk night city, neon lights, dark rainy asphalt reflections, towering skyscrapers, cinematic, 8k',
-    'космос': 'deep outer space, vibrant colorful nebula, distant galaxies, cosmic dust, stars, breathtaking astronomical view, 8k',
-    'луна': 'detailed full moon in dark starry space, detailed lunar craters, celestial photography, raw photo, 8k',
-    'кот': 'cute fluffy domestic cat, sharp focus on eyes, detailed soft fur, warm cozy lighting, portrait photography, raw photo, 8k',
-    'кошка': 'beautiful cute cat, highly detailed fur, expressive glowing eyes, studio lighting, photorealistic portrait, raw photo, 8k',
-    'котенок': 'adorable little kitten, fluffy fur, playful cute expression, warm lighting, close up portrait, raw photo, 8k',
-    'собака': 'cute loyal dog, highly detailed fur and eyes, happy expression, natural outdoor lighting, raw photo, 8k',
-    'щенок': 'adorable puppy, big cute eyes, soft fluffy fur, bright daylight, charming portrait, raw photo, 8k',
-    'волк': 'wild majestic wolf, piercing gaze, detailed fur in snowy winter wilderness, cinematic, raw photo, 8k',
-    'лиса': 'vibrant red fox in a forest, bushy tail, sharp eyes, nature wildlife photography, raw photo, 8k',
-    'машина': 'modern luxury sports car, sleek aerodynamic design, metallic paint reflections, studio lighting, raw photo, 8k',
-    'автомобиль': 'high-end supercar, modern glossy finish, dramatic commercial photography lighting, raw photo, 8k',
-    'девушка': 'portrait of a beautiful young woman, delicate facial features, natural daylight, professional photography, raw photo, 8k',
-    'парень': 'portrait of a handsome young man, sharp features, cinematic lighting, professional photography, raw photo, 8k',
-    'цветы': 'bouquet of fresh blooming flowers, vibrant petals, morning dew drops, soft macro photography, raw photo, 8k',
-    'розы': 'gorgeous red roses in soft morning dew, macro flower photography, elegant petals, romantic lighting, raw photo, 8k',
-    'дом': 'cozy modern country cottage, warm glowing windows, scenic garden, peaceful sunset atmosphere, raw photo, 8k',
-    'киберпанк': 'cyberpunk concept art, futuristic sci-fi city, glowing neon signs, rain slicked streets, high tech, 8k',
-    'аниме': 'anime aesthetic, 2D illustration, beautiful anime scene, key visual, highres, vibrant colors, clean linework',
-    'юно гасай': 'Yuno Gasai from Mirai Nikki / Future Diary, pink hair in twin tails, expressive pink eyes, yandere expression, school uniform, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece',
-    'yuno gasai': 'Yuno Gasai from Mirai Nikki / Future Diary, pink hair in twin tails, expressive pink eyes, yandere expression, school uniform, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece',
-    'пицца': 'delicious freshly baked hot pizza, melted mozzarella cheese, fresh basil, appetizing food photography, raw photo, 8k',
-    'кофе': 'steaming cup of fresh cappuccino, beautiful latte art, cozy wooden cafe table, warm lighting, raw photo, 8k'
-};
-
-const WORD_MAP = {
-    'зимний': 'winter snowy', 'зима': 'winter snow', 'летний': 'summer sunny', 'лето': 'summer',
-    'красивый': 'beautiful', 'красивая': 'beautiful elegant', 'красивое': 'gorgeous',
-    'лес': 'forest', 'лесу': 'forest', 'небо': 'clear sky', 'небе': 'sky',
-    'закат': 'sunset', 'рассвет': 'sunrise dawn', 'горы': 'mountains', 'озеро': 'lake',
-    'море': 'ocean sea', 'пляж': 'beach', 'солнце': 'sun', 'луна': 'moon', 'космос': 'outer space',
-    'город': 'modern city', 'ночь': 'night', 'дождь': 'rain', 'снег': 'snow',
-    'кот': 'cute cat', 'кота': 'cute cat', 'кошка': 'cute cat', 'котенок': 'kitten',
-    'собака': 'cute dog', 'щенок': 'puppy', 'машина': 'sports car', 'автомобиль': 'car',
-    'девушка': 'young woman', 'парень': 'young man', 'робот': 'robot cyborg',
-    'дом': 'house cottage', 'замок': 'castle', 'цветы': 'flowers', 'розы': 'roses',
-    'очки': 'sunglasses', 'очках': 'wearing sunglasses', 'шляпа': 'hat',
-    'аниме': 'anime aesthetic, 2D illustration', 'тян': 'anime girl, 2D illustration', 'кун': 'anime boy, 2D illustration'
-};
-
 async function translateImagePrompt(rawPrompt) {
     const clean = cleanImagePrompt(rawPrompt).trim();
-    if (!clean) return 'artistic masterpiece, high quality, 8k resolution';
+    if (!clean) return 'artistic masterpiece, cinematic lighting, 8k resolution';
 
     const cleanLower = clean.toLowerCase();
 
-    if (PROMPT_TRANSLATION_DICT[cleanLower]) {
-        return PROMPT_TRANSLATION_DICT[cleanLower];
-    }
-    for (const [key, val] of Object.entries(PROMPT_TRANSLATION_DICT)) {
-        if (cleanLower === key || cleanLower === 'нарисуй ' + key || cleanLower === key + ' фото') {
-            return val;
-        }
-    }
-
     try {
-        const systemPrompt = `You are an elite cinematic prompt engineer for the Flux/SDXL family of image generators (used at a level comparable to Midjourney and DALL-E 3 prompting).
-Convert or enrich the user input into one rich, optimized English image generation prompt (30-60 descriptive keywords/phrases, comma-separated).
+        const systemPrompt = `You are an elite cinematic prompt engineer for Flux/SDXL image generators (Midjourney-level quality).
+Convert the user input into one rich, optimized English image generation prompt (30-60 descriptive keywords/phrases, comma-separated).
 
 CRITICAL RULES BY CATEGORY:
+
 1. ANIME / 2D / MANGA / FICTIONAL CHARACTERS:
-   If the request is about anime, manga, 2D art, cartoon, or specific characters (e.g. "Юно Гасай" / "Yuno Gasai", "Наруто", "Genshin", "waifu", etc.):
+   If the request is about anime, manga, 2D art, cartoon, or specific characters (e.g. "Юно Гасай", "Наруто", "Genshin", "waifu"):
    - Include character English name and franchise (e.g., "Yuno Gasai from Future Diary / Mirai Nikki").
    - Detail visual markers: hair color/style, eye color, canonical outfit, emotion/expression, pose.
    - Append 2D tags: "anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece, clean linework, cel shading".
    - STRICTLY FORBIDDEN: NEVER include "photorealistic", "realistic photo", "photography", "camera", or "raw photo" for 2D/anime prompts.
+
 2. 3D RENDER / CGI / PIXAR-STYLE / PRODUCT OR CHARACTER RENDER:
    If the request implies a 3D render, CGI character, toy/figurine, claymation, or Pixar/Disney-style 3D look:
    - Describe materials and surface detail (subsurface scattering on skin, glossy plastic, matte clay, metallic sheen).
    - Specify render engine quality tags: "octane render, unreal engine 5, cinema 4d, ray tracing, ambient occlusion, subsurface scattering, 8k render, studio product lighting".
    - Include composition/style: "isometric" or "three-quarter view" where relevant, "vibrant color palette", "soft global illumination".
+
 3. REALISTIC PHOTOS / PORTRAITS / LANDSCAPES / NATURE / OBJECTS:
    If the request is for realistic photos, people, landscapes, animals, or objects, write like a professional photography brief:
-   - Camera & optics: specify a plausible lens/focal length and aperture (e.g. "shot on 85mm f/1.4", "35mm lens", "shallow depth of field", "bokeh").
-   - Lighting: name a specific lighting setup (e.g. "golden hour rim light", "soft diffused studio softbox", "dramatic chiaroscuro", "overcast natural light").
-   - Detail & finish: "photorealistic, raw photo, hyperdetailed skin texture / material texture, sharp focus, natural color grading, 8k resolution".
+   - Camera & optics: specify a plausible lens/focal length and aperture (e.g. "shot on 85mm f/1.4", "35mm lens f/1.8", "shallow depth of field", "bokeh").
+   - Lighting: name a specific lighting setup (e.g. "golden hour rim light", "soft diffused studio softbox", "dramatic chiaroscuro", "overcast natural light", "cinematic volumetric light").
+   - Detail & finish: "photorealistic, raw photo, hyperdetailed skin texture, visible pores, natural skin texture, subsurface scattering, sharp focus, natural color grading, Kodak Portra color palette, 8k resolution".
    - Add a mood/atmosphere phrase (e.g. "cinematic atmosphere", "melancholic mood", "epic scale") when it fits the subject.
+
 4. GENERAL COMPOSITION (apply to all categories where relevant):
    - Mention framing/composition (close-up, wide shot, rule of thirds) and color palette when it strengthens the image.
+
 5. OUTPUT FORMAT:
    - Output ONLY the prompt string (comma-separated English keywords/phrases). No introductory phrases, no quotes, no markdown headers, no category labels.`;
 
@@ -1789,15 +1909,12 @@ CRITICAL RULES BY CATEGORY:
         return `${clean}, photorealistic, raw photo, natural soft lighting, 8k, highly detailed`;
     }
 
-    const words = cleanLower.split(/[\s,.-]+/).filter(Boolean);
-    const translatedWords = words.map(w => WORD_MAP[w] || '');
-    const combinedMapped = translatedWords.filter(Boolean).join(' ');
-    const baseFallback = combinedMapped || clean;
+    const baseFallback = clean;
 
     if (isAnimeTopic) {
         return `${baseFallback}, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece`;
     }
-    return `${baseFallback}, photorealistic, raw photo, natural soft lighting, 8k resolution`;
+    return `${baseFallback}, photorealistic, raw photo, cinematic natural lighting, 8k resolution`;
 }
 
 // ==========================================
@@ -1813,12 +1930,16 @@ window.openImageLightbox = function(src, caption) {
     if (box && img) {
         img.src = src;
         if (cap) cap.textContent = caption || 'Изображение Quanta AI';
-        if (dlBtn) dlBtn.onclick = () => downloadGeneratedImage(src, 'quanta-full.jpg');
-        if (cpBtn) cpBtn.onclick = () => {
-            navigator.clipboard.writeText(src)
-                .then(() => showToast('Ссылка скопирована в буфер'))
-                .catch(() => showToast('Не удалось скопировать'));
-        };
+        if (dlBtn) {
+            dlBtn.onclick = () => downloadGeneratedImage(src, 'quanta-full.jpg');
+        }
+        if (cpBtn) {
+            cpBtn.onclick = () => {
+                navigator.clipboard.writeText(src)
+                    .then(() => showToast('Ссылка скопирована в буфер'))
+                    .catch(() => showToast('Не удалось скопировать'));
+            };
+        }
         box.classList.add('open');
     }
 };
@@ -1886,7 +2007,7 @@ window.downloadGeneratedImage = function(url, filename = 'quanta-art.jpg') {
 };
 
 // ==========================================
-// IMAGE GENERATION
+// IMAGE GENERATION — PROFESSIONAL MIDJOURNEY-LEVEL MODULE
 // ==========================================
 window.startImageGeneration = async function(promptText) {
     if (!promptText || !promptText.trim()) {
@@ -1910,37 +2031,39 @@ window.startImageGeneration = async function(promptText) {
     try {
         englishPrompt = await translateImagePrompt(promptDisplay);
     } catch (e) {
+        console.warn('Prompt translation failed:', e);
         englishPrompt = promptDisplay;
     }
 
     if (gen.signal.aborted) {
-        loadingEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" onclick="startImageGeneration('${escapeHtml(promptDisplay).replace(/'/g, "\\'")}')">${icon('refresh')} Повторить генерацию</button>`;
+        loadingEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${escapeAttr(promptDisplay)}">${icon('refresh')} Повторить генерацию</button>`;
+        loadingEl.querySelector('[data-retry-prompt]')?.addEventListener('click', (e) => {
+            startImageGeneration(e.target.dataset.retryPrompt);
+        });
         endGeneration();
         return;
     }
 
     const { renderModel, modelLabel } = pickFluxModel(promptDisplay, englishPrompt);
+    const { width, height, label: aspectLabel } = determineAspectRatio(promptDisplay + ' ' + englishPrompt);
 
     const seed = Math.floor(Math.random() * 9999999);
     const encoded = encodeURIComponent(englishPrompt);
-    const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true&model=${renderModel}`;
-    const safeDisplay = escapeHtml(promptDisplay).replace(/'/g, "\\'");
+    const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=false&model=${renderModel}`;
+    const safeDisplay = escapeAttr(promptDisplay);
 
     loadingEl.innerHTML = `
         <div class="generated-img-card" id="${genId}">
-            <div class="generated-img-view" onclick="openImageLightbox('${primaryUrl}', '${safeDisplay}')">
+            <div class="generated-img-view">
                 <div class="img-skeleton" id="skel-${genId}" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:44px 16px; width:100%; gap:12px; text-align:center;">
                     <div class="spinner" style="width:32px; height:32px;"></div>
                     <span style="font-size:0.86rem; color:var(--text-secondary);">Нейросеть генерирует «<b>${escapeHtml(promptDisplay)}</b>»...</span>
-                    <span style="font-size:0.75rem; color:var(--text-muted); max-width:80%;">${modelLabel}</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted); max-width:80%;">${escapeHtml(modelLabel)} • ${escapeHtml(aspectLabel)} (${width}×${height})</span>
                 </div>
                 <img class="generated-img-element"
                      id="img-el-${genId}"
-                     src="${primaryUrl}"
                      alt="${escapeHtml(promptDisplay)}"
                      style="display:none;"
-                     onload="this.style.display='block'; const sk=document.getElementById('skel-${genId}'); if(sk) sk.remove(); const acts=document.getElementById('acts-${genId}'); if(acts) acts.style.display='flex'; showToast('Изображение готово!');"
-                     onerror="handleImageFallback(this, '${encoded}', '${genId}', '${safeDisplay}')"
                 />
                 <div class="generated-img-overlay">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
@@ -1952,17 +2075,14 @@ window.startImageGeneration = async function(promptText) {
                     <span>${icon('sparkles')}</span> <b>${escapeHtml(promptDisplay)}</b>
                 </div>
                 <div class="generated-img-btns">
-                    <button class="img-action-btn img-action-btn-primary" onclick="downloadGeneratedImage('${primaryUrl}', 'quanta-${genId}.jpg')">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        <span>Скачать</span>
+                    <button class="img-action-btn img-action-btn-primary" data-download-img="${escapeAttr(primaryUrl)}" data-download-name="quanta-${genId}.jpg">
+                        ${icon('download')} <span>Скачать</span>
                     </button>
-                    <button class="img-action-btn" onclick="openImageLightbox('${primaryUrl}', '${safeDisplay}')">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                        <span>На весь экран</span>
+                    <button class="img-action-btn" data-lightbox-img="${escapeAttr(primaryUrl)}" data-lightbox-caption="${safeDisplay}">
+                        ${icon('maximize')} <span>На весь экран</span>
                     </button>
-                    <button class="img-action-btn" onclick="startImageGeneration('${safeDisplay}')">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                        <span>Перегенерировать</span>
+                    <button class="img-action-btn" data-retry-prompt="${safeDisplay}">
+                        ${icon('refresh')} <span>Перегенерировать</span>
                     </button>
                 </div>
             </div>
@@ -1970,49 +2090,95 @@ window.startImageGeneration = async function(promptText) {
     `;
     scrollToBottom();
 
+    const viewDiv = loadingEl.querySelector('.generated-img-view');
+    if (viewDiv) {
+        viewDiv.addEventListener('click', () => {
+            openImageLightbox(primaryUrl, promptDisplay);
+        });
+    }
+
+    loadingEl.querySelectorAll('[data-download-img]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            downloadGeneratedImage(btn.dataset.downloadImg, btn.dataset.downloadName);
+        });
+    });
+
+    loadingEl.querySelectorAll('[data-lightbox-img]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            openImageLightbox(btn.dataset.lightboxImg, btn.dataset.lightboxCaption);
+        });
+    });
+
+    loadingEl.querySelectorAll('[data-retry-prompt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            startImageGeneration(btn.dataset.retryPrompt);
+        });
+    });
+
     const imgEl = document.getElementById('img-el-' + genId);
-    const finishImageGen = () => { if (window.genAbort === gen) endGeneration(); };
+    const skelEl = document.getElementById('skel-' + genId);
+    const actsEl = document.getElementById('acts-' + genId);
+
+    const finishImageGen = () => {
+        if (window.genAbort === gen) endGeneration();
+    };
+
     if (imgEl) {
-        imgEl.addEventListener('load', () => {
+        imgEl.onload = () => {
+            imgEl.style.display = 'block';
+            if (skelEl) skelEl.remove();
+            if (actsEl) actsEl.style.display = 'flex';
+            showToast('Изображение готово!');
             persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
             finishImageGen();
-        }, { once: true });
+        };
+
+        imgEl.onerror = function() {
+            const attempt = parseInt(imgEl.dataset.attempt || '0', 10);
+            if (attempt === 0) {
+                imgEl.dataset.attempt = '1';
+                const fallbackSeed = Math.floor(Math.random() * 888888);
+                imgEl.src = `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&seed=${fallbackSeed}&nologo=true&enhance=false&model=flux`;
+                return;
+            } else if (attempt === 1) {
+                imgEl.dataset.attempt = '2';
+                const fallbackSeed = Math.floor(Math.random() * 888888);
+                imgEl.src = `https://pollinations.ai/p/${encoded}?width=${width}&height=${height}&seed=${fallbackSeed}`;
+                return;
+            }
+
+            finishImageGen();
+            if (skelEl) {
+                skelEl.innerHTML = `
+                    <span style="color:var(--danger); font-size:0.85rem;">${icon('alert')} Не удалось загрузить изображение. Проверьте соединение или повторите попытку.</span>
+                    <button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>
+                `;
+                skelEl.querySelector('[data-retry-prompt]')?.addEventListener('click', (e) => {
+                    startImageGeneration(e.target.dataset.retryPrompt);
+                });
+            }
+        };
+
         gen.signal.addEventListener('abort', () => {
             imgEl.onload = null;
             imgEl.onerror = null;
             imgEl.removeAttribute('onerror');
             imgEl.src = 'data:,';
-            loadingEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" onclick="startImageGeneration('${safeDisplay}')">${icon('refresh')} Повторить генерацию</button>`;
+            if (skelEl) {
+                skelEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>`;
+                skelEl.querySelector('[data-retry-prompt]')?.addEventListener('click', (e) => {
+                    startImageGeneration(e.target.dataset.retryPrompt);
+                });
+            }
             finishImageGen();
         }, { once: true });
+
+        imgEl.src = primaryUrl;
+
         setTimeout(finishImageGen, 120000);
     } else {
         finishImageGen();
         persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
-    }
-};
-
-window.handleImageFallback = function(img, encoded, genId, safePrompt) {
-    const attempt = parseInt(img.dataset.attempt || '0', 10);
-    if (attempt === 0) {
-        img.dataset.attempt = '1';
-        const fallbackSeed = Math.floor(Math.random() * 888888);
-        img.src = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&seed=${fallbackSeed}&nologo=true&model=turbo`;
-        return;
-    } else if (attempt === 1) {
-        img.dataset.attempt = '2';
-        const fallbackSeed = Math.floor(Math.random() * 888888);
-        img.src = `https://pollinations.ai/p/${encoded}?width=800&height=800&seed=${fallbackSeed}`;
-        return;
-    }
-
-    if (window.genAbort) endGeneration();
-    const sk = document.getElementById(`skel-${genId}`);
-    if (sk) {
-        sk.innerHTML = `
-            <span style="color:var(--danger); font-size:0.85rem;">${icon('alert')} Не удалось загрузить изображение. Проверьте соединение или повторите попытку.</span>
-            <button class="img-action-btn" style="margin-top:8px;" onclick="startImageGeneration('${safePrompt}')">${icon('refresh')} Повторить генерацию</button>
-        `;
     }
 };
 
@@ -2024,16 +2190,15 @@ window.handleSend = async function() {
         showToast('Идёт генерация — нажмите «стоп», чтобы остановить');
         return;
     }
-    const input = document.getElementById('mainInput');
-    const text = input.value.trim();
+    if (!mainInput) return;
+    const text = mainInput.value.trim();
     const textLower = text.toLowerCase();
 
-    // 1. Прикреплен текстовый документ, код или таблица
     if (window.pendingFile) {
         const attached = window.pendingFile;
         removePendingFile();
-        input.value = '';
-        input.style.height = 'auto';
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
         openWorkspace();
 
         const userTask = text || 'Внимательно изучи содержимое прикрепленного файла, выдели главное и объясни ключевые моменты.';
@@ -2068,12 +2233,11 @@ window.handleSend = async function() {
         return;
     }
 
-    // 2. ZIP archive attachment
     if (window.pendingZip) {
         const zip = window.pendingZip;
         removePendingFile();
-        input.value = '';
-        input.style.height = 'auto';
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
         openWorkspace();
 
         const userTask = text || 'Проанализируй код и файлы из архива, опиши архитектуру и назначение файлов.';
@@ -2107,15 +2271,18 @@ window.handleSend = async function() {
         return;
     }
 
-    // 3. Vision / Image upload
     if (window.pendingImage) {
         const img = window.pendingImage;
         removePendingImage();
-        input.value = '';
-        input.style.height = 'auto';
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
         openWorkspace();
         const userTask = text || 'Подробно проанализируй и опиши это изображение.';
-        addMessage('user', `<img class="chat-attached-img" src="${img.dataUrl}" onclick="openImageLightbox('${img.dataUrl}', 'Загруженное фото')" alt="Прикрепленное изображение"><br>${renderText(text || 'Анализ изображения')}`);
+        const safeDataUrl = escapeAttr(img.dataUrl);
+        const msgEl = addMessage('user', `<img class="chat-attached-img" src="${safeDataUrl}" alt="Прикрепленное изображение"><br>${renderText(text || 'Анализ изображения')}`);
+        msgEl.querySelector('.chat-attached-img')?.addEventListener('click', () => {
+            openImageLightbox(img.dataUrl, 'Загруженное фото');
+        });
         const loadingEl = addLoading('Анализирую изображение...');
         try {
             let lastSpeedStats = null;
@@ -2123,7 +2290,7 @@ window.handleSend = async function() {
                 onProgress: (prog) => {
                     lastSpeedStats = prog;
                     loadingEl.innerHTML = renderText(prog.text) +
-                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
                         `<span class="gen-speed-pulse"></span>` +
                         `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
                         `</span>`;
@@ -2147,23 +2314,20 @@ window.handleSend = async function() {
         return;
     }
 
-    // 4. Презентации
     if (textLower.includes('презентаци') || textLower.includes('слайды')) {
         return handleSlides(text);
     }
 
-    // 5. Картинки
     if (isImagePrompt(text)) {
-        input.value = '';
-        input.style.height = 'auto';
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
         return startImageGeneration(text);
     }
 
-    // 6. Обычный текстовый чат
     openWorkspace();
     addMessage('user', renderText(text));
-    input.value = '';
-    input.style.height = 'auto';
+    mainInput.value = '';
+    mainInput.style.height = 'auto';
     const loadingEl = addLoading('');
 
     try {
@@ -2192,17 +2356,20 @@ window.handleSend = async function() {
     }
 };
 
-document.getElementById('fileInput').addEventListener('change', async function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = '';
-    await processAndAttachFile(file);
-});
+const fileInputEl = document.getElementById('fileInput');
+if (fileInputEl) {
+    fileInputEl.addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        e.target.value = '';
+        await processAndAttachFile(file);
+    });
+}
 
 async function handleSlides(text) {
     if (!text) {
         showToast('Опишите тему презентации');
-        document.getElementById('mainInput').focus();
+        if (mainInput) mainInput.focus();
         return;
     }
     openWorkspace();
@@ -2240,7 +2407,7 @@ async function handleSlides(text) {
 async function handleResearch(text) {
     if (!text) {
         showToast('Введите тему для исследования');
-        document.getElementById('mainInput').focus();
+        if (mainInput) mainInput.focus();
         return;
     }
     openWorkspace();
@@ -2301,7 +2468,7 @@ async function handleClusterAnalysis(text) {
 async function handleGenericMode(text, kind, title, sys) {
     if (!text) {
         showToast('Введите запрос в поле ввода');
-        document.getElementById('mainInput').focus();
+        if (mainInput) mainInput.focus();
         return;
     }
     openWorkspace();
@@ -2325,24 +2492,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ensureCurrentChat('guest');
 
-    const savedModel = localStorage.getItem('quanta_selected_model');
-    if (savedModel && FREE_MODELS_CATALOG[savedModel]) {
-        window.selectedFreeModel = savedModel;
-        const label = FREE_MODELS_CATALOG[savedModel].name;
-        const modeEl = document.getElementById('modeLabel');
-        if (modeEl) {
-            modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
+    try {
+        const savedModel = localStorage.getItem('quanta_selected_model');
+        if (savedModel && FREE_MODELS_CATALOG[savedModel]) {
+            window.selectedFreeModel = savedModel;
+            const label = FREE_MODELS_CATALOG[savedModel].name;
+            const modeEl = document.getElementById('modeLabel');
+            if (modeEl) {
+                modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
+            }
+        } else {
+            window.selectedFreeModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+            const modeEl = document.getElementById('modeLabel');
+            if (modeEl) modeEl.textContent = 'Nemotron 3 Ultra';
         }
-    } else {
+    } catch (e) {
+        console.warn('Failed to load saved model:', e);
         window.selectedFreeModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
-        const modeEl = document.getElementById('modeLabel');
-        if (modeEl) modeEl.textContent = 'Nemotron 3 Ultra';
     }
 
     markActiveModel(window.selectedFreeModel);
 
-    if (window.innerWidth > 768 && localStorage.getItem('quanta_sidebar_collapsed') === '1') {
-        document.getElementById('sidebar')?.classList.add('collapsed');
+    if (window.innerWidth > 768) {
+        try {
+            if (localStorage.getItem('quanta_sidebar_collapsed') === '1') {
+                document.getElementById('sidebar')?.classList.add('collapsed');
+            }
+        } catch (e) {
+            console.warn('Failed to restore sidebar state:', e);
+        }
     }
 
     const dropOverlay = document.getElementById('dragDropOverlay');
@@ -2405,4 +2583,9 @@ document.addEventListener('DOMContentLoaded', () => {
             startNewChat();
         }
     });
+});
+
+window.addEventListener('beforeunload', () => {
+    _activeTimers.forEach(timer => clearTimeout(timer));
+    _activeTimers.clear();
 });
