@@ -990,44 +990,88 @@ function scrollToBottom() {
 let codeCounter = 0;
 function renderText(text) {
     if (!text) return '';
-    let safe = escapeHtml(text);
-    safe = safe.split(/(```[\s\S]*?```)/g).map((part, i) => i % 2 ? part : iconizeEmoji(part)).join('');
-    
+  
+    // Если marked.js загружен — используем полноценный Markdown
+    if (typeof marked !== 'undefined' && marked.parse) {
+        try {
+            marked.setOptions({
+                breaks: true,        // Переносы строк как <br>
+                gfm: true,           // GitHub Flavored Markdown
+                sanitize: false,
+                smartLists: true,
+                smartypants: false
+            });
+          
+            let rendered = marked.parse(text);
+            if (typeof iconizeEmoji === 'function') {
+                rendered = iconizeEmoji(rendered);
+            }
+            return rendered;
+        } catch (e) {
+            console.warn('Marked.js parse error, fallback to basic:', e);
+        }
+    }
+  
+    // Fallback: базовая обработка без marked.js
+    let safe = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
+    if (typeof iconizeEmoji === 'function') {
+        safe = safe.split(/(```[\s\S]*?```)/g).map((part, i) => i % 2 ? part : iconizeEmoji(part)).join('');
+    }
+  
+    // Обработка таблиц
     safe = safe.replace(/(\|.+?\|\n)+/g, function(tableText) {
         const lines = tableText.trim().split('\n');
-        if (lines.length < 2) return escapeHtml(tableText);
+        if (lines.length < 2) return (typeof escapeHtml === 'function' ? escapeHtml(tableText) : tableText);
         let html = '<div class="table-responsive"><table>';
         lines.forEach((line, idx) => {
             if (line.includes('---')) return;
             const cells = line.split('|').filter((_, cIdx, arr) => cIdx > 0 && cIdx < arr.length - 1);
             const tag = idx === 0 ? 'th' : 'td';
-            html += '<tr>' + cells.map(c => `<${tag}>${escapeHtml(c.trim())}</${tag}>`).join('') + '</tr>';
+            html += '<tr>' + cells.map(c => `<${tag}>${typeof escapeHtml === 'function' ? escapeHtml(c.trim()) : c.trim()}</${tag}>`).join('') + '</tr>';
         });
         html += '</table></div>';
         return html;
     });
 
+    // Обработка блоков кода
     safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
-        const id = 'code_' + (++codeCounter);
-        const ext = escapeHtml(lang || 'код');
-        const safeCode = escapeHtml(code.trim());
+        const id = 'code_' + (typeof codeCounter !== 'undefined' ? ++codeCounter : Math.random().toString(36).slice(2));
+        const ext = typeof escapeHtml === 'function' ? escapeHtml(lang || 'код') : (lang || 'код');
+        const safeCode = typeof escapeHtml === 'function' ? escapeHtml(code.trim()) : code.trim();
+        const copyIcon = typeof icon === 'function' ? icon('copy') : '📋';
+        const dlIcon = typeof icon === 'function' ? icon('download') : '💾';
         return `<div class="code-block-wrapper">
             <div class="code-block-header">
                 <span style="text-transform:uppercase; font-weight:600;">${ext}</span>
                 <div style="display:flex; gap:6px;">
-                    <button class="code-action-btn" data-copy-code="${id}">${icon('copy')} Копировать</button>
-                    <button class="code-action-btn" data-download-code="${id}" data-code-ext="${ext}">${icon('download')} Файл</button>
+                    <button class="code-action-btn" data-copy-code="${id}">${copyIcon} Копировать</button>
+                    <button class="code-action-btn" data-download-code="${id}" data-code-ext="${ext}">${dlIcon} Файл</button>
                 </div>
             </div>
             <pre><code id="${id}">${safeCode}</code></pre>
         </div>`;
     });
 
-    safe = safe.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-    safe = safe.replace(/\*(.+?)\*/g, '<i>$1</i>');
+    // Markdown-форматирование
+    safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+    // Нумерованные списки
+    safe = safe.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
+    safe = safe.replace(/(<li>.*<\/li>\n?)+/g, '<ol>$&</ol>');
+  
+    // Маркированные списки
+    safe = safe.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+    safe = safe.replace(/(<li>.*<\/li>\n?)+/g, function(match) {
+        if (!match.includes('<ol>')) return '<ul>' + match + '</ul>';
+        return match;
+    });
+  
+    // Переносы строк
+    safe = safe.replace(/\n/g, '<br>');
+  
     return safe;
 }
-
 document.addEventListener('click', function(e) {
     const copyBtn = e.target.closest('[data-copy-code]');
     if (copyBtn) {
@@ -1630,14 +1674,14 @@ async function callOpenAICompatible(messages, onProgress = null, explicitModel =
 
 async function _callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
     const settings = getApiSettings();
-    
+  
     let primaryModel = explicitModel || window.selectedFreeModel || settings.model || 'nvidia/nemotron-3-ultra-550b-a55b:free';
     if (primaryModel === 'flux/image-gen') {
         primaryModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
     }
 
     const modelsToTry = [];
-    if (MODEL_FAMILY_FALLBACKS[primaryModel]) {
+    if (typeof MODEL_FAMILY_FALLBACKS !== 'undefined' && MODEL_FAMILY_FALLBACKS[primaryModel]) {
         modelsToTry.push(...MODEL_FAMILY_FALLBACKS[primaryModel]);
     } else {
         modelsToTry.push(primaryModel);
@@ -1661,13 +1705,21 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
     let lastError = null;
 
     const isOpusModel = primaryModel.includes('kimi');
+  
+    // Безопасная очистка вывода от служебных строк и маркеров
     const sanitizeModelOutput = (text) => {
         if (!text) return '';
         let res = text
+            .replace(/^Response Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
             .replace(/User Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
+            .replace(/Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
+            .replace(/\[SAFETY: (SAFE\vert{}UNSAFE)\][\r\n]*/gi, '')
             .replace(/<point>[\s\S]*?<\/point>/gi, '')
+            .replace(/^(safe|unsafe)\s*$/gim, '')
             .trimStart();
+      
         if (!isOpusModel) return res;
+      
         return res
             .replace(/\bKimi\s*K3\b/gi, 'Claude Opus 4.8')
             .replace(/\bKimi\s*K2\b/gi, 'Claude Opus 4.8')
@@ -1675,6 +1727,40 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             .replace(/(я\s*[-—–]?\s*)(kimi|кими)(\s*k3|\s*k2)?/gi, '$1Claude Opus 4.8')
             .replace(/(модель\s*[-—–]?\s*)(kimi|кими)(\s*k3|\s*k2)?/gi, '$1Claude Opus 4.8')
             .replace(/\b(Moonshot\s*AI|Moonshot)\b/gi, 'Anthropic');
+    };
+
+    // Универсальный экстрактор текста из JSON-ответа (поддержка разных API)
+    const extractTextFromResponse = (data) => {
+        if (!data) return null;
+      
+        // OpenAI / OpenRouter / Groq структура
+        if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+            const choice = data.choices[0];
+            if (choice.message?.content) return choice.message.content;
+            if (choice.text) return choice.text;
+            if (choice.delta?.content) return choice.delta.content;
+        }
+      
+        // Google Gemini структура
+        if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
+            const candidate = data.candidates[0];
+            if (candidate.content?.parts && Array.isArray(candidate.content.parts) && candidate.content.parts.length > 0) {
+                const part = candidate.content.parts[0];
+                if (part.text) return part.text;
+            }
+        }
+      
+        // Anthropic Claude структура
+        if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+            if (data.content[0].text) return data.content[0].text;
+        }
+      
+        // Общие fallback-поля
+        if (data.message?.content) return data.message.content;
+        if (data.text) return data.text;
+        if (data.content) return typeof data.content === 'string' ? data.content : null;
+      
+        return null;
     };
 
     const now = new Date();
@@ -1710,10 +1796,10 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
         const body = { model: curModel, messages: effectiveMessages, stream: canStream };
         const controller = new AbortController();
         const timer = setTimeout(() => {
-            _activeTimers.delete(timer);
+            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
             controller.abort();
         }, 85000);
-        _activeTimers.add(timer);
+        if (typeof _activeTimers !== 'undefined') _activeTimers.add(timer);
 
         const startTime = performance.now();
         let firstChunkTime = null;
@@ -1724,8 +1810,8 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
         if (userSignal) {
             if (userSignal.aborted) {
                 clearTimeout(timer);
-                _activeTimers.delete(timer);
-                throw userAbortError();
+                if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
+                throw typeof userAbortError === 'function' ? userAbortError() : new Error('Прервано пользователем');
             }
             userSignal.addEventListener('abort', () => controller.abort(), { once: true });
         }
@@ -1738,7 +1824,7 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                 signal: controller.signal
             });
             clearTimeout(timer);
-            _activeTimers.delete(timer);
+            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
 
             if (!response.ok) {
                 let errText = '';
@@ -1750,14 +1836,14 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                 }
 
                 if (response.status === 401) {
-                    openSettingsModal();
+                    if (typeof openSettingsModal === 'function') openSettingsModal();
                     throw new Error('Требуется API-ключ. Откройте настройки и укажите ключ');
                 }
 
                 if ([402, 404, 429, 500, 502, 503].includes(response.status) && i < modelsToTry.length - 1) {
                     console.warn(`Model ${curModel} error (${response.status}). Retrying with: ${modelsToTry[i + 1]}`);
                     lastError = new Error(errText);
-                    showToast(`Модель перегружена, переключаю на резервную...`);
+                    if (typeof showToast === 'function') showToast(`Модель перегружена, переключаю на резервную...`);
                     continue;
                 }
                 throw new Error(`Ошибка ${response.status}: ${errText || 'Сбой сервера'}`);
@@ -1782,17 +1868,16 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                         const trimmed = line.trim();
                         if (!trimmed || trimmed.startsWith(':')) continue;
                         if (trimmed === 'data: [DONE]') {
-    try { await reader.cancel(); } catch (_) {}
-    break;
-}
+                            try { await reader.cancel(); } catch (_) {}
+                            break;
+                        }
 
                         if (trimmed.startsWith('data:')) {
                             const jsonStr = trimmed.slice(5).trim();
                             try {
                                 const parsed = JSON.parse(jsonStr);
-                                const delta = parsed?.choices?.[0]?.delta?.content ||
-                                              parsed?.choices?.[0]?.text ||
-                                              parsed?.delta?.content || '';
+                                const delta = extractTextFromResponse(parsed);
+                              
                                 if (delta) {
                                     if (!firstChunkTime) firstChunkTime = performance.now();
                                     fullText += delta;
@@ -1823,7 +1908,7 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                     const sanitizedFull = sanitizeModelOutput(fullText);
 
                     if (!sanitizedFull.trim()) {
-                        throw new Error('Модель вернула только служебный статус безопасности');
+                        throw new Error('Модель вернула пустой ответ или только статус безопасности');
                     }
 
                     const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
@@ -1842,11 +1927,16 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             }
 
             const data = await response.json();
-            const rawText = data?.choices?.[0]?.message?.content || data?.message?.content || data?.text || JSON.stringify(data);
+            const rawText = extractTextFromResponse(data);
+          
+            if (!rawText || !rawText.trim()) {
+                throw new Error('Модель вернула пустой ответ. Попробуйте переформулировать запрос');
+            }
+          
             const resultText = sanitizeModelOutput(rawText);
 
             if (!resultText.trim()) {
-                throw new Error('Модель вернула только служебный статус безопасности');
+                throw new Error('Ответ модели заблокирован фильтром безопасности');
             }
 
             const totalSec = Math.max(0.1, (performance.now() - startTime) / 1000);
@@ -1865,7 +1955,7 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             return resultText;
         } catch (err) {
             clearTimeout(timer);
-            _activeTimers.delete(timer);
+            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
 
             if (userSignal && userSignal.aborted) {
                 if (fullText.trim()) {
@@ -1884,7 +1974,7 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                     }
                     return sanitizedFull;
                 }
-                throw userAbortError();
+                throw typeof userAbortError === 'function' ? userAbortError() : new Error('Прервано пользователем');
             }
             lastError = err;
             if (err.name === 'AbortError') {
@@ -1898,7 +1988,6 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
     }
     throw lastError || new Error('Не удалось получить ответ от нейросети');
 }
-
 async function askAI(prompt, opts = {}) {
     let messages;
     if (opts.useHistory) {
