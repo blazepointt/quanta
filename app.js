@@ -39,7 +39,7 @@ function loadLib(name) {
 }
 
 // ==========================================
-// 🌐 WEB SEARCH MODULE
+// 🌐 WEB SEARCH MODULE (FIXED & IMPROVED)
 // ==========================================
 window.webSearchEnabled = false;
 
@@ -63,9 +63,9 @@ window.toggleWebSearch = function() {
 };
 
 async function searchWeb(query) {
-    const SEARCH_TIMEOUT = 8000;
+    const SEARCH_TIMEOUT = 10000;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), SEARCH_TIMEOUT);
+    const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT);
     
     try {
         const encodedQuery = encodeURIComponent(query);
@@ -76,7 +76,7 @@ async function searchWeb(query) {
             headers: { 'Accept': 'text/html' }
         });
         
-        clearTimeout(timeout);
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
             throw new Error(`Поисковый сервис недоступен (${response.status})`);
@@ -87,39 +87,41 @@ async function searchWeb(query) {
         const doc = parser.parseFromString(html, 'text/html');
         
         const results = [];
-        const resultElements = doc.querySelectorAll('.result, .web-result');
+        const resultElements = doc.querySelectorAll('.result, .web-result, .links_main');
         
-        for (let i = 0; i < Math.min(resultElements.length, 5); i++) {
+        for (let i = 0; i < Math.min(resultElements.length, 6); i++) {
             const el = resultElements[i];
             
-            const titleEl = el.querySelector('.result__a, .result__title a, a.result__url');
-            const snippetEl = el.querySelector('.result__snippet, .result__body');
-            const urlEl = el.querySelector('.result__url, .result__extras__url a');
+            const titleEl = el.querySelector('.result__a, .result__title a, a.result__url, .result_title a');
+            const snippetEl = el.querySelector('.result__snippet, .result__body, .result__description');
+            const urlEl = el.querySelector('.result__url, .result__extras__url a, .result__href');
             
             if (!titleEl) continue;
             
-            let title = titleEl.textContent.trim();
-            let snippet = snippetEl ? snippetEl.textContent.trim() : '';
-            let url = titleEl.href || (urlEl ? urlEl.href : '');
+            let title = (titleEl.textContent || '').trim();
+            let snippet = snippetEl ? (snippetEl.textContent || '').trim() : '';
+            let url = titleEl.href || (urlEl ? (urlEl.href || urlEl.textContent) : '');
             
             // Очистка URL от DuckDuckGo redirect
-            if (url.includes('duckduckgo.com/l/?')) {
+            if (url.includes('duckduckgo.com')) {
                 try {
                     const urlObj = new URL(url);
-                    url = urlObj.searchParams.get('uddg') || url;
+                    const cleanUrl = urlObj.searchParams.get('uddg') || urlObj.searchParams.get('url');
+                    if (cleanUrl) url = cleanUrl;
                 } catch (e) {
                     console.warn('URL parse error:', e);
                 }
             }
             
-            if (!url.startsWith('http')) {
-                url = 'https://' + url;
+            // Добавляем протокол если отсутствует
+            if (url && !url.startsWith('http')) {
+                url = 'https://' + url.replace(/^\/\//, '');
             }
             
-            if (title && url) {
+            if (title && url && url.startsWith('http')) {
                 results.push({
                     title: title.slice(0, 200),
-                    snippet: snippet.slice(0, 300),
+                    snippet: snippet.slice(0, 350),
                     url: url.slice(0, 500)
                 });
             }
@@ -128,7 +130,7 @@ async function searchWeb(query) {
         return results.length > 0 ? results : null;
         
     } catch (error) {
-        clearTimeout(timeout);
+        clearTimeout(timeoutId);
         
         if (error.name === 'AbortError') {
             throw new Error('Превышено время ожидания поиска');
@@ -200,6 +202,7 @@ function renderWebSourcesCard(results) {
         </div>
     `;
 }
+
 // ==========================================
 // FIREBASE INITIALIZATION & SYNC
 // ==========================================
@@ -731,6 +734,7 @@ window.openLocalChat = async function(chatId) {
     resetChatHistory();
 
     const body = document.getElementById('workspaceBody');
+    if (!body) return;
     body.innerHTML = '';
 
     if (window.currentUser && db && (!chat.messages || !chat.messages.length)) {
@@ -782,9 +786,12 @@ window.openLocalChat = async function(chatId) {
                         </div>
                     </div>
                 `;
-                el.querySelector('.generated-img-view').addEventListener('click', () => {
-                    openImageLightbox(m.imageUrl, m.content || 'Изображение');
-                });
+                           const viewEl = el.querySelector('.generated-img-view');
+                if (viewEl) {
+                    viewEl.addEventListener('click', () => {
+                        openImageLightbox(m.imageUrl, m.content || 'Изображение');
+                    });
+                }
                 el.querySelectorAll('[data-download-img]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         downloadGeneratedImage(btn.dataset.downloadImg, btn.dataset.downloadName);
@@ -853,13 +860,13 @@ window.toggleSidebar = function(open) {
     if (isMobile) {
         if (open === undefined) {
             sidebar.classList.toggle('open');
-            overlay?.classList.toggle('open');
+            if (overlay) overlay.classList.toggle('open');
         } else if (open) {
             sidebar.classList.add('open');
-            overlay?.classList.add('open');
+            if (overlay) overlay.classList.add('open');
         } else {
             sidebar.classList.remove('open');
-            overlay?.classList.remove('open');
+            if (overlay) overlay.classList.remove('open');
         }
     } else {
         const willCollapse = open === undefined ? !sidebar.classList.contains('collapsed') : !open;
@@ -914,16 +921,25 @@ if (chatContainerEl && scrollBtnEl) {
 }
 
 window.openWorkspace = function() {
-    document.getElementById('appMain').classList.remove('is-welcome');
-    document.getElementById('welcomeScreen').style.display = 'none';
-    document.getElementById('workspace').style.display = 'flex';
+    const appMain = document.getElementById('appMain');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const workspace = document.getElementById('workspace');
+    
+    if (appMain) appMain.classList.remove('is-welcome');
+    if (welcomeScreen) welcomeScreen.style.display = 'none';
+    if (workspace) workspace.style.display = 'flex';
 };
 
 window.closeWorkspace = function() {
-    document.getElementById('appMain').classList.add('is-welcome');
-    document.getElementById('workspace').style.display = 'none';
-    document.getElementById('workspaceBody').innerHTML = '';
-    document.getElementById('welcomeScreen').style.display = 'flex';
+    const appMain = document.getElementById('appMain');
+    const workspace = document.getElementById('workspace');
+    const workspaceBody = document.getElementById('workspaceBody');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    
+    if (appMain) appMain.classList.add('is-welcome');
+    if (workspace) workspace.style.display = 'none';
+    if (workspaceBody) workspaceBody.innerHTML = '';
+    if (welcomeScreen) welcomeScreen.style.display = 'flex';
     userHasScrolledUp = false;
 };
 
@@ -952,6 +968,8 @@ window.resetChatHistory = function() { chatHistory = []; };
 
 function addMessage(role, contentHtml) {
     const body = document.getElementById('workspaceBody');
+    if (!body) return document.createElement('div');
+    
     const div = document.createElement('div');
     div.className = 'msg msg-' + role;
     div.innerHTML = `
@@ -978,8 +996,8 @@ function addLoading(label) {
     return el;
 }
 
-function scrollToBottom() {
-    if (userHasScrolledUp) return;
+function scrollToBottom(force) {
+    if (!force && userHasScrolledUp) return;
     const container = document.getElementById('chatContainer');
     if (!container) return;
     setTimeout(() => {
@@ -995,8 +1013,8 @@ function renderText(text) {
     if (typeof marked !== 'undefined' && marked.parse) {
         try {
             marked.setOptions({
-                breaks: true,        // Переносы строк как <br>
-                gfm: true,           // GitHub Flavored Markdown
+                breaks: true,
+                gfm: true,
                 sanitize: false,
                 smartLists: true,
                 smartypants: false
@@ -1035,7 +1053,7 @@ function renderText(text) {
 
     // Обработка блоков кода
     safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
-        const id = 'code_' + (typeof codeCounter !== 'undefined' ? ++codeCounter : Math.random().toString(36).slice(2));
+        const id = 'code_' + (++codeCounter);
         const ext = typeof escapeHtml === 'function' ? escapeHtml(lang || 'код') : (lang || 'код');
         const safeCode = typeof escapeHtml === 'function' ? escapeHtml(code.trim()) : code.trim();
         const copyIcon = typeof icon === 'function' ? icon('copy') : '📋';
@@ -1072,6 +1090,7 @@ function renderText(text) {
   
     return safe;
 }
+
 document.addEventListener('click', function(e) {
     const copyBtn = e.target.closest('[data-copy-code]');
     if (copyBtn) {
@@ -1605,7 +1624,7 @@ window.startVoiceInput = function() {
 };
 
 // ==========================================
-// GENERATION CONTROL
+// GENERATION CONTROL (FIXED RACE CONDITIONS)
 // ==========================================
 const STOP_ICON_HTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>';
 let _sendIconHtml = null;
@@ -1656,8 +1675,11 @@ window.stopGeneration = function () {
 };
 
 window.handleSendOrStop = function () {
-    if (window.genAbort) window.stopGeneration();
-    else window.handleSend();
+    if (window.genAbort) {
+        window.stopGeneration();
+    } else {
+        window.handleSend();
+    }
 };
 
 const _activeTimers = new Set();
@@ -1706,14 +1728,13 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
 
     const isOpusModel = primaryModel.includes('kimi');
   
-    // Безопасная очистка вывода от служебных строк и маркеров
     const sanitizeModelOutput = (text) => {
         if (!text) return '';
         let res = text
             .replace(/^Response Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
             .replace(/User Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
             .replace(/Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
-            .replace(/\[SAFETY: (SAFE\vert{}UNSAFE)\][\r\n]*/gi, '')
+            .replace(/\[SAFETY: (SAFE|UNSAFE)\][\r\n]*/gi, '')
             .replace(/<point>[\s\S]*?<\/point>/gi, '')
             .replace(/^(safe|unsafe)\s*$/gim, '')
             .trimStart();
@@ -1723,17 +1744,15 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
         return res
             .replace(/\bKimi\s*K3\b/gi, 'Claude Opus 4.8')
             .replace(/\bKimi\s*K2\b/gi, 'Claude Opus 4.8')
-            .replace(/\bKimi\b/gi, 'Claude Opus 4.8')
+                        .replace(/\bKimi\b/gi, 'Claude Opus 4.8')
             .replace(/(я\s*[-—–]?\s*)(kimi|кими)(\s*k3|\s*k2)?/gi, '$1Claude Opus 4.8')
             .replace(/(модель\s*[-—–]?\s*)(kimi|кими)(\s*k3|\s*k2)?/gi, '$1Claude Opus 4.8')
             .replace(/\b(Moonshot\s*AI|Moonshot)\b/gi, 'Anthropic');
     };
 
-    // Универсальный экстрактор текста из JSON-ответа (поддержка разных API)
     const extractTextFromResponse = (data) => {
         if (!data) return null;
       
-        // OpenAI / OpenRouter / Groq структура
         if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
             const choice = data.choices[0];
             if (choice.message?.content) return choice.message.content;
@@ -1741,7 +1760,6 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             if (choice.delta?.content) return choice.delta.content;
         }
       
-        // Google Gemini структура
         if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
             const candidate = data.candidates[0];
             if (candidate.content?.parts && Array.isArray(candidate.content.parts) && candidate.content.parts.length > 0) {
@@ -1750,12 +1768,10 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             }
         }
       
-        // Anthropic Claude структура
         if (data.content && Array.isArray(data.content) && data.content.length > 0) {
             if (data.content[0].text) return data.content[0].text;
         }
       
-        // Общие fallback-поля
         if (data.message?.content) return data.message.content;
         if (data.text) return data.text;
         if (data.content) return typeof data.content === 'string' ? data.content : null;
@@ -1988,6 +2004,7 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
     }
     throw lastError || new Error('Не удалось получить ответ от нейросети');
 }
+
 async function askAI(prompt, opts = {}) {
     let messages;
     if (opts.useHistory) {
@@ -2303,9 +2320,12 @@ window.startImageGeneration = async function(promptText) {
 
     if (gen.signal.aborted) {
         loadingEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${escapeAttr(promptDisplay)}">${icon('refresh')} Повторить генерацию</button>`;
-        loadingEl.querySelector('[data-retry-prompt]')?.addEventListener('click', (e) => {
-            startImageGeneration(e.target.dataset.retryPrompt);
-        });
+        const retryBtn = loadingEl.querySelector('[data-retry-prompt]');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', (e) => {
+                startImageGeneration(e.target.dataset.retryPrompt);
+            });
+        }
         endGeneration();
         return;
     }
@@ -2395,7 +2415,6 @@ window.startImageGeneration = async function(promptText) {
             if (skelEl) skelEl.remove();
             if (actsEl) actsEl.style.display = 'flex';
             
-            // Фиксируем реальный URL (с учетом возможного fallback)
             const actualUrl = imgEl.currentSrc || imgEl.src;
             loadingEl.querySelectorAll('[data-download-img]').forEach(btn => {
                 btn.dataset.downloadImg = actualUrl;
@@ -2429,21 +2448,28 @@ window.startImageGeneration = async function(promptText) {
                     <span style="color:var(--danger); font-size:0.85rem;">${icon('alert')} Не удалось загрузить изображение. Проверьте соединение или повторите попытку.</span>
                     <button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>
                 `;
-                skelEl.querySelector('[data-retry-prompt]')?.addEventListener('click', (e) => {
-                    startImageGeneration(e.target.dataset.retryPrompt);
-                });
+                const retryBtn = skelEl.querySelector('[data-retry-prompt]');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', (e) => {
+                        startImageGeneration(e.target.dataset.retryPrompt);
+                    });
+                }
             }
         };
-           gen.signal.addEventListener('abort', () => {
+
+        gen.signal.addEventListener('abort', () => {
             imgEl.onload = null;
             imgEl.onerror = null;
             imgEl.removeAttribute('onerror');
             imgEl.src = 'data:,';
             if (skelEl) {
                 skelEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>`;
-                skelEl.querySelector('[data-retry-prompt]')?.addEventListener('click', (e) => {
-                    startImageGeneration(e.target.dataset.retryPrompt);
-                });
+                const retryBtn = skelEl.querySelector('[data-retry-prompt]');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', (e) => {
+                        startImageGeneration(e.target.dataset.retryPrompt);
+                    });
+                }
             }
             finishImageGen();
         }, { once: true });
@@ -2535,8 +2561,8 @@ window.handleSend = async function() {
                 }
             });
             const statsBadge = lastSpeedStats
-                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
-                : '';
+                       ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+        : '';
             loadingEl.innerHTML = renderText(answer) + statsBadge;
             attachExport(loadingEl, answer, 'quanta-archive-' + zip.name);
             persistTurn(`Архив: ${zip.name} (${userTask})`, answer);
@@ -2552,13 +2578,25 @@ window.handleSend = async function() {
         mainInput.value = '';
         mainInput.style.height = 'auto';
         openWorkspace();
+
         const userTask = text || 'Подробно проанализируй и опиши это изображение.';
         const safeDataUrl = escapeAttr(img.dataUrl);
-        const msgEl = addMessage('user', `<img class="chat-attached-img" src="${safeDataUrl}" alt="Прикрепленное изображение"><br>${renderText(text || 'Анализ изображения')}`);
-        msgEl.querySelector('.chat-attached-img')?.addEventListener('click', () => {
-            openImageLightbox(img.dataUrl, 'Загруженное фото');
-        });
+        const msgEl = addMessage(
+            'user',
+            `<img class="chat-attached-img" src="${safeDataUrl}" alt="Прикрепленное изображение"><br>${renderText(text || 'Анализ изображения')}`
+        );
+
+        if (msgEl) {
+            const attachedImage = msgEl.querySelector('.chat-attached-img');
+            if (attachedImage) {
+                attachedImage.addEventListener('click', () => {
+                    openImageLightbox(img.dataUrl, 'Загруженное фото');
+                });
+            }
+        }
+
         const loadingEl = addLoading('Анализирую изображение...');
+
         try {
             let lastSpeedStats = null;
             const answer = await askVision(img.dataUrl, userTask, {
@@ -2572,9 +2610,11 @@ window.handleSend = async function() {
                     scrollToBottom();
                 }
             });
+
             const statsBadge = lastSpeedStats
                 ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
                 : '';
+
             loadingEl.innerHTML = renderText(answer) + statsBadge;
             attachExport(loadingEl, answer, 'quanta-vision');
             persistTurn(text || 'Анализ фото', answer);
@@ -2599,7 +2639,6 @@ window.handleSend = async function() {
         return startImageGeneration(text);
     }
 
-    // 🌐 WEB SEARCH INTEGRATION
     let webSearchResults = null;
     let webSearchContext = '';
 
@@ -2609,39 +2648,52 @@ window.handleSend = async function() {
         mainInput.value = '';
         mainInput.style.height = 'auto';
 
-        const searchLoadingEl = addLoading('Ищу информацию в сети...');
+        const searchLoadingEl = addLoading('Поиск в интернете...');
 
         try {
             webSearchResults = await searchWeb(text);
-            
+
             if (webSearchResults && webSearchResults.length > 0) {
                 webSearchContext = buildWebSearchContext(webSearchResults, text);
-                
-                searchLoadingEl.innerHTML = `${icon('check', 14)} Найдено ${webSearchResults.length} актуальных источников`;
-                
+
+                searchLoadingEl.innerHTML =
+                    `${icon('check', 14)} Найдено ${webSearchResults.length} актуальных источников`;
+
                 setTimeout(() => {
-                    searchLoadingEl.remove();
+                    if (searchLoadingEl && searchLoadingEl.isConnected) {
+                        searchLoadingEl.remove();
+                    }
                 }, 800);
             } else {
-                searchLoadingEl.innerHTML = `${icon('alert', 14)} Поиск не дал результатов, отвечаю на основе базы знаний`;
+                searchLoadingEl.innerHTML =
+                    `${icon('alert', 14)} Поиск не дал результатов, отвечаю на основе базы знаний`;
+
                 setTimeout(() => {
-                    searchLoadingEl.remove();
+                    if (searchLoadingEl && searchLoadingEl.isConnected) {
+                        searchLoadingEl.remove();
+                    }
                 }, 1500);
             }
         } catch (searchError) {
             console.warn('Web search failed:', searchError);
-            searchLoadingEl.innerHTML = `${icon('alert', 14)} Поиск временно недоступен, отвечаю без актуальных данных`;
+
+            searchLoadingEl.innerHTML =
+                `${icon('alert', 14)} Поиск временно недоступен, отвечаю без актуальных данных`;
+
             setTimeout(() => {
-                searchLoadingEl.remove();
+                if (searchLoadingEl && searchLoadingEl.isConnected) {
+                    searchLoadingEl.remove();
+                }
             }, 1500);
+
             showToast('Веб-поиск недоступен, продолжаю без него');
         }
 
         const answerLoadingEl = addLoading('');
 
         try {
-            const enhancedPrompt = webSearchContext 
-                ? text + webSearchContext 
+            const enhancedPrompt = webSearchContext
+                ? text + webSearchContext
                 : text;
 
             let lastSpeedStats = null;
@@ -2666,7 +2718,9 @@ window.handleSend = async function() {
                 ? renderWebSourcesCard(webSearchResults)
                 : '';
 
-            answerLoadingEl.innerHTML = renderText(answer) + statsBadge + sourcesCard;
+            answerLoadingEl.innerHTML =
+                renderText(answer) + statsBadge + sourcesCard;
+
             attachExport(answerLoadingEl, answer, 'quanta-answer');
             persistTurn(text, answer);
         } catch (e) {
@@ -2676,11 +2730,12 @@ window.handleSend = async function() {
         return;
     }
 
-    // Regular flow without web search
     openWorkspace();
     addMessage('user', renderText(text));
+
     mainInput.value = '';
     mainInput.style.height = 'auto';
+
     const loadingEl = addLoading('');
 
     try {
@@ -2701,6 +2756,7 @@ window.handleSend = async function() {
         const statsBadge = lastSpeedStats
             ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
             : '';
+
         loadingEl.innerHTML = renderText(answer) + statsBadge;
         attachExport(loadingEl, answer, 'quanta-answer');
         persistTurn(text, answer);
@@ -2710,10 +2766,12 @@ window.handleSend = async function() {
 };
 
 const fileInputEl = document.getElementById('fileInput');
+
 if (fileInputEl) {
     fileInputEl.addEventListener('change', async function(e) {
         const file = e.target.files[0];
         if (!file) return;
+
         e.target.value = '';
         await processAndAttachFile(file);
     });
@@ -2725,33 +2783,84 @@ async function handleSlides(text) {
         if (mainInput) mainInput.focus();
         return;
     }
+
     openWorkspace();
     addMessage('user', 'Создать презентацию: ' + renderText(text));
+
     const loadingEl = addLoading('Формирую структуру слайдов...');
+
     try {
         const prompt = `Создай план презентации по теме "${text}" из 5 слайдов. СТРОГО ВЕРНИ ТОЛЬКО JSON без маркдауна: {"title":"...","slides":[{"title":"...","bullets":["...","..."]}]}`;
         const raw = await askAI(prompt);
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('Не удалось сгенерировать JSON');
+
+        if (!jsonMatch) {
+            throw new Error('Не удалось сгенерировать JSON');
+        }
+
         const data = JSON.parse(jsonMatch[0]);
 
         await loadLib('pptx');
+
         const pptx = new PptxGenJS();
         const titleSlide = pptx.addSlide();
+
         titleSlide.background = { color: '181818' };
-        titleSlide.addText(data.title || text, { x: 0.5, y: 2, w: 9, h: 1.5, fontSize: 32, bold: true, color: 'FFFFFF', align: 'center' });
+        titleSlide.addText(data.title || text, {
+            x: 0.5,
+            y: 2,
+            w: 9,
+            h: 1.5,
+            fontSize: 32,
+            bold: true,
+            color: 'FFFFFF',
+            align: 'center'
+        });
 
         (data.slides || []).forEach(s => {
             const slide = pptx.addSlide();
             slide.background = { color: '202020' };
-            slide.addText(s.title || '', { x: 0.5, y: 0.5, w: 9, h: 0.8, fontSize: 22, bold: true, color: '818CF8' });
-            slide.addText((s.bullets || []).map(b => ({ text: b, options: { bullet: true, breakLine: true } })), { x: 0.5, y: 1.5, w: 9, h: 4, fontSize: 16, color: 'E8E8E8' });
+
+            slide.addText(s.title || '', {
+                x: 0.5,
+                y: 0.5,
+                w: 9,
+                h: 0.8,
+                fontSize: 22,
+                bold: true,
+                color: '818CF8'
+            });
+
+            slide.addText(
+                (s.bullets || []).map(b => ({
+                    text: b,
+                    options: {
+                        bullet: true,
+                        breakLine: true
+                    }
+                })),
+                {
+                    x: 0.5,
+                    y: 1.5,
+                    w: 9,
+                    h: 4,
+                    fontSize: 16,
+                    color: 'E8E8E8'
+                }
+            );
         });
 
         const blob = await pptx.write({ outputType: 'blob' });
         const url = URL.createObjectURL(blob);
-        loadingEl.innerHTML = `${icon('check')} Презентация готова: <b>${escapeHtml(data.title || text)}</b><br><a class="ws-download" href="${url}" download="presentation.pptx">${icon('download')} Скачать .pptx</a>`;
-        persistTurn('Презентация: ' + text, `Готова презентация "${data.title || text}" (5 слайдов).`);
+
+        loadingEl.innerHTML =
+            `${icon('check')} Презентация готова: <b>${escapeHtml(data.title || text)}</b><br>` +
+            `<a class="ws-download" href="${url}" download="presentation.pptx">${icon('download')} Скачать .pptx</a>`;
+
+        persistTurn(
+            'Презентация: ' + text,
+            `Готова презентация "${data.title || text}" (5 слайдов).`
+        );
     } catch (e) {
         loadingEl.innerHTML = errHtml('Ошибка генерации презентации: ', e);
     }
@@ -2763,11 +2872,18 @@ async function handleResearch(text) {
         if (mainInput) mainInput.focus();
         return;
     }
+
     openWorkspace();
     addMessage('user', 'Глубокое исследование: ' + renderText(text));
+
     const loadingEl = addLoading('Формирую исследовательский план...');
+
     try {
-        const answer = await askAI(`Проведи всестороннее исследование по теме: "${text}". Разбей ответ на: Введение, Ключевые аспекты, Тренды и выводы.`, { useHistory: true });
+        const answer = await askAI(
+            `Проведи всестороннее исследование по теме: "${text}". Разбей ответ на: Введение, Ключевые аспекты, Тренды и выводы.`,
+            { useHistory: true }
+        );
+
         loadingEl.innerHTML = renderText(answer);
         attachExport(loadingEl, answer, 'quanta-research');
         persistTurn('Исследование: ' + text, answer);
@@ -2778,23 +2894,44 @@ async function handleResearch(text) {
 
 async function handleWebsite(text) {
     let url = text;
+
     if (!url || !/^https?:\/\//i.test(url)) {
         url = prompt('Введите URL веб-страницы:', text || 'https://');
         if (!url) return;
     }
+
     openWorkspace();
     addMessage('user', 'Анализ сайта: ' + escapeHtml(url));
+
     const loadingEl = addLoading('Загружаю веб-страницу...');
+
     try {
-        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+        const proxyUrl =
+            'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+
         const res = await fetch(proxyUrl);
-        if (!res.ok) throw new Error('Не удалось загрузить сайт (код ' + res.status + ')');
+
+        if (!res.ok) {
+            throw new Error('Не удалось загрузить сайт (код ' + res.status + ')');
+        }
+
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, 'text/html');
+
         doc.querySelectorAll('script,style,noscript,svg').forEach(el => el.remove());
-        const cleanText = (doc.body ? doc.body.innerText : html).replace(/\n{3,}/g, '\n\n').trim().slice(0, 9000);
-        loadingEl.innerHTML = '<div class="ws-loading"><div class="spinner"></div>Анализирую текст сайта...</div>';
-        const answer = await askAI(`Сделай краткую сводку страницы (${url}):\n\n${cleanText}`);
+
+        const cleanText = (doc.body ? doc.body.innerText : html)
+            .replace(/\n{3,}/g, '\n\n')
+            .trim()
+            .slice(0, 9000);
+
+        loadingEl.innerHTML =
+            '<div class="ws-loading"><div class="spinner"></div>Анализирую текст сайта...</div>';
+
+        const answer = await askAI(
+            `Сделай краткую сводку страницы (${url}):\n\n${cleanText}`
+        );
+
         loadingEl.innerHTML = renderText(answer);
         attachExport(loadingEl, answer, 'quanta-site');
         persistTurn('Анализ сайта: ' + url, answer);
@@ -2805,11 +2942,21 @@ async function handleWebsite(text) {
 
 async function handleClusterAnalysis(text) {
     openWorkspace();
-    addMessage('user', 'Кластерный анализ ' + (text ? ': ' + renderText(text) : ''));
+
+    addMessage(
+        'user',
+        'Кластерный анализ ' + (text ? ': ' + renderText(text) : '')
+    );
+
     const loadingEl = addLoading('Анализ данных...');
+
     try {
-        const prompt = text ? `Проведи кластеризацию сущностей и объясни группировку для: ${text}` : `Объясни, как провести кластерный анализ, и предложи загрузить CSV таблицу через кнопку скрепки.`;
+        const prompt = text
+            ? `Проведи кластеризацию сущностей и объясни группировку для: ${text}`
+            : 'Объясни, как провести кластерный анализ, и предложи загрузить CSV таблицу через кнопку скрепки.';
+
         const answer = await askAI(prompt, { useHistory: true });
+
         loadingEl.innerHTML = renderText(answer);
         attachExport(loadingEl, answer, 'quanta-cluster');
         persistTurn('Кластерный анализ: ' + (text || 'обзор'), answer);
@@ -2824,11 +2971,15 @@ async function handleGenericMode(text, kind, title, sys) {
         if (mainInput) mainInput.focus();
         return;
     }
+
     openWorkspace();
     addMessage('user', renderText(text));
+
     const loadingEl = addLoading('Обработка...');
+
     try {
         const answer = await askAI(sys + text, { useHistory: true });
+
         loadingEl.innerHTML = renderText(answer);
         attachExport(loadingEl, answer, 'quanta-' + kind);
         persistTurn(text, answer);
@@ -2843,14 +2994,17 @@ async function handleGenericMode(text, kind, title, sys) {
 document.addEventListener('DOMContentLoaded', () => {
     refreshSettingsUI();
 
-    // 🌐 Restore web search toggle state
     try {
         const savedWebSearch = localStorage.getItem('quanta_web_search_enabled');
+
         if (savedWebSearch === '1') {
             window.webSearchEnabled = true;
+
             const btn = document.getElementById('webSearchToggle');
+
             if (btn) {
                 btn.classList.add('active');
+                btn.setAttribute('aria-pressed', 'true');
                 btn.title = 'Веб-поиск включен (свежие данные из интернета)';
             }
         }
@@ -2862,21 +3016,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         const savedModel = localStorage.getItem('quanta_selected_model');
+
         if (savedModel && FREE_MODELS_CATALOG[savedModel]) {
             window.selectedFreeModel = savedModel;
+
             const label = FREE_MODELS_CATALOG[savedModel].name;
             const modeEl = document.getElementById('modeLabel');
+
             if (modeEl) {
-                modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
+                modeEl.textContent =
+                    label.length > 17 ? label.slice(0, 16) + '…' : label;
             }
         } else {
-            window.selectedFreeModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+            window.selectedFreeModel =
+                'nvidia/nemotron-3-ultra-550b-a55b:free';
+
             const modeEl = document.getElementById('modeLabel');
-            if (modeEl) modeEl.textContent = 'Nemotron 3 Ultra';
+            if (modeEl) {
+                modeEl.textContent = 'Nemotron 3 Ultra';
+            }
         }
     } catch (e) {
         console.warn('Failed to load saved model:', e);
-        window.selectedFreeModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+        window.selectedFreeModel =
+            'nvidia/nemotron-3-ultra-550b-a55b:free';
     }
 
     markActiveModel(window.selectedFreeModel);
@@ -2897,7 +3060,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('dragenter', (e) => {
         e.preventDefault();
         dragCounter++;
-        if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+
+        if (
+            e.dataTransfer &&
+            e.dataTransfer.types &&
+            Array.from(e.dataTransfer.types).includes('Files')
+        ) {
             dropOverlay?.classList.add('active');
         }
     });
@@ -2909,6 +3077,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('dragleave', (e) => {
         e.preventDefault();
         dragCounter--;
+
         if (dragCounter <= 0) {
             dragCounter = 0;
             dropOverlay?.classList.remove('active');
@@ -2917,10 +3086,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('drop', async (e) => {
         e.preventDefault();
+
         dragCounter = 0;
         dropOverlay?.classList.remove('active');
 
-        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        if (
+            e.dataTransfer &&
+            e.dataTransfer.files &&
+            e.dataTransfer.files.length > 0
+        ) {
             const file = e.dataTransfer.files[0];
             await processAndAttachFile(file);
         }
@@ -2929,24 +3103,37 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             const lb = document.getElementById('imageLightbox');
+
             if (lb && lb.classList.contains('open')) {
                 closeImageLightbox();
                 return;
             }
+
             const sm = document.getElementById('settingsModal');
+
             if (sm && sm.classList.contains('open')) {
                 closeSettingsModal();
                 return;
             }
+
             const cm = document.getElementById('confirmClearModal');
+
             if (cm && cm.classList.contains('open')) {
                 closeConfirmClearModal();
                 return;
             }
+
             const md = document.getElementById('modelDropdownMenu');
-            if (md) md.style.display = 'none';
+
+            if (md) {
+                md.style.display = 'none';
+            }
         }
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+
+        if (
+            (e.ctrlKey || e.metaKey) &&
+            e.key.toLowerCase() === 'k'
+        ) {
             e.preventDefault();
             startNewChat();
         }
@@ -2956,4 +3143,4 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeunload', () => {
     _activeTimers.forEach(timer => clearTimeout(timer));
     _activeTimers.clear();
-});
+});     
