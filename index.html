@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="color-scheme" content="dark">
+    <title>Quanta AI — Умный чат и AI-платформа</title>
+    <meta name="keywords" content="quanta, quanta ai, ai платформа, нейросеть онлайн, чат с ии бесплатно, генерация изображений, анализ документов ai">
+    <meta name="description" content="Универсальная AI-платформа для ПК и смартфонов: чат с нейросетями, точная генерация картинок по описанию, анализ документов, таблиц и презентаций.">
+    <meta name="robots" content="index, follow">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <link rel="canonical" href="https://quanta-app.pages.dev/">
+
+    <!-- Разметка названия сайта для поисковиков (Google Site Name) -->
+    <meta property="og:site_name" content="Quanta AI">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Quanta AI",
+      "alternateName": ["Quanta", "Кванта"],
+      "url": "https://quanta-app.pages.dev/"
+    }
+    </script>
+
+    <!-- Open Graph / Соцсети -->
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://quanta-app.pages.dev/">
+    <meta property="og:title" content="Quanta AI — Умный чат и AI-платформа">
+    <meta property="og:description" content="Универсальная AI-платформа для ПК и смартфонов: чат с нейросетями, точная генерация картинок по описанию, анализ документов, таблиц и презентаций.">
+    <meta property="og:image" content="https://quanta-app.pages.dev/assets/logo-full-492.webp">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Quanta AI — Умный чат и AI-платформа">
+    <meta name="twitter:description" content="Универсальная AI-платформа для ПК и смартфонов: чат с нейросетями, точная генерация картинок по описанию, анализ документов, таблиц и презентаций.">
+    <meta name="twitter:image" content="https://quanta-app.pages.dev/assets/logo-full-492.webp">
+
+    <!-- Иконки и фавиконки сайта -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Fonts load without blocking first paint; system fonts are the fallback -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"></noscript>
+    <!-- Markdown parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js" defer></script>
+</head>
+<body>
+    <div class="app-root">
+        <!-- Overlay backdrop for mobile drawer -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
+
+        <!-- Sidebar / Navigation Drawer -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <a href="#" class="sidebar-logo" onclick="event.preventDefault(); startNewChat(); toggleSidebar(false);">
+                    <img class="brand-mark" src="assets/logo-mark-1x.webp" srcset="assets/logo-mark-1x.webp 1x, assets/logo-mark-2x.webp 2x, assets/logo-mark-3x.webp 3x" width="44" height="26" alt="" decoding="async">
+                    <span>Quanta AI</span>
+                </a>
+                <button class="sidebar-close-btn" onclick="toggleSidebar(false)" aria-label="Закрыть меню">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <button class="new-chat-btn" onclick="startNewChat(); toggleSidebar(false);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Новый чат
+            </button>
+
+            <div class="sidebar-section-header">
+                <span class="sidebar-section-label">Быстрые сценарии</span>
+            </div>
+            <div class="sidebar-item" onclick="runQuickAction('cluster'); toggleSidebar(false);">
+                <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                <span>Анализ отчётов и кластеры</span>
+            </div>
+            <div class="sidebar-item" onclick="runQuickAction('slides'); toggleSidebar(false);">
+                <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span>Генерация презентаций</span>
+            </div>
+            <div class="sidebar-item" onclick="runQuickAction('code'); toggleSidebar(false);">
+                <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                <span>Код и разработка</span>
+            </div>
+
+            <!-- Chat History Header with Clear All Button -->
+            <div class="sidebar-section-header" style="margin-top: 10px;">
+                <span class="sidebar-section-label">История чатов</span>
+                <button class="clear-history-btn" id="clearHistoryBtn" onclick="promptClearAllChats()" title="Очистить всю историю">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    <span>Очистить</span>
+                </button>
+            </div>
+
+            <div class="sidebar-history" id="firebaseChatList">
+                <div class="sidebar-item history-empty" id="chatHistoryPlaceholder">Войдите через Google, чтобы синхронизировать историю диалогов</div>
+            </div>
+
+            <div class="sidebar-bottom">
+                <button class="sidebar-item" id="sidebarSettingsBtn" onclick="openSettingsModal(); toggleSidebar(false);" title="Настройки API" style="border:none; background:transparent; width:100%; text-align:left; cursor:pointer;">
+                    <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    <span>Настройки API</span>
+                </button>
+
+                <div id="authContainer">
+                    <button class="auth-google-btn" id="googleSignInBtn" onclick="signInWithGoogle()">
+                        <svg class="google-g-icon" viewBox="0 0 48 48">
+                            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+                            <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+                            <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+                            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+                        </svg>
+                        <span>Войти через Google</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main App Content -->
+        <div class="app-main is-welcome" id="appMain">
+            <header>
+                <div class="header-left">
+                    <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Боковое меню (открыть/закрыть)" aria-label="Боковое меню">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                    <div class="header-brand">
+                        <img class="brand-mark" src="assets/logo-mark-1x.webp" srcset="assets/logo-mark-1x.webp 1x, assets/logo-mark-2x.webp 2x, assets/logo-mark-3x.webp 3x" width="44" height="26" alt="Quanta AI" decoding="async">
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <button class="header-icon-btn" onclick="startNewChat()" title="Новый диалог">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    </button>
+                    <button class="header-icon-btn" id="headerSettingsBtn" onclick="openSettingsModal()" title="Настройки API">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Scrollable Chat Body -->
+            <div class="chat-container" id="chatContainer">
+                <!-- Welcome greeting screen -->
+                <div class="welcome-view" id="welcomeScreen">
+                    <img class="welcome-logo"
+                         src="assets/logo-full-492.webp"
+                         srcset="assets/logo-full-328.webp 328w, assets/logo-full-492.webp 492w, assets/logo-full-656.webp 656w"
+                         sizes="(max-width: 768px) 172px, 200px"
+                         width="200" height="163" alt="Quanta" fetchpriority="high" decoding="async">
+                </div>
+
+                <!-- Active Chat messages -->
+                <div class="workspace" id="workspace" style="display: none;">
+                    <div class="workspace-body" id="workspaceBody"></div>
+                </div>
+
+                <!-- Floating Scroll to Bottom Button -->
+                <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom(true)" title="Прокрутить вниз" aria-label="Прокрутить вниз">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
+
+            <!-- Mobile & Desktop Input Bar -->
+            <div class="bottom-bar">
+                <div class="input-container">
+                    <div class="image-preview-bar" id="imagePreviewBar">
+                        <img id="imagePreviewThumb" class="image-preview-thumb" alt="Preview">
+                        <div class="image-preview-info">
+                            <div class="image-preview-name" id="imagePreviewName">image.png</div>
+                            <div class="image-preview-hint">Прикреплено к сообщению</div>
+                        </div>
+                        <button class="image-preview-remove" onclick="removePendingImage()" title="Удалить фото" aria-label="Удалить фото"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+                    </div>
+
+                    <div class="image-preview-bar" id="filePreviewBar">
+                        <div class="file-preview-icon" id="filePreviewIcon">
+                            <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+                        </div>
+                        <div class="image-preview-info">
+                            <div class="image-preview-name" id="filePreviewName">file.zip</div>
+                            <div class="image-preview-hint" id="filePreviewHint">Обрабатываю файл...</div>
+                        </div>
+                        <button class="image-preview-remove" onclick="removePendingFile()" title="Удалить файл" aria-label="Удалить файл"><svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+                    </div>
+
+                    <div class="input-wrapper">
+                        <textarea
+                            class="input-textarea" enterkeyhint="send" autocomplete="off" 
+                            placeholder="Задайте вопрос или прикрепите файл..." 
+                            id="mainInput" 
+                            rows="1"
+                        ></textarea>
+
+                        <div class="input-actions">
+                            <div class="input-tools">
+                                <button class="tool-btn" title="Загрузить файл или фото" onclick="triggerFileUpload()">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                </button>
+                                <button class="tool-btn" title="Сгенерировать ИИ-картинку" onclick="triggerImageGen()">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                                        <polyline points="21 15 16 10 5 21"/>
+                                    </svg>
+                                </button>
+                                <button class="tool-btn" id="voiceBtn" title="Голосовой ввод" onclick="startVoiceInput()">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                        <line x1="12" y1="19" x2="12" y2="23"/>
+                                        <line x1="8" y1="23" x2="16" y2="23"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="tool-btn" id="webSearchToggle" onclick="toggleWebSearch()" title="Веб-поиск">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div class="input-right-tools">
+                                <div class="model-select-wrapper">
+                                    <button class="model-btn-badge" id="modelDropdownBtn" type="button" aria-haspopup="listbox" onclick="toggleModelDropdown()">
+                                        <span id="modeLabel">Nemotron 3 Ultra</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    <div class="model-dropdown-menu" id="modelDropdownMenu" role="listbox" aria-label="Выбор модели">
+                                        <div class="dropdown-item" role="option" data-model="nvidia/nemotron-3-ultra-550b-a55b:free" onclick="selectModel('nvidia/nemotron-3-ultra-550b-a55b:free', 'Nemotron 3 Ultra')">
+                                            <span class="model-item-name">Nemotron 3 Ultra</span>
+                                            <span class="model-item-tag">(NVIDIA)</span>
+                                        </div>
+                                        <div class="dropdown-item" role="option" data-model="meta-llama/llama-3.3-70b-instruct:free" onclick="selectModel('meta-llama/llama-3.3-70b-instruct:free', 'Llama 3.3 70B')">
+                                            <span class="model-item-name">Llama 3.3 70B</span>
+                                            <span class="model-item-tag">(Meta AI)</span>
+                                        </div>
+                                        <div class="dropdown-item" role="option" data-model="deepseek/deepseek-r1:free" onclick="selectModel('deepseek/deepseek-r1:free', 'DeepSeek R1')">
+                                            <span class="model-item-name">DeepSeek R1</span>
+                                            <span class="model-item-tag">(Рассуждения)</span>
+                                        </div>
+                                        <div class="dropdown-item" role="option" data-model="openrouter/free" onclick="selectModel('openrouter/free', 'Автовыбор (Free Router)')">
+                                            <span class="model-item-name">Автовыбор</span>
+                                            <span class="model-item-tag">(Free Router)</span>
+                                        </div>
+                                        <div class="dropdown-item" role="option" data-model="cohere/north-mini-code:free" onclick="selectModel('cohere/north-mini-code:free', 'Cohere Code')">
+                                            <span class="model-item-name">Cohere Code</span>
+                                            <span class="model-item-tag">(Кодинг)</span>
+                                        </div>
+                                        <div class="dropdown-item" role="option" data-model="inclusionai/ling-3.0-flash-fin:free" onclick="selectModel('inclusionai/ling-3.0-flash-fin:free', 'Ling Flash')">
+                                            <span class="model-item-name">Ling Flash</span>
+                                            <span class="model-item-tag">(Быстрая)</span>
+                                        </div>
+                                        <div class="dropdown-item" role="option" data-model="moonshotai/kimi-k3" onclick="selectModel('moonshotai/kimi-k3', 'Opus 4.8')">
+                                            <span class="model-item-name">Opus 4.8</span>
+                                            <span class="model-item-tag">(платная, нужен баланс на API-ключе)</span>
+                                        </div>
+                                        <div class="dropdown-item" role="option" data-model="flux/image-gen" onclick="selectModel('flux/image-gen', 'Flux Art')">
+                                            <span class="model-item-name">Flux Art</span>
+                                            <span class="model-item-tag">(Картинки)</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button class="send-btn" id="sendBtn" onclick="handleSendOrStop()" title="Отправить" aria-label="Отправить">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="19" x2="12" y2="5"/>
+                                        <polyline points="5 12 12 5 19 12"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> Настройки API</h2>
+                <button class="modal-close-btn" onclick="closeSettingsModal()" title="Закрыть">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
+                Быстрые пресеты для смартфона и ПК:
+            </div>
+            <div class="modal-presets">
+                <button class="preset-btn" onclick="applyPreset('openrouter')">OpenRouter</button>
+                <button class="preset-btn" onclick="applyPreset('ollama')">Local Ollama</button>
+                <button class="preset-btn" onclick="applyPreset('groq')">Groq</button>
+            </div>
+
+            <div class="modal-field">
+                <label for="settingsApiKey">API-ключ</label>
+                <input type="password" id="settingsApiKey" placeholder="sk-or-v1-... или ваш ключ">
+                <div class="modal-hint">Ключ хранится локально на вашем устройстве. Для бесплатного OpenRouter можно оставить пустым или указать личный ключ с openrouter.ai.</div>
+            </div>
+
+            <div class="modal-field">
+                <label for="settingsEndpoint">Эндпоинт (OpenAI-совместимый)</label>
+                <input type="text" id="settingsEndpoint" placeholder="https://openrouter.ai/api/v1/chat/completions">
+                <div class="modal-hint">По умолчанию: <code>https://openrouter.ai/api/v1/chat/completions</code></div>
+            </div>
+
+            <div class="modal-field">
+                <label for="settingsModelName">Название модели (опционально)</label>
+                <input type="text" id="settingsModelName" placeholder="nvidia/nemotron-3-ultra-550b-a55b:free">
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="closeSettingsModal()">Отмена</button>
+                <button class="modal-btn modal-btn-primary" onclick="saveApiSettings()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Clear History Modal -->
+    <div class="modal-overlay" id="confirmClearModal">
+        <div class="modal-box" style="max-width: 400px; text-align: center;">
+            <div style="display:flex; justify-content:center; margin-bottom:12px; color:var(--text-secondary);"><svg class="ico" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></div>
+            <h2 style="font-size: 1.15rem; margin-bottom: 8px;">Очистить все диалоги?</h2>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 18px;">
+                Вся история переписки текущего аккаунта будет удалена без возможности восстановления.
+            </p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="closeConfirmClearModal()">Отмена</button>
+                <button class="modal-btn modal-btn-danger" onclick="executeClearAllChats()">Удалить всё</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox Modal -->
+    <div class="lightbox-modal" id="imageLightbox" onclick="closeImageLightbox(event)">
+        <div class="lightbox-box" onclick="event.stopPropagation()">
+            <button class="lightbox-close-btn" onclick="closeImageLightbox()" title="Закрыть (Esc)" aria-label="Закрыть"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            <img class="lightbox-img" id="lightboxImg" src="" alt="Full view">
+            <div class="lightbox-bar" style="width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:8px 4px;">
+                <span id="lightboxCaption" style="font-size:0.88rem; color:#fff; font-weight:500;"></span>
+                <div class="lightbox-actions" style="display:flex; gap:8px;">
+                    <button class="img-action-btn img-action-btn-primary" id="lightboxDownloadBtn"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> Скачать оригинал</button>
+                    <button class="img-action-btn" id="lightboxCopyBtn"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg> Копировать ссылку</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.html,.htm,.js,.css,.json,.zip,image/*">
+
+    <!-- Firebase (auth + sync). Heavy file libs (pdf/docx/xlsx/csv/pptx) are loaded on demand in app.js -->
+    <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+    <script defer src="app.js"></script>
+    <!-- Drag & Drop Overlay -->
+    <div class="drag-drop-overlay" id="dragDropOverlay">
+        <div class="drag-drop-box">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <div class="drag-drop-title">Перетащите файл сюда</div>
+            <div class="drag-drop-sub">PDF, DOCX, TXT, CSV, Excel, ZIP или фото</div>
+        </div>
+    </div>
+</body>
+</html>
