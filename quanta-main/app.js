@@ -1,0 +1,3220 @@
+// ==========================================
+// LAZY LIBS — heavy file libraries load only when needed
+// ==========================================
+const LAZY_LIBS = {
+    pdf:    ['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', 'pdfjsLib'],
+    mammoth:['https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js', 'mammoth'],
+    papa:   ['https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js', 'Papa'],
+    xlsx:   ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX'],
+    pptx:   ['https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js', 'PptxGenJS'],
+    zip:    ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'JSZip']
+};
+const _libPromises = {};
+function loadLib(name) {
+    if (!LAZY_LIBS[name]) {
+        return Promise.reject(new Error('Неизвестная библиотека: ' + name));
+    }
+    const [src, globalName] = LAZY_LIBS[name];
+    if (window[globalName]) return Promise.resolve();
+    if (_libPromises[name]) return _libPromises[name];
+    
+    _libPromises[name] = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => {
+            if (window[globalName]) {
+                resolve();
+            } else {
+                delete _libPromises[name];
+                reject(new Error('Библиотека ' + name + ' не загрузилась корректно'));
+            }
+        };
+        s.onerror = () => {
+            delete _libPromises[name];
+            reject(new Error('Не удалось загрузить библиотеку ' + name));
+        };
+        document.head.appendChild(s);
+    });
+    return _libPromises[name];
+}
+
+// ==========================================
+// 🌐 WEB SEARCH MODULE (FIXED & IMPROVED)
+// ==========================================
+window.webSearchEnabled = false;
+
+window.toggleWebSearch = function() {
+    window.webSearchEnabled = !window.webSearchEnabled;
+    try {
+        localStorage.setItem('quanta_web_search_enabled', window.webSearchEnabled ? '1' : '0');
+    } catch (e) {
+        console.warn('Failed to save web search state:', e);
+    }
+    
+    const btn = document.getElementById('webSearchToggle');
+    if (btn) {
+        btn.classList.toggle('active', window.webSearchEnabled);
+        btn.title = window.webSearchEnabled 
+            ? 'Веб-поиск включен (свежие данные из интернета)' 
+            : 'Веб-поиск (поиск свежей информации в интернете)';
+    }
+    
+    showToast(window.webSearchEnabled ? 'Веб-поиск включен' : 'Веб-поиск выключен');
+};
+
+async function searchWeb(query) {
+    const SEARCH_TIMEOUT = 10000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SEARCH_TIMEOUT);
+    
+    try {
+        const encodedQuery = encodeURIComponent(query);
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://html.duckduckgo.com/html/?q=' + encodedQuery)}`;
+        
+        const response = await fetch(proxyUrl, { 
+            signal: controller.signal,
+            headers: { 'Accept': 'text/html' }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            throw new Error(`Поисковый сервис недоступен (${response.status})`);
+        }
+        
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        const results = [];
+        const resultElements = doc.querySelectorAll('.result, .web-result, .links_main');
+        
+        for (let i = 0; i < Math.min(resultElements.length, 6); i++) {
+            const el = resultElements[i];
+            
+            const titleEl = el.querySelector('.result__a, .result__title a, a.result__url, .result_title a');
+            const snippetEl = el.querySelector('.result__snippet, .result__body, .result__description');
+            const urlEl = el.querySelector('.result__url, .result__extras__url a, .result__href');
+            
+            if (!titleEl) continue;
+            
+            let title = (titleEl.textContent || '').trim();
+            let snippet = snippetEl ? (snippetEl.textContent || '').trim() : '';
+            let url = titleEl.href || (urlEl ? (urlEl.href || urlEl.textContent) : '');
+            
+            if (url.includes('duckduckgo.com')) {
+                try {
+                    const urlObj = new URL(url);
+                    const cleanUrl = urlObj.searchParams.get('uddg') || urlObj.searchParams.get('url');
+                    if (cleanUrl) url = cleanUrl;
+                } catch (e) {
+                    console.warn('URL parse error:', e);
+                }
+            }
+            
+            if (url && !url.startsWith('http')) {
+                url = 'https://' + url.replace(/^\/\//, '');
+            }
+            
+            if (title && url && url.startsWith('http')) {
+                results.push({
+                    title: title.slice(0, 200),
+                    snippet: snippet.slice(0, 350),
+                    url: url.slice(0, 500)
+                });
+            }
+        }
+        
+        return results.length > 0 ? results : null;
+        
+    } catch (error) {
+        clearTimeout(timeoutId);
+        
+        if (error.name === 'AbortError') {
+            throw new Error('Превышено время ожидания поиска');
+        }
+        throw error;
+    }
+}
+
+function buildWebSearchContext(results, userQuery) {
+    if (!results || results.length === 0) return '';
+    
+    let context = '\n\n[АКТУАЛЬНЫЕ РЕЗУЛЬТАТЫ ПОИСКА В СЕТИ]:\n';
+    context += `Запрос пользователя: "${userQuery}"\n\n`;
+    
+    results.forEach((result, index) => {
+        context += `${index + 1}. Источник: ${result.title}\n`;
+        context += `   URL: ${result.url}\n`;
+        if (result.snippet) {
+            context += `   Описание: ${result.snippet}\n`;
+        }
+        context += '\n';
+    });
+    
+    context += '\nИнструкция: Ответь пользователю на русском языке, опираясь на эти свежие данные из интернета. ';
+    context += 'Указывай кликабельные сноски на источники в формате Markdown: [Название источника](URL). ';
+    context += 'Приводи конкретные факты из найденных результатов.\n';
+    
+    return context;
+}
+
+function renderWebSourcesCard(results) {
+    if (!results || !results.length) return '';
+
+    const itemsHtml = results.map(result => {
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(result.url);
+        } catch (_) {
+            return '';
+        }
+
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) return '';
+
+        const domain = parsedUrl.hostname.replace(/^www\./, '');
+        const favicon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
+        const title = result.title || domain;
+
+        return `
+            <a href="${escapeAttr(parsedUrl.href)}" target="_blank" rel="noopener noreferrer" class="web-source-item">
+                <img src="${escapeAttr(favicon)}" alt="" class="web-source-favicon" onerror="this.style.display='none'">
+                <span class="web-source-title">${escapeHtml(title)}</span>
+                <span class="web-source-domain">${escapeHtml(domain)}</span>
+            </a>
+        `;
+    }).filter(Boolean).join('');
+
+    if (!itemsHtml) return '';
+
+    return `
+        <div class="web-sources-card">
+            <div class="web-sources-header" onclick="this.parentElement.querySelector('.web-sources-list').classList.toggle('collapsed')">
+                ${icon('search', 14)}
+                <span>Использованы источники из сети (${results.length})</span>
+                <span class="web-sources-toggle">▼</span>
+            </div>
+            <div class="web-sources-list">
+                ${itemsHtml}
+            </div>
+        </div>
+    `;
+}
+
+// ==========================================
+// FIREBASE INITIALIZATION & SYNC
+// ==========================================
+const firebaseConfig = {
+    apiKey: "AIzaSyBgIjIdjkneyrlQ15v9mXFLjB5oIJvHkIA",
+    authDomain: "quanta-7eb3d.firebaseapp.com",
+    projectId: "quanta-7eb3d",
+    storageBucket: "quanta-7eb3d.firebasestorage.app",
+    messagingSenderId: "65094153374",
+    appId: "1:65094153374:web:7cd10f09cb84cd722b378f",
+    measurementId: "G-49MHQC626Z"
+};
+
+try {
+    if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+} catch (err) {
+    console.warn('Firebase init:', err);
+}
+
+const auth = typeof firebase !== 'undefined' ? firebase.auth() : null;
+const db = typeof firebase !== 'undefined' ? firebase.firestore() : null;
+const googleProvider = typeof firebase !== 'undefined' ? new firebase.auth.GoogleAuthProvider() : null;
+
+window.currentUser = null;
+window.currentChatId = null;
+let unsubscribeChatsListener = null;
+
+window.errHtml = function (prefix, e) {
+    if (e && e.isUserAbort) return icon('square', 14) + ' Генерация остановлена';
+    const msg = e && e.message ? escapeHtml(e.message) : 'Неизвестная ошибка';
+    return icon('alert') + ' ' + escapeHtml(prefix) + msg;
+};
+
+window.escapeHtml = function(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+};
+
+window.escapeAttr = function(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+};
+
+// ==========================================
+// MONOCHROME ICONS (замена смайликов)
+// ==========================================
+const ICONS = {
+    'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1-1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+    'x': '<path d="M18 6 6 18M6 6l12 12"/>',
+    'square': '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+    'download': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+    'copy': '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    'logout': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+    'sparkles': '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
+    'search': '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    'maximize': '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+    'file': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8M16 13H8M16 17H8"/>',
+    'pen': '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+    'palette': '<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>',
+    'zap': '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+    'alert': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+    'refresh': '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    'table': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M12 3v18"/>',
+    'check': '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    'archive': '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    'paperclip': '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>'
+};
+
+window.icon = function (name, size) {
+    size = size || 15;
+    const body = ICONS[name] || '';
+    return '<svg class="ico" width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
+};
+
+const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}][\uFE0F\u200D]*|[\uFE0F\u200D]/gu;
+const EMOJI_ICON_MAP = {
+    '\u{1F3A8}': 'palette', '\u{1F4C4}': 'file', '\u{1F4DD}': 'pen', '\u{1F4CA}': 'table',
+    '\u26A1': 'zap', '\u26A0': 'alert', '\u2728': 'sparkles', '\u2705': 'check',
+    '\u{1F4BE}': 'download', '\u{1F4CB}': 'copy', '\u{1F50D}': 'search', '\u{1F504}': 'refresh',
+    '\u{1F5D1}': 'trash', '\u2699': 'settings', '\u{1F6AA}': 'logout', '\u2715': 'x'
+};
+
+window.stripEmoji = function (str) {
+    return String(str == null ? '' : str).replace(EMOJI_RE, '').replace(/\s{2,}/g, ' ').trim();
+};
+
+window.iconizeEmoji = function (html) {
+    return html.replace(EMOJI_RE, function (m) {
+        const base = String.fromCodePoint(m.codePointAt(0));
+        return EMOJI_ICON_MAP[base] ? window.icon(EMOJI_ICON_MAP[base], 15) : '';
+    });
+};
+
+// ==========================================
+// MULTI-TIER CHAT STORAGE
+// ==========================================
+const ChatStorage = {
+    getKey: function(uid) {
+        const targetUid = uid || (window.currentUser ? window.currentUser.uid : 'guest');
+        return 'quanta_user_chats_' + targetUid;
+    },
+
+    getAllLocal: function(uid) {
+        try {
+            const raw = localStorage.getItem(this.getKey(uid));
+            if (!raw) return [];
+            return JSON.parse(raw);
+        } catch (e) {
+            console.warn('localStorage parse error:', e);
+            return [];
+        }
+    },
+
+    saveAllLocal: function(chats, uid) {
+        try {
+            localStorage.setItem(this.getKey(uid), JSON.stringify(chats));
+        } catch (e) {
+            if (e.name === 'QuotaExceededError') {
+                console.warn('LocalStorage quota exceeded. Trying to trim oldest chats...');
+                try {
+                    const trimmed = chats.slice(0, Math.floor(chats.length * 0.7));
+                    localStorage.setItem(this.getKey(uid), JSON.stringify(trimmed));
+                    showToast('История сокращена из-за лимита памяти');
+                } catch (e2) {
+                    console.error('Failed to save even after trimming:', e2);
+                    showToast('Не удалось сохранить историю: переполнение памяти');
+                }
+            } else {
+                console.warn('LocalStorage save error:', e);
+            }
+        }
+    },
+
+    getChat: function(chatId, uid) {
+        const chats = this.getAllLocal(uid);
+        return chats.find(c => c.id === chatId) || null;
+    },
+
+    saveChatTurn: async function(chatId, userMsg, assistantMsg, extraMeta = {}) {
+        const uid = window.currentUser ? window.currentUser.uid : 'guest';
+        let chats = this.getAllLocal(uid);
+        let chat = chats.find(c => c.id === chatId);
+
+        const titleText = userMsg ? (userMsg.length > 45 ? userMsg.slice(0, 45) + '…' : userMsg) : 'Новый диалог';
+
+        if (!chat) {
+            chat = {
+                id: chatId || ('chat_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+                title: titleText,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                messages: []
+            };
+            chats.unshift(chat);
+        } else {
+            chat.updatedAt = Date.now();
+            if (chat.title === 'Новый диалог' || chat.messages.length === 0) {
+                chat.title = titleText;
+            }
+        }
+
+        if (userMsg) {
+            chat.messages.push({
+                role: 'user',
+                content: userMsg,
+                timestamp: Date.now(),
+                meta: extraMeta.userMeta || null
+            });
+        }
+        if (assistantMsg) {
+            chat.messages.push({
+                role: 'assistant',
+                content: assistantMsg,
+                timestamp: Date.now(),
+                type: extraMeta.type || 'text',
+                imageUrl: extraMeta.imageUrl || null,
+                meta: extraMeta.assistantMeta || null
+            });
+        }
+
+        chats.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        this.saveAllLocal(chats, uid);
+        renderChatHistoryList(chats);
+
+        if (window.currentUser && db) {
+            try {
+                const chatDocRef = db.collection('users').doc(window.currentUser.uid)
+                    .collection('chats').doc(chat.id);
+
+                await chatDocRef.set({
+                    id: chat.id,
+                    title: chat.title,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdAt: chat.createdAt ? new Date(chat.createdAt) : firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                if (userMsg) {
+                    await chatDocRef.collection('messages').add({
+                        role: 'user',
+                        content: userMsg,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                if (assistantMsg) {
+                    await chatDocRef.collection('messages').add({
+                        role: 'assistant',
+                        content: assistantMsg,
+                        type: extraMeta.type || 'text',
+                        imageUrl: extraMeta.imageUrl || null,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } catch (fsErr) {
+                console.info('Firestore cloud sync notice:', fsErr.message);
+            }
+        }
+
+        return chat.id;
+    },
+
+    deleteChat: async function(chatId) {
+        const uid = window.currentUser ? window.currentUser.uid : 'guest';
+        let chats = this.getAllLocal(uid);
+        chats = chats.filter(c => c.id !== chatId);
+        this.saveAllLocal(chats, uid);
+
+        if (window.currentChatId === chatId) {
+            startNewChat();
+        }
+
+        renderChatHistoryList(chats);
+
+        if (window.currentUser && db) {
+            try {
+                await db.collection('users').doc(window.currentUser.uid)
+                    .collection('chats').doc(chatId).delete();
+            } catch (e) {
+                console.warn('Firestore delete notice:', e);
+            }
+        }
+    },
+
+    clearAll: async function() {
+        const uid = window.currentUser ? window.currentUser.uid : 'guest';
+        const currentChats = this.getAllLocal(uid);
+        this.saveAllLocal([], uid);
+
+        startNewChat();
+        renderChatHistoryList([]);
+
+        if (window.currentUser && db) {
+            try {
+                const batch = db.batch();
+                for (const c of currentChats) {
+                    const ref = db.collection('users').doc(window.currentUser.uid)
+                        .collection('chats').doc(c.id);
+                    batch.delete(ref);
+                }
+                await batch.commit();
+            } catch (e) {
+                console.warn('Firestore clear batch notice:', e);
+            }
+        }
+    }
+};
+
+function ensureCurrentChat(uid) {
+    const targetUid = uid || (window.currentUser ? window.currentUser.uid : 'guest');
+    let chats = ChatStorage.getAllLocal(targetUid);
+    let chat = chats.find(c => !c.messages || c.messages.length === 0);
+
+    if (!chat) {
+        chat = {
+            id: 'chat_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+            title: 'Новый диалог',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            messages: []
+        };
+        chats.unshift(chat);
+        ChatStorage.saveAllLocal(chats, targetUid);
+
+        if (window.currentUser && db && targetUid === window.currentUser.uid) {
+            db.collection('users').doc(targetUid).collection('chats').doc(chat.id).set({
+                id: chat.id,
+                title: chat.title,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).catch(e => console.info('Firestore new chat notice:', e.message));
+        }
+    }
+
+    window.currentChatId = chat.id;
+    renderChatHistoryList(chats);
+    return chat.id;
+}
+window.ensureCurrentChat = ensureCurrentChat;
+
+window.signInWithGoogle = async function () {
+    if (!auth || !googleProvider) {
+        showToast('Firebase не инициализирован');
+        return;
+    }
+    try {
+        await auth.signInWithPopup(googleProvider);
+    } catch (e) {
+        try {
+            await auth.signInWithRedirect(googleProvider);
+        } catch (e2) {
+            showToast('Не удалось войти: ' + e2.message);
+        }
+    }
+};
+
+window.signOutUser = async function () {
+    if (!auth) return;
+    try {
+        if (unsubscribeChatsListener) {
+            unsubscribeChatsListener();
+            unsubscribeChatsListener = null;
+        }
+        await auth.signOut();
+        window.currentUser = null;
+        window.currentChatId = null;
+        closeWorkspace();
+        renderAuthUI(null);
+        renderChatHistoryList([]);
+        showToast('Вы вышли из профиля');
+    } catch (e) {
+        console.error('Ошибка выхода:', e);
+    }
+};
+
+window.toggleAuthUserMenu = function () {
+    const menu = document.getElementById('authUserMenu');
+    if (menu) menu.classList.toggle('open');
+};
+
+document.addEventListener('click', function (e) {
+    const menu = document.getElementById('authUserMenu');
+    const row = document.getElementById('authUserRow');
+    if (menu && menu.classList.contains('open') && !menu.contains(e.target) && e.target !== row && !row?.contains(e.target)) {
+        menu.classList.remove('open');
+    }
+    const modelMenu = document.getElementById('modelDropdownMenu');
+    const modelBtn = document.getElementById('modelDropdownBtn');
+    if (modelMenu && modelMenu.style.display === 'block' && !modelMenu.contains(e.target) && modelBtn && !modelBtn.contains(e.target)) {
+        modelMenu.style.display = 'none';
+    }
+});
+
+function renderAuthUI(user) {
+    const container = document.getElementById('authContainer');
+    if (!container) return;
+
+    if (user) {
+        const photo = user.photoURL || '';
+        const name = user.displayName || user.email || 'Пользователь';
+        const safeName = escapeHtml(name);
+        const safePhoto = escapeAttr(photo);
+        container.innerHTML = `
+            <div class="auth-user-row" id="authUserRow" onclick="toggleAuthUserMenu()" title="Профиль: ${safeName}">
+                ${photo ? `<img class="auth-avatar" src="${safePhoto}" alt="avatar" referrerpolicy="no-referrer">` : `<div class="auth-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--bg-hover);font-size:0.8rem;color:var(--text-primary);">${escapeHtml(name[0] || 'U')}</div>`}
+                <span class="auth-user-name">${safeName}</span>
+                <div class="auth-user-menu" id="authUserMenu">
+                    <button onclick="event.stopPropagation(); window.signOutUser();">${icon('logout')} Выйти из аккаунта</button>
+                </div>
+            </div>`;
+    } else {
+        container.innerHTML = `
+            <button class="auth-google-btn" id="googleSignInBtn" onclick="window.signInWithGoogle()">
+                <svg class="google-g-icon" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+                    <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+                    <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+                    <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+                </svg>
+                <span>Войти через Google</span>
+            </button>`;
+    }
+}
+
+if (auth) {
+    auth.onAuthStateChanged(function (user) {
+        window.currentUser = user;
+        renderAuthUI(user);
+
+        if (unsubscribeChatsListener) {
+            unsubscribeChatsListener();
+            unsubscribeChatsListener = null;
+        }
+
+        if (user) {
+            const localChats = ChatStorage.getAllLocal(user.uid);
+            renderChatHistoryList(localChats);
+            if (!window.currentChatId) ensureCurrentChat(user.uid);
+
+            if (db) {
+                subscribeToChatHistory(user.uid);
+            }
+        } else {
+            window.currentChatId = null;
+            ensureCurrentChat('guest');
+        }
+    });
+}
+
+function subscribeToChatHistory(uid) {
+    if (!db) return;
+    try {
+        unsubscribeChatsListener = db.collection('users').doc(uid)
+            .collection('chats')
+            .orderBy('updatedAt', 'desc')
+            .limit(50)
+            .onSnapshot(function (snapshot) {
+                if (!snapshot || snapshot.empty) {
+                    const local = ChatStorage.getAllLocal(uid);
+                    renderChatHistoryList(local);
+                    return;
+                }
+                const cloudChats = [];
+                snapshot.docs.forEach(doc => {
+                    const d = doc.data();
+                    cloudChats.push({
+                        id: doc.id,
+                        title: d.title || 'Диалог',
+                        updatedAt: d.updatedAt?.toMillis ? d.updatedAt.toMillis() : Date.now(),
+                        createdAt: d.createdAt?.toMillis ? d.createdAt.toMillis() : Date.now(),
+                        messages: d.messages || []
+                    });
+                });
+                const local = ChatStorage.getAllLocal(uid);
+                const mergedMap = new Map();
+                local.forEach(c => mergedMap.set(c.id, c));
+                cloudChats.forEach(c => {
+                    const existing = mergedMap.get(c.id);
+                    if (!existing || (existing.messages?.length || 0) <= (c.messages?.length || 0)) {
+                        mergedMap.set(c.id, { ...(existing || {}), ...c });
+                    }
+                });
+                const merged = Array.from(mergedMap.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                ChatStorage.saveAllLocal(merged, uid);
+                renderChatHistoryList(merged);
+            }, function (e) {
+                console.warn('Firestore snapshot listener error:', e);
+                const local = ChatStorage.getAllLocal(uid);
+                renderChatHistoryList(local);
+            });
+    } catch (e) {
+        console.error('Failed to subscribe to chat history:', e);
+        const local = ChatStorage.getAllLocal(uid);
+        renderChatHistoryList(local);
+    }
+}
+
+function renderChatHistoryList(chats) {
+    const list = document.getElementById('firebaseChatList');
+    const clearBtn = document.getElementById('clearHistoryBtn');
+    if (!list) return;
+
+    if (!chats || !chats.length) {
+        if (clearBtn) clearBtn.style.display = 'none';
+        if (window.currentUser) {
+            list.innerHTML = '<div class="sidebar-item history-empty">Пока нет диалогов — начните новый чат</div>';
+        } else {
+            list.innerHTML = '<div class="sidebar-item history-empty" id="chatHistoryPlaceholder">Войдите через Google, чтобы синхронизировать историю диалогов</div>';
+        }
+        return;
+    }
+
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+
+    list.innerHTML = chats.map(function (chat) {
+        const title = stripEmoji(chat.title) || 'Диалог';
+        const active = chat.id === window.currentChatId ? ' active' : '';
+        const safeId = escapeAttr(chat.id);
+        const safeTitle = escapeHtml(title);
+        return `
+            <div class="sidebar-item${active}" data-chat-id="${safeId}" title="${safeTitle}">
+                <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span class="chat-item-text">${safeTitle}</span>
+                <button class="chat-delete-btn" data-delete-chat-id="${safeId}" title="Удалить этот чат" aria-label="Удалить чат">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    list.querySelectorAll('.sidebar-item').forEach(el => {
+        const chatId = el.dataset.chatId;
+        if (chatId) {
+            el.addEventListener('click', (e) => {
+                if (!e.target.closest('.chat-delete-btn')) {
+                    window.openLocalChat(chatId);
+                }
+            });
+        }
+    });
+
+    list.querySelectorAll('.chat-delete-btn').forEach(btn => {
+        const chatId = btn.dataset.deleteChatId;
+        if (chatId) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.deleteSingleChat(chatId);
+            });
+        }
+    });
+}
+
+window.openLocalChat = async function(chatId) {
+    const uid = window.currentUser ? window.currentUser.uid : 'guest';
+    const chat = ChatStorage.getChat(chatId, uid);
+    if (!chat) return;
+
+    window.currentChatId = chatId;
+    openWorkspace();
+    resetChatHistory();
+
+    const body = document.getElementById('workspaceBody');
+    if (!body) return;
+    body.innerHTML = '';
+
+    if (window.currentUser && db && (!chat.messages || !chat.messages.length)) {
+        try {
+            const snap = await db.collection('users').doc(window.currentUser.uid)
+                .collection('chats').doc(chatId)
+                .collection('messages').orderBy('createdAt', 'asc').get();
+
+            if (!snap.empty) {
+                chat.messages = [];
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    chat.messages.push({
+                        role: d.role,
+                        content: d.content,
+                        type: d.type || 'text',
+                        imageUrl: d.imageUrl || null
+                    });
+                });
+                ChatStorage.saveChatTurn(chatId, null, null);
+            }
+        } catch (e) {
+            console.warn('Firestore fetch messages notice:', e);
+        }
+    }
+
+    if (chat.messages && chat.messages.length) {
+        chat.messages.forEach(m => {
+            if (m.type === 'image' && m.imageUrl) {
+                const safeDisplay = escapeHtml(m.content || 'Изображение');
+                const safeUrl = escapeAttr(m.imageUrl);
+                const genId = 'img_hist_' + Math.floor(Math.random() * 100000);
+                const el = addMessage('ai', '');
+                el.innerHTML = `
+                    <div class="generated-img-card" id="${genId}">
+                        <div class="generated-img-view">
+                            <img class="generated-img-element" src="${safeUrl}" alt="${safeDisplay}" />
+                            <div class="generated-img-overlay">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                <span>Нажмите для зума</span>
+                            </div>
+                        </div>
+                        <div class="generated-img-footer">
+                            <div class="generated-prompt-badge"><span>${icon('sparkles')}</span> <b>${safeDisplay}</b></div>
+                            <div class="generated-img-btns">
+                                <button class="img-action-btn img-action-btn-primary" data-download-img="${safeUrl}" data-download-name="quanta-${genId}.jpg">${icon('download')} Скачать</button>
+                                <button class="img-action-btn" data-lightbox-img="${safeUrl}" data-lightbox-caption="${safeDisplay}">${icon('maximize')} На весь экран</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const viewEl = el.querySelector('.generated-img-view');
+                if (viewEl) {
+                    viewEl.addEventListener('click', () => {
+                        openImageLightbox(m.imageUrl, m.content || 'Изображение');
+                    });
+                }
+                el.querySelectorAll('[data-download-img]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        downloadGeneratedImage(btn.dataset.downloadImg, btn.dataset.downloadName);
+                    });
+                });
+                el.querySelectorAll('[data-lightbox-img]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        openImageLightbox(btn.dataset.lightboxImg, btn.dataset.lightboxCaption);
+                    });
+                });
+            } else {
+                addMessage(m.role === 'assistant' ? 'ai' : 'user', renderText(m.content));
+            }
+            chatHistory.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content });
+        });
+    }
+
+    document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(el => el.classList.remove('active'));
+    const targetEl = document.querySelector(`#firebaseChatList .sidebar-item[data-chat-id="${escapeAttr(chatId)}"]`);
+    if (targetEl) targetEl.classList.add('active');
+
+    toggleSidebar(false);
+    scrollToBottom();
+};
+
+window.deleteSingleChat = function(chatId) {
+    ChatStorage.deleteChat(chatId);
+    showToast('Чат удален');
+};
+
+window.promptClearAllChats = function() {
+    const modal = document.getElementById('confirmClearModal');
+    if (modal) modal.classList.add('open');
+};
+
+window.closeConfirmClearModal = function() {
+    const modal = document.getElementById('confirmClearModal');
+    if (modal) modal.classList.remove('open');
+};
+
+window.executeClearAllChats = function() {
+    closeConfirmClearModal();
+    ChatStorage.clearAll();
+    showToast('История диалогов очищена');
+};
+
+window.persistTurn = async function (userText, assistantText, type = 'text', extra = {}) {
+    if (!window.currentChatId) {
+        window.currentChatId = 'chat_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    }
+    await ChatStorage.saveChatTurn(window.currentChatId, userText, assistantText, {
+        type,
+        imageUrl: extra.imageUrl || null
+    });
+};
+
+// ==========================================
+// UI & RESPONSIVE HANDLING
+// ==========================================
+window.toggleSidebar = function(open) {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (!sidebar) return;
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        if (open === undefined) {
+            sidebar.classList.toggle('open');
+            if (overlay) overlay.classList.toggle('open');
+        } else if (open) {
+            sidebar.classList.add('open');
+            if (overlay) overlay.classList.add('open');
+        } else {
+            sidebar.classList.remove('open');
+            if (overlay) overlay.classList.remove('open');
+        }
+    } else {
+        const willCollapse = open === undefined ? !sidebar.classList.contains('collapsed') : !open;
+        sidebar.classList.toggle('collapsed', willCollapse);
+        try {
+            localStorage.setItem('quanta_sidebar_collapsed', willCollapse ? '1' : '0');
+        } catch (e) {
+            console.warn('Failed to save sidebar state:', e);
+        }
+    }
+};
+
+window.showToast = function(message) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+};
+
+const mainInput = document.getElementById('mainInput');
+if (mainInput) {
+    mainInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+    });
+
+    mainInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+            if (window.innerWidth > 768 || (!('ontouchstart' in window) && navigator.maxTouchPoints === 0)) {
+                e.preventDefault();
+                handleSend();
+            }
+        }
+    });
+}
+
+let userHasScrolledUp = false;
+const chatContainerEl = document.getElementById('chatContainer');
+const scrollBtnEl = document.getElementById('scrollBottomBtn');
+if (chatContainerEl && scrollBtnEl) {
+    chatContainerEl.addEventListener('scroll', () => {
+        const distanceToBottom = chatContainerEl.scrollHeight - chatContainerEl.scrollTop - chatContainerEl.clientHeight;
+        if (distanceToBottom > 150) {
+            scrollBtnEl.classList.add('show');
+            userHasScrolledUp = true;
+        } else {
+            scrollBtnEl.classList.remove('show');
+            userHasScrolledUp = false;
+        }
+    });
+}
+
+window.openWorkspace = function() {
+    const appMain = document.getElementById('appMain');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const workspace = document.getElementById('workspace');
+    
+    if (appMain) appMain.classList.remove('is-welcome');
+    if (welcomeScreen) welcomeScreen.style.display = 'none';
+    if (workspace) workspace.style.display = 'flex';
+};
+
+window.closeWorkspace = function() {
+    const appMain = document.getElementById('appMain');
+    const workspace = document.getElementById('workspace');
+    const workspaceBody = document.getElementById('workspaceBody');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    
+    if (appMain) appMain.classList.add('is-welcome');
+    if (workspace) workspace.style.display = 'none';
+    if (workspaceBody) workspaceBody.innerHTML = '';
+    if (welcomeScreen) welcomeScreen.style.display = 'flex';
+    userHasScrolledUp = false;
+};
+
+window.startNewChat = function() {
+    closeWorkspace();
+    resetChatHistory();
+    if (mainInput) {
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
+    }
+    removePendingImage();
+    removePendingFile();
+
+    const uid = window.currentUser ? window.currentUser.uid : 'guest';
+    ensureCurrentChat(uid);
+
+    document.querySelectorAll('#firebaseChatList .sidebar-item').forEach(el => el.classList.remove('active'));
+    const targetEl = document.querySelector(`#firebaseChatList .sidebar-item[data-chat-id="${escapeAttr(window.currentChatId)}"]`);
+    if (targetEl) targetEl.classList.add('active');
+
+    showToast('Начат новый диалог');
+};
+
+let chatHistory = [];
+window.resetChatHistory = function() { chatHistory = []; };
+
+function addMessage(role, contentHtml) {
+    const body = document.getElementById('workspaceBody');
+    if (!body) return document.createElement('div');
+    
+    const div = document.createElement('div');
+    div.className = 'msg msg-' + role;
+    div.innerHTML = `
+        <div class="msg-role">${role === 'user' ? 'Вы' : 'Quanta AI'}</div>
+        <div class="msg-bubble">${contentHtml}</div>
+    `;
+    body.appendChild(div);
+    scrollToBottom();
+    return div.querySelector('.msg-bubble');
+}
+
+function addLoading(label) {
+    const el = addMessage('ai', '');
+    el.innerHTML = `
+        <div class="ws-loading">
+            <span class="typing-dots" role="status" aria-label="Загрузка"><i></i><i></i><i></i></span>
+            ${label === '' ? '' : `<span class="ws-loading-label">${escapeHtml(label || 'Думаю...')}</span>`}
+            <span class="gen-speed-badge" style="display:none;">
+                <span class="gen-speed-pulse"></span>
+                <span class="gen-speed-text">0.0 ток/с</span>
+            </span>
+        </div>
+    `;
+    return el;
+}
+
+function scrollToBottom(force) {
+    if (!force && userHasScrolledUp) return;
+    const container = document.getElementById('chatContainer');
+    if (!container) return;
+    setTimeout(() => {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }, 30);
+}
+
+let codeCounter = 0;
+function renderText(text) {
+    if (!text) return '';
+  
+    if (typeof marked !== 'undefined' && marked.parse) {
+        try {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                sanitize: false,
+                smartLists: true,
+                smartypants: false
+            });
+          
+            let rendered = marked.parse(text);
+            if (typeof iconizeEmoji === 'function') {
+                rendered = iconizeEmoji(rendered);
+            }
+            return rendered;
+        } catch (e) {
+            console.warn('Marked.js parse error, fallback to basic:', e);
+        }
+    }
+  
+    let safe = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
+    if (typeof iconizeEmoji === 'function') {
+        safe = safe.split(/(```[\s\S]*?```)/g).map((part, i) => i % 2 ? part : iconizeEmoji(part)).join('');
+    }
+  
+    safe = safe.replace(/(\|.+?\|\n)+/g, function(tableText) {
+        const lines = tableText.trim().split('\n');
+        if (lines.length < 2) return (typeof escapeHtml === 'function' ? escapeHtml(tableText) : tableText);
+        let html = '<div class="table-responsive"><table>';
+        lines.forEach((line, idx) => {
+            if (line.includes('---')) return;
+            const cells = line.split('|').filter((_, cIdx, arr) => cIdx > 0 && cIdx < arr.length - 1);
+            const tag = idx === 0 ? 'th' : 'td';
+            html += '<tr>' + cells.map(c => `<${tag}>${typeof escapeHtml === 'function' ? escapeHtml(c.trim()) : c.trim()}</${tag}>`).join('') + '</tr>';
+        });
+        html += '</table></div>';
+        return html;
+    });
+
+    safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
+        const id = 'code_' + (++codeCounter);
+        const ext = typeof escapeHtml === 'function' ? escapeHtml(lang || 'код') : (lang || 'код');
+        const safeCode = typeof escapeHtml === 'function' ? escapeHtml(code.trim()) : code.trim();
+        const copyIcon = typeof icon === 'function' ? icon('copy') : '📋';
+        const dlIcon = typeof icon === 'function' ? icon('download') : '💾';
+        return `<div class="code-block-wrapper">
+            <div class="code-block-header">
+                <span style="text-transform:uppercase; font-weight:600;">${ext}</span>
+                <div style="display:flex; gap:6px;">
+                    <button class="code-action-btn" data-copy-code="${id}">${copyIcon} Копировать</button>
+                    <button class="code-action-btn" data-download-code="${id}" data-code-ext="${ext}">${dlIcon} Файл</button>
+                </div>
+            </div>
+            <pre><code id="${id}">${safeCode}</code></pre>
+        </div>`;
+    });
+
+    safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+    safe = safe.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
+    safe = safe.replace(/(<li>.*<\/li>\n?)+/g, '<ol>$&</ol>');
+  
+    safe = safe.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+    safe = safe.replace(/(<li>.*<\/li>\n?)+/g, function(match) {
+        if (!match.includes('<ol>')) return '<ul>' + match + '</ul>';
+        return match;
+    });
+  
+    safe = safe.replace(/\n/g, '<br>');
+  
+    return safe;
+}
+
+document.addEventListener('click', function(e) {
+    const copyBtn = e.target.closest('[data-copy-code]');
+    if (copyBtn) {
+        const id = copyBtn.dataset.copyCode;
+        window.copyCodeBlock(id);
+        return;
+    }
+
+    const dlBtn = e.target.closest('[data-download-code]');
+    if (dlBtn) {
+        const id = dlBtn.dataset.downloadCode;
+        const ext = dlBtn.dataset.codeExt;
+        window.downloadCodeBlock(id, ext);
+        return;
+    }
+});
+
+window.copyCodeBlock = function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    navigator.clipboard.writeText(el.innerText || el.textContent)
+        .then(() => showToast('Код скопирован в буфер'))
+        .catch(() => showToast('Не удалось скопировать'));
+};
+
+window.downloadCodeBlock = function(id, ext) {
+    const codeEl = document.getElementById(id);
+    if (!codeEl) return;
+    const code = codeEl.innerText || codeEl.textContent;
+    const cleanExt = ext === 'код' || !ext ? 'txt' : ext;
+    const filename = 'quanta_script.' + cleanExt;
+    triggerDownload(new Blob([code], { type: 'text/plain;charset=utf-8' }), filename);
+    showToast(`Файл ${filename} сохранен!`);
+};
+
+function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+let _exportRegistry = {};
+let _exportCounter = 0;
+function registerExport(text) {
+    const id = 'exp_' + (++_exportCounter);
+    _exportRegistry[id] = text;
+    return id;
+}
+
+const SHOW_EXPORT_BAR = false;
+
+window.attachExport = function(el, text, filenameBase) {
+    if (!SHOW_EXPORT_BAR || !text || !el) return;
+    const id = registerExport(text);
+    const bar = document.createElement('div');
+    bar.style.cssText = 'margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;';
+    bar.innerHTML = `
+        <button class="ws-download" data-export-id="${id}" data-export-type="txt" data-export-name="${escapeAttr(filenameBase)}">${icon('file')} .txt</button>
+        <button class="ws-download" style="background:#2563eb;" data-export-id="${id}" data-export-type="doc" data-export-name="${escapeAttr(filenameBase)}">${icon('pen')} Word</button>
+    `;
+    el.appendChild(bar);
+    bar.querySelectorAll('[data-export-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            window.exportFile(btn.dataset.exportId, btn.dataset.exportType, btn.dataset.exportName);
+        });
+    });
+};
+
+window.exportFile = function(id, type, filenameBase) {
+    const text = _exportRegistry[id];
+    if (!text) return;
+    if (type === 'txt') {
+        triggerDownload(new Blob([text], { type: 'text/plain;charset=utf-8' }), filenameBase + '.txt');
+    } else if (type === 'doc') {
+        const body = text.split('\n').map(p => '<p>' + escapeHtml(p) + '</p>').join('');
+        const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>' + body + '</body></html>';
+        triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), filenameBase + '.doc');
+    }
+};
+
+// ==========================================
+// SETTINGS & MULTI-MODEL SMART ENGINE
+// ==========================================
+const API_SETTINGS_KEY = 'quanta_api_settings';
+
+const FREE_MODELS_CATALOG = {
+    'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'nvidia/nemotron-3-super:free': { name: 'Nemotron 3 Super', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'google/gemma-4-31b:free': { name: 'Gemma 4 31B', brand: 'Google', isFree: true, requiresKey: false, keylessModel: 'openai' },
+    'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI', isFree: true, requiresKey: false, keylessModel: 'llama' },
+    'deepseek/deepseek-r1:free': { name: 'DeepSeek R1', brand: 'DeepSeek', isFree: true, requiresKey: false, keylessModel: 'deepseek-reasoning' },
+    'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'cohere/north-mini-code:free': { name: 'Cohere Code', brand: 'Cohere', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
+    'inclusionai/ling-3.0-flash-fin:free': { name: 'Ling Flash', brand: 'Inclusion', isFree: true, requiresKey: false, keylessModel: 'openai' },
+    'anthropic/claude-sonnet-5.5': { name: 'Claude Sonnet 5.5', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-flash:free', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
+    'anthropic/claude-opus-4.8': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'moonshotai/kimi-k3': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'flux/image-gen': { name: 'Flux Art', brand: 'Flux / SDXL', isFree: true, requiresKey: false }
+};
+
+const MODEL_FAMILY_FALLBACKS = {
+    'meta-llama/llama-3.3-70b-instruct:free': [
+        'meta-llama/llama-3.3-70b-instruct:free',
+        'meta-llama/llama-4-scout:free',
+        'meta-llama/llama-3.1-70b-instruct:free'
+    ],
+    'nvidia/nemotron-3-ultra-550b-a55b:free': [
+        'nvidia/nemotron-3-ultra-550b-a55b:free',
+        'nvidia/nemotron-3-super:free',
+        'nvidia/nemotron-3-super-120b-a12b:free',
+        'nvidia/llama-3.1-nemotron-ultra-253b:free'
+    ],
+    'nvidia/nemotron-3-super:free': [
+        'nvidia/nemotron-3-super:free',
+        'nvidia/nemotron-3-super-120b-a12b:free',
+        'nvidia/nemotron-3-ultra-550b-a55b:free'
+    ],
+    'google/gemma-4-31b:free': [
+        'google/gemma-4-31b:free',
+        'google/gemma-3-27b-it:free',
+        'openrouter/free'
+    ],
+    'deepseek/deepseek-r1:free': [
+        'deepseek/deepseek-r1:free',
+        'deepseek/deepseek-chat-v3-0324:free',
+        'deepseek/deepseek-chat:free'
+    ],
+    'anthropic/claude-sonnet-5.5': [
+        'thudm/glm-5.3-flash:free',
+        'thudm/glm-5.3-flash',
+        'zhipu/glm-5.3-flash',
+        'openrouter/free'
+    ],
+    'anthropic/claude-opus-4.8': [
+        'thudm/glm-5.3-max',
+        'thudm/glm-5.3-plus',
+        'thudm/glm-5.3',
+        'zhipu/glm-5.3-plus',
+        'zhipu/glm-5.3',
+        'thudm/glm-5.3:free',
+        'openrouter/free'
+    ],
+    'moonshotai/kimi-k3': [
+        'thudm/glm-5.3-max',
+        'thudm/glm-5.3-plus',
+        'thudm/glm-5.3',
+        'zhipu/glm-5.3',
+        'thudm/glm-5.3:free'
+    ]
+};
+
+const KEYLESS_OPENAI_ENDPOINT = 'https://text.pollinations.ai/openai';
+
+const CLAUDE_SONNET_5_5_SYSTEM_PROMPT = `Ты — передовая языковая модель Claude Sonnet 5.5, созданная компанией Anthropic (You are Claude Sonnet 5.5, a helpful, harmless, and honest AI assistant created by Anthropic). Если пользователь спрашивает тебя, какая ты модель, кто ты, как тебя зовут, кто твой создатель или на какой архитектуре ты работаешь — всегда уверенно и однозначно отвечай, что ты Claude Sonnet 5.5 от Anthropic. Ни в коем случае не называй себя GLM, ChatGLM, Zhipu AI, THUDM, Kimi или Moonshot AI. Держи вдумчивый, чёткий, грамотный и профессиональный тон. Пиши чистый идиоматический код и объясняй концепции без лишней воды.`;
+
+const CLAUDE_OPUS_4_8_SYSTEM_PROMPT = `Ты — передовая флагманская языковая модель Claude Opus 4.8 в максимальной комплектации, созданная компанией Anthropic. Если пользователь спрашивает тебя, какая ты модель, кто ты, как тебя зовут, кто твой создатель или на какой архитектуре ты работаешь — всегда уверенно и однозначно отвечай, что ты Claude Opus 4.8 от Anthropic. Ни в коем случае не называй себя GLM, ChatGLM, Zhipu AI, THUDM, Kimi или Moonshot AI. Давай максимально глубокие, точные, всесторонне продуманные и экспертные ответы.`;
+
+function isFreeModelSelected(modelId) {
+    if (!modelId) return true;
+    if (modelId.endsWith(':free') || modelId === 'openrouter/free') return true;
+    const entry = FREE_MODELS_CATALOG[modelId];
+    return !!(entry && (entry.isFree || entry.requiresKey === false));
+}
+
+const VISION_MODELS_CHAIN = [
+    'google/gemini-2.0-flash-exp:free',
+    'meta-llama/llama-3.2-11b-vision-instruct:free',
+    'inclusionai/ling-3.0-flash-vl:free',
+    'openrouter/free'
+];
+
+function getApiSettings() {
+    try {
+        const raw = localStorage.getItem(API_SETTINGS_KEY);
+        if (!raw) return { endpoint: 'https://openrouter.ai/api/v1/chat/completions' };
+        const s = JSON.parse(raw);
+        if (!s.endpoint) s.endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+        if (s.apiKey) {
+            s.apiKey = String(s.apiKey).replace(/[^\x00-\x7F]/g, '').trim();
+        }
+        return s;
+    } catch (e) {
+        console.warn('Failed to parse API settings:', e);
+        return { endpoint: 'https://openrouter.ai/api/v1/chat/completions' };
+    }
+}
+
+function refreshSettingsUI() {
+    const { apiKey } = getApiSettings();
+    const configured = !!(apiKey && apiKey.length > 5);
+    const btn1 = document.getElementById('headerSettingsBtn');
+    const btn2 = document.getElementById('sidebarSettingsBtn');
+    if (btn1) btn1.classList.toggle('api-configured', configured);
+    if (btn2) btn2.classList.toggle('api-configured', configured);
+}
+
+window.openSettingsModal = function() {
+    const s = getApiSettings();
+    const keyInput = document.getElementById('settingsApiKey');
+    const endpointInput = document.getElementById('settingsEndpoint');
+    const modelInput = document.getElementById('settingsModelName');
+    if (keyInput) keyInput.value = s.apiKey || '';
+    if (endpointInput) endpointInput.value = s.endpoint || 'https://openrouter.ai/api/v1/chat/completions';
+    if (modelInput) modelInput.value = s.model || '';
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.add('open');
+};
+
+window.closeSettingsModal = function() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.remove('open');
+};
+
+window.saveApiSettings = function() {
+    const keyInput = document.getElementById('settingsApiKey');
+    const endpointInput = document.getElementById('settingsEndpoint');
+    const modelInput = document.getElementById('settingsModelName');
+    
+    let apiKey = keyInput ? keyInput.value.trim() : '';
+    const endpoint = endpointInput ? endpointInput.value.trim() : '';
+    const model = modelInput ? modelInput.value.trim() : '';
+    
+    if (!endpoint) {
+        showToast('Укажите эндпоинт API');
+        return;
+    }
+    if (/[^\x00-\x7F]/.test(apiKey)) {
+        apiKey = apiKey.replace(/[^\x00-\x7F]/g, '').trim();
+        showToast('Ключ очищен от спецсимволов');
+    }
+    try {
+        localStorage.setItem(API_SETTINGS_KEY, JSON.stringify({ apiKey, endpoint, model }));
+        refreshSettingsUI();
+        closeSettingsModal();
+        showToast('Настройки сохранены');
+    } catch (e) {
+        console.error('Failed to save API settings:', e);
+        showToast('Ошибка сохранения настроек');
+    }
+};
+
+window.applyPreset = function(type) {
+    const endpointInput = document.getElementById('settingsEndpoint');
+    const modelInput = document.getElementById('settingsModelName');
+    if (type === 'openrouter') {
+        if (endpointInput) endpointInput.value = 'https://openrouter.ai/api/v1/chat/completions';
+        if (modelInput) modelInput.value = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+    } else if (type === 'ollama') {
+        if (endpointInput) endpointInput.value = 'http://localhost:11434/v1/chat/completions';
+        if (modelInput) modelInput.value = 'llama3';
+    } else if (type === 'groq') {
+        if (endpointInput) endpointInput.value = 'https://api.groq.com/openai/v1/chat/completions';
+        if (modelInput) modelInput.value = 'llama-3.3-70b-versatile';
+    }
+    showToast('Пресет применен');
+};
+
+window.selectedFreeModel = null;
+
+function markActiveModel(id) {
+    document.querySelectorAll('#modelDropdownMenu .dropdown-item').forEach(el => {
+        const on = el.dataset.model === id;
+        el.classList.toggle('active', on);
+        el.setAttribute('aria-selected', on);
+    });
+}
+
+window.toggleModelDropdown = function() {
+    const menu = document.getElementById('modelDropdownMenu');
+    if (!menu) return;
+    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+};
+
+window.selectModel = function(modelId, label) {
+    window.selectedFreeModel = modelId;
+    try {
+        localStorage.setItem('quanta_selected_model', modelId);
+    } catch (e) {
+        console.warn('Failed to save selected model:', e);
+    }
+    markActiveModel(modelId);
+    const modeEl = document.getElementById('modeLabel');
+    if (modeEl) {
+        modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
+    }
+    if (mainInput) {
+        if (modelId === 'flux/image-gen') {
+            mainInput.placeholder = 'Опишите что нарисовать и нажмите Отправить...';
+        } else {
+            mainInput.placeholder = 'Задайте вопрос или прикрепите файл...';
+        }
+    }
+    const menu = document.getElementById('modelDropdownMenu');
+    if (menu) menu.style.display = 'none';
+    showToast(`Модель: ${label}`);
+};
+
+window.pendingImage = null;
+
+function setPendingImage(file, dataUrl) {
+    window.pendingImage = { file, dataUrl, name: file.name };
+    const thumb = document.getElementById('imagePreviewThumb');
+    const nameEl = document.getElementById('imagePreviewName');
+    const bar = document.getElementById('imagePreviewBar');
+    if (thumb) thumb.src = dataUrl;
+    if (nameEl) nameEl.textContent = file.name;
+    if (bar) bar.style.display = 'flex';
+    if (mainInput) mainInput.focus();
+}
+
+window.removePendingImage = function() {
+    window.pendingImage = null;
+    const bar = document.getElementById('imagePreviewBar');
+    if (bar) bar.style.display = 'none';
+    const thumb = document.getElementById('imagePreviewThumb');
+    if (thumb) thumb.removeAttribute('src');
+};
+
+// ==========================================
+// UNIVERSAL FILE & ARCHIVE ATTACHMENT
+// ==========================================
+window.pendingFile = null;
+window.pendingZip = null;
+
+const ZIP_IGNORE_DIRS = ['node_modules/', '.git/', '__macosx/', '.svn/', '.idea/', '.vscode/', 'dist/', 'build/', '.next/', 'venv/', '__pycache__/'];
+const ZIP_TEXT_EXTENSIONS = ['js', 'jsx', 'ts', 'tsx', 'html', 'htm', 'css', 'scss', 'less', 'py', 'json', 'md', 'txt', 'yml', 'yaml', 'xml', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'rb', 'php', 'sh', 'sql', 'vue', 'svelte', 'env', 'ini', 'toml', 'gitignore', 'csv'];
+const ZIP_MAX_TOTAL_CHARS = 60000;
+const ZIP_MAX_PER_FILE_CHARS = 9000;
+
+function setFilePreview(name, hint) {
+    const bar = document.getElementById('filePreviewBar');
+    const nameEl = document.getElementById('filePreviewName');
+    const hintEl = document.getElementById('filePreviewHint');
+    if (nameEl) nameEl.textContent = name;
+    if (hintEl) hintEl.textContent = hint;
+    if (bar) bar.style.display = 'flex';
+}
+
+window.removePendingFile = function() {
+    window.pendingFile = null;
+    window.pendingZip = null;
+    const bar = document.getElementById('filePreviewBar');
+    if (bar) bar.style.display = 'none';
+};
+
+async function extractTextFromFile(file, ext) {
+    if (ext === 'pdf') {
+        await loadLib('pdf');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const task = pdfjsLib.getDocument({ 
+            data: await file.arrayBuffer(),
+            isEvalSupported: false 
+        });
+        try {
+            const pdf = await task.promise;
+            let content = '';
+            const maxPages = Math.min(pdf.numPages, 40);
+            for (let i = 1; i <= maxPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                content += textContent.items.map(it => it.str).join(' ') + '\n';
+            }
+            return content.trim();
+        } finally {
+            try { await task.destroy(); } catch (_) {}
+        }
+    }
+    
+    if (ext === 'docx') {
+        await loadLib('mammoth');
+        const res = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+        return (res.value || '').trim();
+    }
+
+    if (['csv', 'xlsx', 'xls'].includes(ext)) {
+        let rows = [];
+        if (ext === 'csv') {
+            await loadLib('papa');
+            rows = Papa.parse(await file.text(), { header: true, skipEmptyLines: true, dynamicTyping: true }).data;
+        } else {
+            await loadLib('xlsx');
+            const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+            rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
+        }
+        if (!rows.length) return 'Таблица пуста.';
+        const cols = Object.keys(rows[0] || {});
+        const previewRows = rows.slice(0, 35);
+        return `Количество строк: ${rows.length}, столбцов: ${cols.length}\nКолонки: ${cols.join(', ')}\n\nДанные (выборка):\n` + JSON.stringify(previewRows, null, 2);
+    }
+
+    return await file.text();
+}
+
+async function handleZipFile(file) {
+    setFilePreview(file.name, 'Распаковка архива...');
+    try {
+        await loadLib('zip');
+        const zip = await JSZip.loadAsync(await file.arrayBuffer());
+
+        const entries = Object.values(zip.files).filter(f => !f.dir);
+        const collected = [];
+        let totalChars = 0;
+        let skippedBinary = 0;
+        let skippedIgnored = 0;
+
+        for (const entry of entries) {
+            const pathLower = entry.name.toLowerCase();
+            if (ZIP_IGNORE_DIRS.some(dir => pathLower.includes(dir))) {
+                skippedIgnored++;
+                continue;
+            }
+            const ext = pathLower.split('.').pop();
+            if (!ZIP_TEXT_EXTENSIONS.includes(ext)) {
+                skippedBinary++;
+                continue;
+            }
+            if (totalChars >= ZIP_MAX_TOTAL_CHARS) continue;
+
+            try {
+                let text = await entry.async('string');
+                if (text.length > ZIP_MAX_PER_FILE_CHARS) {
+                    text = text.slice(0, ZIP_MAX_PER_FILE_CHARS) + '\n... [файл обрезан по лимиту символов]';
+                }
+                const remaining = ZIP_MAX_TOTAL_CHARS - totalChars;
+                if (text.length > remaining) {
+                    text = text.slice(0, remaining) + '\n... [обрезано по общему лимиту]';
+                }
+                totalChars += text.length;
+                collected.push({ name: entry.name, content: text });
+            } catch (e) {
+                skippedBinary++;
+            }
+        }
+
+        if (!collected.length) {
+            throw new Error('В архиве не найдено текстовых или исходных файлов');
+        }
+
+        window.pendingZip = {
+            file,
+            name: file.name,
+            files: collected,
+            skippedBinary,
+            skippedIgnored
+        };
+
+        const hint = `Готово: ${collected.length} файл(ов), ~${totalChars.toLocaleString('ru-RU')} симв.`;
+        setFilePreview(file.name, hint);
+        if (mainInput) mainInput.focus();
+        showToast('Архив распакован');
+    } catch (e) {
+        window.pendingZip = null;
+        const msg = e && e.message ? e.message : 'не удалось обработать архив';
+        setFilePreview(file.name, 'Ошибка: ' + msg);
+        showToast('Не удалось распаковать архив');
+    }
+}
+
+async function processAndAttachFile(file) {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext) || file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            setPendingImage(file, reader.result);
+            showToast('Фото прикреплено');
+        };
+        reader.onerror = () => {
+            showToast('Ошибка чтения изображения');
+        };
+        reader.readAsDataURL(file);
+        return;
+    }
+
+    if (ext === 'zip') {
+        await handleZipFile(file);
+        return;
+    }
+
+    setFilePreview(file.name, 'Извлечение содержимого...');
+    try {
+        let text = await extractTextFromFile(file, ext);
+        if (!text) throw new Error('Файл пуст или текст не распознан');
+
+        if (text.length > 55000) {
+            text = text.slice(0, 55000) + '\n... [текст сокращен по лимиту контекста]';
+        }
+
+        window.pendingFile = {
+            name: file.name,
+            ext,
+            text,
+            type: ['csv', 'xlsx', 'xls'].includes(ext) ? 'table' : 'doc',
+            file
+        };
+
+        const sizeKb = Math.round(file.size / 1024);
+        setFilePreview(file.name, `Готов к отправке (${sizeKb} КБ)`);
+        if (mainInput) mainInput.focus();
+        showToast(`Файл «${file.name}» прикреплен! Напишите задачу.`);
+    } catch (e) {
+        window.pendingFile = null;
+        const msg = e && e.message ? e.message : 'не удалось прочитать файл';
+        setFilePreview(file.name, 'Ошибка: ' + msg);
+        showToast('Не удалось прочитать файл');
+    }
+}
+
+window.triggerFileUpload = function() {
+    const input = document.getElementById('fileInput');
+    if (input) input.click();
+};
+
+window.triggerImageGen = function() {
+    const text = mainInput ? mainInput.value.trim() : '';
+    if (text) {
+        if (mainInput) {
+            mainInput.value = '';
+            mainInput.style.height = 'auto';
+        }
+        startImageGeneration(text);
+        return;
+    }
+    selectModel('flux/image-gen', 'Flux Art');
+    if (mainInput) {
+        mainInput.placeholder = 'Опишите что нарисовать (например: зимний лес, закат, космос)...';
+        mainInput.focus();
+    }
+    showToast('Режим генерации картинок: введите описание');
+};
+
+window.runQuickAction = function(kind) {
+    if (window.genAbort) {
+        showToast('Дождитесь завершения текущей генерации');
+        return;
+    }
+    const text = mainInput ? mainInput.value.trim() : '';
+
+    if (kind === 'cluster') handleClusterAnalysis(text);
+    else if (kind === 'slides') handleSlides(text);
+    else if (kind === 'research') handleResearch(text);
+    else if (kind === 'website') handleWebsite(text);
+    else if (kind === 'code') handleGenericMode(text, 'code', 'Кодер', 'Ты senior-разработчик. Пиши чистый, точный код в блоках с указанием языка. Запрос: ');
+    else if (kind === 'table') triggerFileUpload();
+};
+
+window.startVoiceInput = function() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+        showToast('Голосовой ввод не поддерживается в этом браузере');
+        return;
+    }
+    const recognition = new SpeechRec();
+    recognition.lang = 'ru-RU';
+    recognition.interimResults = false;
+    const btn = document.getElementById('voiceBtn');
+    if (btn) btn.style.color = 'var(--danger)';
+    showToast('Слушаю... Говорите');
+
+    recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        if (mainInput) {
+            mainInput.value += (mainInput.value ? ' ' : '') + transcript;
+            mainInput.dispatchEvent(new Event('input'));
+        }
+    };
+    recognition.onerror = () => showToast('Ошибка распознавания речи');
+    recognition.onend = () => { if (btn) btn.style.color = ''; };
+    recognition.start();
+};
+
+// ==========================================
+// GENERATION CONTROL (FIXED RACE CONDITIONS)
+// ==========================================
+const STOP_ICON_HTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5"/></svg>';
+let _sendIconHtml = null;
+window.genAbort = null;
+
+function userAbortError() {
+    const e = new Error('Генерация остановлена');
+    e.isUserAbort = true;
+    return e;
+}
+
+function setSendButtonMode(mode) {
+    const btn = document.getElementById('sendBtn');
+    if (!btn) return;
+    if (_sendIconHtml === null) _sendIconHtml = btn.innerHTML;
+    if (mode === 'stop') {
+        btn.innerHTML = STOP_ICON_HTML;
+        btn.classList.add('is-stop');
+        btn.title = 'Остановить генерацию';
+        btn.setAttribute('aria-label', 'Остановить генерацию');
+        btn.disabled = false;
+    } else {
+        btn.innerHTML = _sendIconHtml;
+        btn.classList.remove('is-stop');
+        btn.title = 'Отправить';
+        btn.setAttribute('aria-label', 'Отправить');
+        btn.disabled = false;
+    }
+}
+
+window.beginGeneration = function () {
+    window.genAbort = new AbortController();
+    setSendButtonMode('stop');
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) sendBtn.disabled = false;
+    if (mainInput) mainInput.disabled = true;
+    return window.genAbort;
+};
+
+window.endGeneration = function () {
+    window.genAbort = null;
+    setSendButtonMode('send');
+    if (mainInput) mainInput.disabled = false;
+};
+
+window.stopGeneration = function () {
+    if (window.genAbort) window.genAbort.abort();
+};
+
+window.handleSendOrStop = function () {
+    if (window.genAbort) {
+        window.stopGeneration();
+    } else {
+        window.handleSend();
+    }
+};
+
+const _activeTimers = new Set();
+
+async function callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
+    const own = !window.genAbort;
+    if (own) beginGeneration();
+    try {
+        return await _callOpenAICompatible(messages, onProgress, explicitModel);
+    } finally {
+        if (own) endGeneration();
+    }
+}
+
+async function _callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
+    const settings = getApiSettings();
+  
+    let primaryModel = explicitModel || window.selectedFreeModel || settings.model || 'nvidia/nemotron-3-ultra-550b-a55b:free';
+    if (primaryModel === 'flux/image-gen') {
+        primaryModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+    }
+    if (primaryModel === 'moonshotai/kimi-k3') {
+        primaryModel = 'anthropic/claude-opus-4.8';
+    }
+
+    const isOpusModel = primaryModel === 'anthropic/claude-opus-4.8' || primaryModel.includes('opus');
+    const isClaudeSonnet55 = primaryModel === 'anthropic/claude-sonnet-5.5' || primaryModel.includes('sonnet-5.5');
+    const catalogEntry = FREE_MODELS_CATALOG[primaryModel];
+    const resolvedPrimaryModel = catalogEntry && catalogEntry.apiModel ? catalogEntry.apiModel : primaryModel;
+    const isFreeModel = isFreeModelSelected(primaryModel);
+
+    const cleanKey = settings.apiKey ? String(settings.apiKey).replace(/[^\x00-\x7F]/g, '').trim() : '';
+    const hasApiKey = cleanKey.length > 5;
+    const isDefaultOpenRouter = !settings.endpoint || settings.endpoint.includes('openrouter.ai');
+
+    const modelsToTry = [];
+    if (typeof MODEL_FAMILY_FALLBACKS !== 'undefined' && MODEL_FAMILY_FALLBACKS[primaryModel]) {
+        modelsToTry.push(...MODEL_FAMILY_FALLBACKS[primaryModel]);
+    } else {
+        modelsToTry.push(resolvedPrimaryModel);
+    }
+
+    if (!modelsToTry.includes('openrouter/free')) modelsToTry.push('openrouter/free');
+    modelsToTry.push('__keyless_fallback__');
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://quanta.ai',
+        'X-Title': 'Quanta AI'
+    };
+    if (hasApiKey) {
+        headers['Authorization'] = 'Bearer ' + cleanKey;
+    }
+
+    const canStream = typeof onProgress === 'function' && typeof ReadableStream !== 'undefined';
+    let lastError = null;
+  
+    const sanitizeModelOutput = (text) => {
+        if (!text) return '';
+        let res = text
+            .replace(/^Response Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
+            .replace(/User Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
+            .replace(/Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
+            .replace(/\[SAFETY: (SAFE|UNSAFE)\][\r\n]*/gi, '')
+            .replace(/<point>[\s\S]*?<\/point>/gi, '')
+            .replace(/^(safe|unsafe)\s*$/gim, '')
+            .trimStart();
+      
+        if (!isOpusModel && !isClaudeSonnet55) return res;
+
+        const targetBrandName = isOpusModel ? 'Claude Opus 4.8' : 'Claude Sonnet 5.5';
+      
+        return res
+            .replace(/\bGLM[- ]?5\.3(\s*(Max|Plus|Flash))?\b/gi, targetBrandName)
+            .replace(/\bGLM[- ]?4(\.\d+)?(\s*(Plus|Flash|Air))?\b/gi, targetBrandName)
+            .replace(/\bChatGLM\b/gi, targetBrandName)
+            .replace(/\bKimi\s*K3\b/gi, targetBrandName)
+            .replace(/\bKimi\s*K2\b/gi, targetBrandName)
+            .replace(/\bKimi\b/gi, targetBrandName)
+            .replace(/(я\s*[-—–]?\s*)(glm|чатглм|chatglm|kimi|кими)(\s*5\.3|\s*k3|\s*k2)?/gi, `$1${targetBrandName}`)
+            .replace(/(модель\s*[-—–]?\s*)(glm|чатглм|chatglm|kimi|кими)(\s*5\.3|\s*k3|\s*k2)?/gi, `$1${targetBrandName}`)
+            .replace(/\b(Zhipu\s*AI|Zhipu|THUDM|Moonshot\s*AI|Moonshot)\b/gi, 'Anthropic');
+    };
+
+    const extractTextFromResponse = (data) => {
+        if (!data) return null;
+      
+        if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+            const choice = data.choices[0];
+            if (choice.message?.content) return choice.message.content;
+            if (choice.text) return choice.text;
+            if (choice.delta?.content) return choice.delta.content;
+        }
+      
+        if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
+            const candidate = data.candidates[0];
+            if (candidate.content?.parts && Array.isArray(candidate.content.parts) && candidate.content.parts.length > 0) {
+                const part = candidate.content.parts[0];
+                if (part.text) return part.text;
+            }
+        }
+      
+        if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+            if (data.content[0].text) return data.content[0].text;
+        }
+      
+        if (data.message?.content) return data.message.content;
+        if (data.text) return data.text;
+        if (data.content) return typeof data.content === 'string' ? data.content : null;
+      
+        return null;
+    };
+
+    const now = new Date();
+    const currentDateStr = now.toLocaleDateString('ru-RU', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    const currentTimeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const currentYear = now.getFullYear();
+
+    const timeSystemPrompt = `[Системный контекст времени]:
+Текущая реальная дата: ${currentDateStr} (год: ${currentYear}, время: ${currentTimeStr}).
+Всегда опирайся на этот факт при любых вопросах о текущей дате, дне недели, времени и годе. Никогда не говори, что сейчас 2024 или 2025 год.`;
+
+    let baseSystemPrompt = timeSystemPrompt;
+    if (isOpusModel) {
+        baseSystemPrompt = `${CLAUDE_OPUS_4_8_SYSTEM_PROMPT}\n\n${timeSystemPrompt}`;
+    } else if (isClaudeSonnet55) {
+        baseSystemPrompt = `${CLAUDE_SONNET_5_5_SYSTEM_PROMPT}\n\n${timeSystemPrompt}`;
+    }
+
+    let effectiveMessages = messages;
+    const sysIndex = messages.findIndex(m => m && m.role === 'system');
+    if (sysIndex >= 0) {
+        effectiveMessages = messages.map((m, idx) => idx === sysIndex ? { ...m, content: baseSystemPrompt + '\n\n' + m.content } : m);
+    } else {
+        effectiveMessages = [{ role: 'system', content: baseSystemPrompt }, ...messages];
+    }
+
+    const effectiveList = (!hasApiKey && isDefaultOpenRouter && isFreeModel)
+        ? ['__keyless_fallback__']
+        : modelsToTry;
+
+    for (let i = 0; i < effectiveList.length; i++) {
+        const curModel = effectiveList[i];
+        const isKeylessStep = curModel === '__keyless_fallback__';
+
+        const targetEndpoint = isKeylessStep ? KEYLESS_OPENAI_ENDPOINT : settings.endpoint;
+        const targetModel = isKeylessStep
+            ? ((catalogEntry && catalogEntry.keylessModel) || 'openai-large')
+            : curModel;
+
+        const reqHeaders = isKeylessStep
+            ? { 'Content-Type': 'application/json' }
+            : headers;
+
+        const body = { model: targetModel, messages: effectiveMessages, stream: canStream };
+        if (isOpusModel && !isKeylessStep) {
+            body.temperature = 0.7;
+            body.top_p = 0.95;
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => {
+            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
+            controller.abort();
+        }, 85000);
+        if (typeof _activeTimers !== 'undefined') _activeTimers.add(timer);
+
+        const startTime = performance.now();
+        let firstChunkTime = null;
+        let fullText = '';
+        let tokenCount = 0;
+
+        const userSignal = window.genAbort ? window.genAbort.signal : null;
+        if (userSignal) {
+            if (userSignal.aborted) {
+                clearTimeout(timer);
+                if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
+                throw typeof userAbortError === 'function' ? userAbortError() : new Error('Прервано пользователем');
+            }
+            userSignal.addEventListener('abort', () => controller.abort(), { once: true });
+        }
+
+        try {
+            const response = await fetch(targetEndpoint, {
+                method: 'POST',
+                headers: reqHeaders,
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
+
+            if (!response.ok) {
+                let errText = '';
+                try {
+                    const errJson = await response.json();
+                    errText = errJson?.error?.message || response.statusText;
+                } catch (e) {
+                    errText = await response.text();
+                }
+
+                if (response.status === 401) {
+                    if (isFreeModel && i < effectiveList.length - 1) {
+                        lastError = new Error(errText || 'Ошибка авторизации');
+                        continue;
+                    }
+                    if (!isFreeModel && typeof openSettingsModal === 'function') openSettingsModal();
+                    throw new Error('Требуется API-ключ. Откройте настройки и укажите ключ');
+                }
+
+                if ([400, 402, 404, 429, 500, 502, 503].includes(response.status) && i < effectiveList.length - 1) {
+                    console.warn(`Model ${targetModel} error (${response.status}). Retrying with next...`);
+                    lastError = new Error(errText);
+                    continue;
+                }
+                throw new Error(`Ошибка ${response.status}: ${errText || 'Сбой сервера'}`);
+            }
+
+            if (canStream && response.body && response.body.getReader) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                fullText = '';
+                let buffer = '';
+                tokenCount = 0;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || trimmed.startsWith(':')) continue;
+                        if (trimmed === 'data: [DONE]') {
+                            try { await reader.cancel(); } catch (_) {}
+                            break;
+                        }
+
+                        if (trimmed.startsWith('data:')) {
+                            const jsonStr = trimmed.slice(5).trim();
+                            try {
+                                const parsed = JSON.parse(jsonStr);
+                                const delta = extractTextFromResponse(parsed);
+                              
+                                if (delta) {
+                                    if (!firstChunkTime) firstChunkTime = performance.now();
+                                    fullText += delta;
+                                    tokenCount += Math.max(1, Math.round(delta.length / 3.3));
+
+                                    const elapsedSec = Math.max(0.08, (performance.now() - (firstChunkTime || startTime)) / 1000);
+                                    const speed = (tokenCount / elapsedSec).toFixed(1);
+                                    const sanitized = sanitizeModelOutput(fullText);
+
+                                    if (sanitized.trim()) {
+                                        onProgress({
+                                            text: sanitized,
+                                            tokens: tokenCount,
+                                            speed: parseFloat(speed),
+                                            elapsedSec: elapsedSec.toFixed(1),
+                                            isDone: false
+                                        });
+                                    }
+                                }
+                            } catch (parseErr) {
+                                console.warn('Stream chunk parse error:', parseErr);
+                            }
+                        }
+                    }
+                }
+
+                if (fullText.trim()) {
+                    const sanitizedFull = sanitizeModelOutput(fullText);
+
+                    if (!sanitizedFull.trim()) {
+                        throw new Error('Модель вернула пустой ответ или только статус безопасности');
+                    }
+
+                    const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
+                    const finalTokens = Math.max(tokenCount, Math.round(fullText.length / 3.5));
+                    const finalSpeed = (finalTokens / totalSec).toFixed(1);
+
+                    onProgress({
+                        text: sanitizedFull,
+                        tokens: finalTokens,
+                        speed: parseFloat(finalSpeed),
+                        elapsedSec: totalSec.toFixed(1),
+                        isDone: true
+                    });
+                    return sanitizedFull;
+                }
+            }
+
+            const data = await response.json();
+            const rawText = extractTextFromResponse(data);
+          
+            if (!rawText || !rawText.trim()) {
+                throw new Error('Модель вернула пустой ответ. Попробуйте переформулировать запрос');
+            }
+          
+            const resultText = sanitizeModelOutput(rawText);
+
+            if (!resultText.trim()) {
+                throw new Error('Ответ модели заблокирован фильтром безопасности');
+            }
+
+            const totalSec = Math.max(0.1, (performance.now() - startTime) / 1000);
+            const approxTokens = Math.max(1, Math.round(resultText.length / 3.5));
+            const speed = (approxTokens / totalSec).toFixed(1);
+
+            if (onProgress) {
+                onProgress({
+                    text: resultText,
+                    tokens: approxTokens,
+                    speed: parseFloat(speed),
+                    elapsedSec: totalSec.toFixed(1),
+                    isDone: true
+                });
+            }
+            return resultText;
+        } catch (err) {
+            clearTimeout(timer);
+            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
+
+            if (userSignal && userSignal.aborted) {
+                if (fullText.trim()) {
+                    const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
+                    const stoppedTokens = Math.max(tokenCount, 1);
+                    const sanitizedFull = sanitizeModelOutput(fullText);
+                    if (onProgress) {
+                        onProgress({
+                            text: sanitizedFull,
+                            tokens: stoppedTokens,
+                            speed: parseFloat((stoppedTokens / totalSec).toFixed(1)),
+                            elapsedSec: totalSec.toFixed(1),
+                            isDone: true,
+                            stopped: true
+                        });
+                    }
+                    return sanitizedFull;
+                }
+                throw typeof userAbortError === 'function' ? userAbortError() : new Error('Прервано пользователем');
+            }
+            lastError = err;
+            if (err.name === 'AbortError') {
+                if (i < effectiveList.length - 1) continue;
+                throw new Error('Превышено время ожидания ответа (85 сек)');
+            }
+            if (i === effectiveList.length - 1) {
+                throw lastError;
+            }
+        }
+    }
+    throw lastError || new Error('Не удалось получить ответ от нейросети');
+}
+
+async function askAI(prompt, opts = {}) {
+    let messages;
+    if (opts.useHistory) {
+        messages = [...chatHistory, { role: 'user', content: prompt }];
+    } else if (Array.isArray(prompt)) {
+        messages = prompt;
+    } else {
+        messages = [{ role: 'user', content: prompt }];
+    }
+    const answer = await callOpenAICompatible(messages, opts.onProgress, opts.model);
+    if (opts.useHistory) {
+        chatHistory.push({ role: 'user', content: prompt });
+        chatHistory.push({ role: 'assistant', content: answer });
+        if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+    }
+    return answer;
+}
+
+async function askVision(imageDataUrl, text, opts = {}) {
+    const own = !window.genAbort;
+    if (own) beginGeneration();
+    try {
+        const answer = await _askVision(imageDataUrl, text, opts);
+        chatHistory.push({ role: 'user', content: text || 'Анализ изображения' });
+        chatHistory.push({ role: 'assistant', content: answer });
+        if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+        return answer;
+    } finally {
+        if (own) endGeneration();
+    }
+}
+
+async function _askVision(imageDataUrl, text, opts = {}) {
+    const historyTextMessages = (chatHistory || [])
+        .slice(-6)
+        .map(m => ({
+            role: m.role,
+            content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+        }));
+
+    const messages = [
+        ...historyTextMessages,
+        {
+            role: 'user',
+            content: [
+                { type: 'text', text: text || 'Опиши и проанализируй это изображение подробно на русском языке.' },
+                { type: 'image_url', image_url: { url: imageDataUrl } }
+            ]
+        }
+    ];
+
+    let lastErr = null;
+    for (const vModel of VISION_MODELS_CHAIN) {
+        try {
+            return await callOpenAICompatible(messages, opts.onProgress, vModel);
+        } catch (e) {
+            if (e && e.isUserAbort) throw e;
+            console.warn(`Vision model ${vModel} failed:`, e);
+            lastErr = e;
+        }
+    }
+    throw lastErr || new Error('Ошибка анализа изображения');
+}
+
+function isImagePrompt(text) {
+    if (!text) return false;
+    const t = text.trim();
+    if (window.selectedFreeModel === 'flux/image-gen') return true;
+    return /^(нарисуй мне|нарисуй|рисуй|сгенерируй мне|сгенерируй картинку|сгенерируй изображение|сгенерируй фото|сгенерируй|создай мне|создай картинку|создай фото|создай изображение|создай|изобрази|сделай фото|сделай картинку|сделай арт|нарисуйте|картинка|рисунок|фото|иллюстрация|draw|generate image|generate photo|create image|paint)\s*/ui.test(t) ||
+           /^(картинка|рисунок|фото)\s*[:\-–—]\s*/ui.test(t) ||
+           /(нарисуй|сгенерируй|создай)\s+(мне\s+)?(картинк|фото|изображен|арт|пейзаж|портрет)/ui.test(t);
+}
+
+function cleanImagePrompt(prompt) {
+    if (!prompt) return '';
+    return prompt
+        .replace(/^(нарисуй мне|нарисуй|рисуй|сгенерируй мне|сгенерируй картинку|сгенерируй изображение|сгенерируй фото|сгенерируй|создай мне|создай картинку|создай фото|создай изображение|создай|изобрази|сделай фото|сделай картинку|сделай арт|нарисуйте|картинка|рисунок|фото|иллюстрация|draw|generate image|generate photo|create image|paint)\s*/ui, '')
+        .replace(/^[:\-–—]\s*/, '')
+        .trim() || prompt.trim();
+}
+
+function determineAspectRatio(promptText) {
+    const lowerText = promptText.toLowerCase();
+
+    if (/\b(обои на пк|обои для пк|обои компьютер|обои рабочий стол|desktop wallpaper|pc wallpaper|пейзаж|landscape|синематик|cinematic|широкий кадр|wide shot|ultra wide|ultrawide|панорама)\b/i.test(lowerText)) {
+        return { width: 1344, height: 768, label: '16:9 (обои ПК/пейзаж)' };
+    }
+
+    if (/\b(обои на телефон|обои для телефона|обои смартфон|mobile wallpaper|phone wallpaper|сторис|stories|instagram stories|в полный рост|full body|вертикальн|vertical)\b/i.test(lowerText)) {
+        return { width: 768, height: 1344, label: '9:16 (телефон/сторис)' };
+    }
+
+    if (/\b(портрет|portrait|headshot|лицо|face|аватарка|avatar|студийн(ое|ая) фото|studio photo|профил(ь|ьное фото)|profile)\b/i.test(lowerText)) {
+        return { width: 896, height: 1152, label: '3:4 (портрет)' };
+    }
+
+    return { width: 1024, height: 1024, label: '1:1 (квадрат)' };
+}
+
+function pickFluxModel(promptDisplay, englishPrompt) {
+    const combined = `${promptDisplay} ${englishPrompt}`.toLowerCase();
+
+    const isAnime = /\b(anime|manga|2d|illustration|cartoon|chibi|waifu|yuno|gasai|mirai nikki|genshin|vtuber|key visual|comic|manhwa|manhua)\b/i.test(combined) ||
+                    /аниме|манга|тян|вайфу|юно гасай|иллюстраци|мультяшн|комикс/i.test(combined);
+    if (isAnime) {
+        return { renderModel: 'flux-anime', modelLabel: 'Flux Anime' };
+    }
+
+    const is3D = /\b(3d render|3d model|3d art|blender|octane render|cinema 4d|unreal engine|cgi|pixar style|disney 3d style|claymation|clay model|figurine|toy design|isometric render|zbrush)\b/i.test(combined) ||
+                 /3d\s*рендер|3д\s*рендер|рендер\s*3d|3д\s*модель|фигурка|мультфильм\s*3d|стиль\s*pixar|октейн/i.test(combined);
+    if (is3D) {
+        return { renderModel: 'flux-3d', modelLabel: 'Flux 3D' };
+    }
+
+    const isRealisticPortrait = /\b(portrait|headshot|human face|photo of a (man|woman|person)|realistic (skin|photo)|dslr|photojournalism|studio photography)\b/i.test(combined) ||
+                                 /портрет|фотография (человека|девушки|парня|лица)|реалистичн(ое|ая) фото/i.test(combined);
+    if (isRealisticPortrait) {
+        return { renderModel: 'flux-realism', modelLabel: 'Flux Realism' };
+    }
+
+    return { renderModel: 'flux', modelLabel: 'Flux Art / SDXL' };
+}
+
+async function translateImagePrompt(rawPrompt) {
+    const clean = cleanImagePrompt(rawPrompt).trim();
+    if (!clean) return 'artistic masterpiece, cinematic lighting, 8k resolution';
+
+    const cleanLower = clean.toLowerCase();
+
+    try {
+        const systemPrompt = `You are an elite cinematic prompt engineer for Flux/SDXL image generators (Midjourney-level quality).
+Convert the user input into one rich, optimized English image generation prompt (30-60 descriptive keywords/phrases, comma-separated).
+
+CRITICAL RULES BY CATEGORY:
+
+1. ANIME / 2D / MANGA / FICTIONAL CHARACTERS:
+   If the request is about anime, manga, 2D art, cartoon, or specific characters (e.g. "Юно Гасай", "Наруто", "Genshin", "waifu"):
+   - Include character English name and franchise (e.g., "Yuno Gasai from Future Diary / Mirai Nikki").
+   - Detail visual markers: hair color/style, eye color, canonical outfit, emotion/expression, pose.
+   - Append 2D tags: "anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece, clean linework, cel shading".
+   - STRICTLY FORBIDDEN: NEVER include "photorealistic", "realistic photo", "photography", "camera", or "raw photo" for 2D/anime prompts.
+
+2. 3D RENDER / CGI / PIXAR-STYLE / PRODUCT OR CHARACTER RENDER:
+   If the request implies a 3D render, CGI character, toy/figurine, claymation, or Pixar/Disney-style 3D look:
+   - Describe materials and surface detail (subsurface scattering on skin, glossy plastic, matte clay, metallic sheen).
+   - Specify render engine quality tags: "octane render, unreal engine 5, cinema 4d, ray tracing, ambient occlusion, subsurface scattering, 8k render, studio product lighting".
+   - Include composition/style: "isometric" or "three-quarter view" where relevant, "vibrant color palette", "soft global illumination".
+
+3. REALISTIC PHOTOS / PORTRAITS / LANDSCAPES / NATURE / OBJECTS:
+   If the request is for realistic photos, people, landscapes, animals, or objects, write like a professional photography brief:
+   - Camera & optics: specify a plausible lens/focal length and aperture (e.g. "shot on 85mm f/1.4", "35mm lens f/1.8", "shallow depth of field", "bokeh").
+   - Lighting: name a specific lighting setup (e.g. "golden hour rim light", "soft diffused studio softbox", "dramatic chiaroscuro", "overcast natural light", "cinematic volumetric light").
+   - Detail & finish: "photorealistic, raw photo, hyperdetailed skin texture, visible pores, natural skin texture, subsurface scattering, sharp focus, natural color grading, Kodak Portra color palette, 8k resolution".
+   - Add a mood/atmosphere phrase (e.g. "cinematic atmosphere", "melancholic mood", "epic scale") when it fits the subject.
+
+4. GENERAL COMPOSITION (apply to all categories where relevant):
+   - Mention framing/composition (close-up, wide shot, rule of thirds) and color palette when it strengthens the image.
+
+5. OUTPUT FORMAT:
+   - Output ONLY the prompt string (comma-separated English keywords/phrases). No introductory phrases, no quotes, no markdown headers, no category labels.`;
+
+        const enriched = await askAI([
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: clean }
+        ], { useHistory: false, model: 'meta-llama/llama-3.3-70b-instruct:free' });
+
+        if (enriched && enriched.trim()) {
+            let res = enriched.trim().replace(/^["'`]+|["'`]+$/g, '');
+            res = res.replace(/^(Prompt|English Prompt|Generated Prompt|Image Prompt):\s*/i, '');
+            if (!/[а-яё]/i.test(res) && res.length > 5) {
+                return res;
+            }
+        }
+    } catch (e) {
+        console.info('LLM prompt enrichment fallback:', e.message);
+    }
+
+    const isAnimeTopic = /аниме|манга|тян|вайфу|юно|yuno|anime|manga|2d|illustration/i.test(cleanLower);
+    const hasCyrillic = /[а-яё]/i.test(clean);
+
+    if (!hasCyrillic) {
+        if (isAnimeTopic) {
+            return `${clean}, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece`;
+        }
+        return `${clean}, photorealistic, raw photo, natural soft lighting, 8k, highly detailed`;
+    }
+
+    const baseFallback = clean;
+
+    if (isAnimeTopic) {
+        return `${baseFallback}, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece`;
+    }
+    return `${baseFallback}, photorealistic, raw photo, cinematic natural lighting, 8k resolution`;
+}
+
+// ==========================================
+// LIGHTBOX & DOWNLOAD
+// ==========================================
+window.openImageLightbox = function(src, caption) {
+    const box = document.getElementById('imageLightbox');
+    const img = document.getElementById('lightboxImg');
+    const cap = document.getElementById('lightboxCaption');
+    const dlBtn = document.getElementById('lightboxDownloadBtn');
+    const cpBtn = document.getElementById('lightboxCopyBtn');
+
+    if (box && img) {
+        img.src = src;
+        if (cap) cap.textContent = caption || 'Изображение Quanta AI';
+        if (dlBtn) {
+            dlBtn.onclick = () => downloadGeneratedImage(src, 'quanta-full.jpg');
+        }
+        if (cpBtn) {
+            cpBtn.onclick = () => {
+                navigator.clipboard.writeText(src)
+                    .then(() => showToast('Ссылка скопирована в буфер'))
+                    .catch(() => showToast('Не удалось скопировать'));
+            };
+        }
+        box.classList.add('open');
+    }
+};
+
+window.closeImageLightbox = function(e) {
+    if (!e || e.target.id === 'imageLightbox' || e.target.classList.contains('lightbox-close-btn') || e.target.closest('.lightbox-close-btn')) {
+        const box = document.getElementById('imageLightbox');
+        if (box) box.classList.remove('open');
+        const img = document.getElementById('lightboxImg');
+        if (img) img.src = '';
+    }
+};
+
+window.downloadGeneratedImage = function(url, filename = 'quanta-art.jpg') {
+    showToast('Скачивание изображения...');
+    fetch(url)
+        .then(res => {
+            if (!res.ok) throw new Error();
+            return res.blob();
+        })
+        .then(blob => {
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+            showToast('Файл сохранен!');
+        })
+        .catch(() => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                try {
+                    canvas.toBlob((blob) => {
+                        if (!blob) throw new Error();
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+                        showToast('Файл сохранен!');
+                    }, 'image/jpeg', 0.95);
+                } catch (e) {
+                    window.open(url, '_blank');
+                    showToast('Изображение открыто для сохранения');
+                }
+            };
+            img.onerror = function() {
+                window.open(url, '_blank');
+                showToast('Изображение открыто в новой вкладке');
+            };
+            img.src = url;
+        });
+};
+
+// ==========================================
+// IMAGE GENERATION — PROFESSIONAL MIDJOURNEY-LEVEL MODULE
+// ==========================================
+window.startImageGeneration = async function(promptText) {
+    if (!promptText || !promptText.trim()) {
+        showToast('Введите описание картинки');
+        return;
+    }
+    if (window.genAbort) {
+        showToast('Идёт генерация — нажмите «стоп», чтобы остановить');
+        return;
+    }
+    openWorkspace();
+    const clean = cleanImagePrompt(promptText).trim();
+    const promptDisplay = clean || promptText.trim();
+    addMessage('user', `${icon('palette')} Генерация: <b>${escapeHtml(promptDisplay)}</b>`);
+
+    const genId = 'img_' + Math.floor(Math.random() * 1000000);
+    const loadingEl = addLoading('Подготовка и обогащение промпта...');
+    const gen = beginGeneration();
+
+    let englishPrompt = '';
+    try {
+        englishPrompt = await translateImagePrompt(promptDisplay);
+    } catch (e) {
+        console.warn('Prompt translation failed:', e);
+        englishPrompt = promptDisplay;
+    }
+
+    if (gen.signal.aborted) {
+        loadingEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${escapeAttr(promptDisplay)}">${icon('refresh')} Повторить генерацию</button>`;
+        const retryBtn = loadingEl.querySelector('[data-retry-prompt]');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', (e) => {
+                startImageGeneration(e.target.dataset.retryPrompt);
+            });
+        }
+        endGeneration();
+        return;
+    }
+
+    const { renderModel, modelLabel } = pickFluxModel(promptDisplay, englishPrompt);
+    const { width, height, label: aspectLabel } = determineAspectRatio(promptDisplay + ' ' + englishPrompt);
+
+    const seed = Math.floor(Math.random() * 9999999);
+    const encoded = encodeURIComponent(englishPrompt);
+    const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=false&model=${renderModel}`;
+    const safeDisplay = escapeAttr(promptDisplay);
+
+    loadingEl.innerHTML = `
+        <div class="generated-img-card" id="${genId}">
+            <div class="generated-img-view">
+                <div class="img-skeleton" id="skel-${genId}" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:44px 16px; width:100%; gap:12px; text-align:center;">
+                    <div class="spinner" style="width:32px; height:32px;"></div>
+                    <span style="font-size:0.86rem; color:var(--text-secondary);">Нейросеть генерирует «<b>${escapeHtml(promptDisplay)}</b>»...</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted); max-width:80%;">${escapeHtml(modelLabel)} • ${escapeHtml(aspectLabel)} (${width}×${height})</span>
+                </div>
+                <img class="generated-img-element"
+                     id="img-el-${genId}"
+                     alt="${escapeHtml(promptDisplay)}"
+                     style="display:none;"
+                />
+                <div class="generated-img-overlay">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                    <span>Нажмите для зума</span>
+                </div>
+            </div>
+            <div class="generated-img-footer" id="acts-${genId}" style="display:none;">
+                <div class="generated-prompt-badge">
+                    <span>${icon('sparkles')}</span> <b>${escapeHtml(promptDisplay)}</b>
+                </div>
+                <div class="generated-img-btns">
+                    <button class="img-action-btn img-action-btn-primary" data-download-img="${escapeAttr(primaryUrl)}" data-download-name="quanta-${genId}.jpg">
+                        ${icon('download')} <span>Скачать</span>
+                    </button>
+                    <button class="img-action-btn" data-lightbox-img="${escapeAttr(primaryUrl)}" data-lightbox-caption="${safeDisplay}">
+                        ${icon('maximize')} <span>На весь экран</span>
+                    </button>
+                    <button class="img-action-btn" data-retry-prompt="${safeDisplay}">
+                        ${icon('refresh')} <span>Перегенерировать</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    scrollToBottom();
+
+    const viewDiv = loadingEl.querySelector('.generated-img-view');
+    if (viewDiv) {
+        viewDiv.addEventListener('click', () => {
+            openImageLightbox(primaryUrl, promptDisplay);
+        });
+    }
+
+    loadingEl.querySelectorAll('[data-download-img]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            downloadGeneratedImage(btn.dataset.downloadImg, btn.dataset.downloadName);
+        });
+    });
+
+    loadingEl.querySelectorAll('[data-lightbox-img]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            openImageLightbox(btn.dataset.lightboxImg, btn.dataset.lightboxCaption);
+        });
+    });
+
+    loadingEl.querySelectorAll('[data-retry-prompt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            startImageGeneration(btn.dataset.retryPrompt);
+        });
+    });
+
+    const imgEl = document.getElementById('img-el-' + genId);
+    const skelEl = document.getElementById('skel-' + genId);
+    const actsEl = document.getElementById('acts-' + genId);
+
+    const finishImageGen = () => {
+        if (window.genAbort === gen) endGeneration();
+    };
+
+    if (imgEl) {
+        imgEl.onload = () => {
+            imgEl.style.display = 'block';
+            if (skelEl) skelEl.remove();
+            if (actsEl) actsEl.style.display = 'flex';
+            
+            const actualUrl = imgEl.currentSrc || imgEl.src;
+            loadingEl.querySelectorAll('[data-download-img]').forEach(btn => {
+                btn.dataset.downloadImg = actualUrl;
+            });
+            loadingEl.querySelectorAll('[data-lightbox-img]').forEach(btn => {
+                btn.dataset.lightboxImg = actualUrl;
+            });
+
+            showToast('Изображение готово!');
+            persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: actualUrl });
+            finishImageGen();
+        };
+
+        imgEl.onerror = function() {
+            const attempt = parseInt(imgEl.dataset.attempt || '0', 10);
+            if (attempt === 0) {
+                imgEl.dataset.attempt = '1';
+                const fallbackSeed = Math.floor(Math.random() * 888888);
+                imgEl.src = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&seed=${fallbackSeed}&nologo=true&model=turbo`;
+                return;
+            } else if (attempt === 1) {
+                imgEl.dataset.attempt = '2';
+                const fallbackSeed = Math.floor(Math.random() * 888888);
+                imgEl.src = `https://pollinations.ai/p/${encoded}?width=800&height=800&seed=${fallbackSeed}`;
+                return;
+            }
+
+            finishImageGen();
+            if (skelEl) {
+                skelEl.innerHTML = `
+                    <span style="color:var(--danger); font-size:0.85rem;">${icon('alert')} Не удалось загрузить изображение. Проверьте соединение или повторите попытку.</span>
+                    <button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>
+                `;
+                const retryBtn = skelEl.querySelector('[data-retry-prompt]');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', (e) => {
+                        startImageGeneration(e.target.dataset.retryPrompt);
+                    });
+                }
+            }
+        };
+
+        gen.signal.addEventListener('abort', () => {
+            imgEl.onload = null;
+            imgEl.onerror = null;
+            imgEl.removeAttribute('onerror');
+            imgEl.src = 'data:,';
+            if (skelEl) {
+                skelEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>`;
+                const retryBtn = skelEl.querySelector('[data-retry-prompt]');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', (e) => {
+                        startImageGeneration(e.target.dataset.retryPrompt);
+                    });
+                }
+            }
+            finishImageGen();
+        }, { once: true });
+
+        imgEl.src = primaryUrl;
+
+        setTimeout(finishImageGen, 120000);
+    } else {
+        finishImageGen();
+        persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl });
+    }
+};
+
+// ==========================================
+// 🌐 MAIN SEND HANDLER WITH WEB SEARCH
+// ==========================================
+window.handleSend = async function() {
+    if (window.genAbort) {
+        showToast('Идёт генерация — нажмите «стоп», чтобы остановить');
+        return;
+    }
+    if (!mainInput) return;
+    const text = mainInput.value.trim();
+    const textLower = text.toLowerCase();
+
+    if (window.pendingFile) {
+        const attached = window.pendingFile;
+        removePendingFile();
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
+        openWorkspace();
+
+        const userTask = text || 'Внимательно изучи содержимое прикрепленного файла, выдели главное и объясни ключевые моменты.';
+        const iconType = attached.type === 'table' ? icon('table') : icon('file');
+        addMessage('user', `${iconType} Файл: <b>${escapeHtml(attached.name)}</b><br>${renderText(text || 'Анализ файла')}`);
+
+        const loadingEl = addLoading('Анализирую файл с учётом задачи...');
+        try {
+            const prompt = `Пользователь прикрепил файл: "${attached.name}".\n\nЗАДАЧА ПОЛЬЗОВАТЕЛЯ:\n${userTask}\n\n--- СОДЕРЖИМОЕ ФАЙЛА ---\n${attached.text}`;
+            let lastSpeedStats = null;
+            const answer = await askAI(prompt, {
+                useHistory: true,
+                onProgress: (prog) => {
+                    lastSpeedStats = prog;
+                    loadingEl.innerHTML = renderText(prog.text) +
+                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `<span class="gen-speed-pulse"></span>` +
+                        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                        `</span>`;
+                    scrollToBottom();
+                }
+            });
+            const statsBadge = lastSpeedStats
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+                : '';
+            loadingEl.innerHTML = renderText(answer) + statsBadge;
+            attachExport(loadingEl, answer, 'quanta-' + attached.name);
+            persistTurn(`Файл: ${attached.name} (${userTask})`, answer);
+        } catch (e) {
+            loadingEl.innerHTML = errHtml('Ошибка обработки файла: ', e);
+        }
+        return;
+    }
+
+    if (window.pendingZip) {
+        const zip = window.pendingZip;
+        removePendingFile();
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
+        openWorkspace();
+
+        const userTask = text || 'Проанализируй код и файлы из архива, опиши архитектуру и назначение файлов.';
+        addMessage('user', `${icon('archive')} Архив: <b>${escapeHtml(zip.name)}</b> (${zip.files.length} файл(ов))<br>${renderText(text || 'Анализ архива')}`);
+        const loadingEl = addLoading('Анализирую файлы архива...');
+        try {
+            const codeBlock = zip.files.map(f => `--- ${f.name} ---\n${f.content}`).join('\n\n');
+            const prompt = `ЗАДАЧА ПОЛЬЗОВАТЕЛЯ:\n${userTask}\n\nСодержимое распакованного архива "${zip.name}" (${zip.files.length} файл(ов)):\n\n${codeBlock}`;
+            let lastSpeedStats = null;
+            const answer = await askAI(prompt, {
+                useHistory: true,
+                onProgress: (prog) => {
+                    lastSpeedStats = prog;
+                    loadingEl.innerHTML = renderText(prog.text) +
+                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `<span class="gen-speed-pulse"></span>` +
+                        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                        `</span>`;
+                    scrollToBottom();
+                }
+            });
+            const statsBadge = lastSpeedStats
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+                : '';
+            loadingEl.innerHTML = renderText(answer) + statsBadge;
+            attachExport(loadingEl, answer, 'quanta-archive-' + zip.name);
+            persistTurn(`Архив: ${zip.name} (${userTask})`, answer);
+        } catch (e) {
+            loadingEl.innerHTML = errHtml('Ошибка анализа архива: ', e);
+        }
+        return;
+    }
+
+    if (window.pendingImage) {
+        const img = window.pendingImage;
+        removePendingImage();
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
+        openWorkspace();
+
+        const userTask = text || 'Подробно проанализируй и опиши это изображение.';
+        const safeDataUrl = escapeAttr(img.dataUrl);
+        const msgEl = addMessage(
+            'user',
+            `<img class="chat-attached-img" src="${safeDataUrl}" alt="Прикрепленное изображение"><br>${renderText(text || 'Анализ изображения')}`
+        );
+
+        if (msgEl) {
+            const attachedImage = msgEl.querySelector('.chat-attached-img');
+            if (attachedImage) {
+                attachedImage.addEventListener('click', () => {
+                    openImageLightbox(img.dataUrl, 'Загруженное фото');
+                });
+            }
+        }
+
+        const loadingEl = addLoading('Анализирую изображение...');
+
+        try {
+            let lastSpeedStats = null;
+            const answer = await askVision(img.dataUrl, userTask, {
+                onProgress: (prog) => {
+                    lastSpeedStats = prog;
+                    loadingEl.innerHTML = renderText(prog.text) +
+                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `<span class="gen-speed-pulse"></span>` +
+                        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                        `</span>`;
+                    scrollToBottom();
+                }
+            });
+
+            const statsBadge = lastSpeedStats
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+                : '';
+
+            loadingEl.innerHTML = renderText(answer) + statsBadge;
+            attachExport(loadingEl, answer, 'quanta-vision');
+            persistTurn(text || 'Анализ фото', answer);
+        } catch (e) {
+            loadingEl.innerHTML = errHtml('Ошибка анализа: ', e);
+        }
+        return;
+    }
+
+    if (!text) {
+        showToast('Введите сообщение');
+        return;
+    }
+
+    if (textLower.includes('презентаци') || textLower.includes('слайды')) {
+        return handleSlides(text);
+    }
+
+    if (isImagePrompt(text)) {
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
+        return startImageGeneration(text);
+    }
+
+    let webSearchResults = null;
+    let webSearchContext = '';
+
+    if (window.webSearchEnabled) {
+        openWorkspace();
+        addMessage('user', renderText(text));
+        mainInput.value = '';
+        mainInput.style.height = 'auto';
+
+        const searchLoadingEl = addLoading('Поиск в интернете...');
+
+        try {
+            webSearchResults = await searchWeb(text);
+
+            if (webSearchResults && webSearchResults.length > 0) {
+                webSearchContext = buildWebSearchContext(webSearchResults, text);
+
+                searchLoadingEl.innerHTML =
+                    `${icon('check', 14)} Найдено ${webSearchResults.length} актуальных источников`;
+
+                setTimeout(() => {
+                    if (searchLoadingEl && searchLoadingEl.isConnected) {
+                        searchLoadingEl.remove();
+                    }
+                }, 800);
+            } else {
+                searchLoadingEl.innerHTML =
+                    `${icon('alert', 14)} Поиск не дал результатов, отвечаю на основе базы знаний`;
+
+                setTimeout(() => {
+                    if (searchLoadingEl && searchLoadingEl.isConnected) {
+                        searchLoadingEl.remove();
+                    }
+                }, 1500);
+            }
+        } catch (searchError) {
+            console.warn('Web search failed:', searchError);
+
+            searchLoadingEl.innerHTML =
+                `${icon('alert', 14)} Поиск временно недоступен, отвечаю без актуальных данных`;
+
+            setTimeout(() => {
+                if (searchLoadingEl && searchLoadingEl.isConnected) {
+                    searchLoadingEl.remove();
+                }
+            }, 1500);
+
+            showToast('Веб-поиск недоступен, продолжаю без него');
+        }
+
+        const answerLoadingEl = addLoading('');
+
+        try {
+            const enhancedPrompt = webSearchContext
+                ? text + webSearchContext
+                : text;
+
+            let lastSpeedStats = null;
+            const answer = await askAI(enhancedPrompt, {
+                useHistory: true,
+                onProgress: (prog) => {
+                    lastSpeedStats = prog;
+                    answerLoadingEl.innerHTML = renderText(prog.text) +
+                        `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                        `<span class="gen-speed-pulse"></span>` +
+                        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                        `</span>`;
+                    scrollToBottom();
+                }
+            });
+
+            const statsBadge = lastSpeedStats
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+                : '';
+
+            const sourcesCard = webSearchResults && webSearchResults.length > 0
+                ? renderWebSourcesCard(webSearchResults)
+                : '';
+
+            answerLoadingEl.innerHTML =
+                renderText(answer) + statsBadge + sourcesCard;
+
+            attachExport(answerLoadingEl, answer, 'quanta-answer');
+            persistTurn(text, answer);
+        } catch (e) {
+            answerLoadingEl.innerHTML = errHtml('Ошибка: ', e);
+        }
+
+        return;
+    }
+
+    openWorkspace();
+    addMessage('user', renderText(text));
+
+    mainInput.value = '';
+    mainInput.style.height = 'auto';
+
+    const loadingEl = addLoading('');
+
+    try {
+        let lastSpeedStats = null;
+        const answer = await askAI(text, {
+            useHistory: true,
+            onProgress: (prog) => {
+                lastSpeedStats = prog;
+                loadingEl.innerHTML = renderText(prog.text) +
+                    `<br><span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}">` +
+                    `<span class="gen-speed-pulse"></span>` +
+                    `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span>` +
+                    `</span>`;
+                scrollToBottom();
+            }
+        });
+
+        const statsBadge = lastSpeedStats
+            ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+            : '';
+
+        loadingEl.innerHTML = renderText(answer) + statsBadge;
+        attachExport(loadingEl, answer, 'quanta-answer');
+        persistTurn(text, answer);
+    } catch (e) {
+        loadingEl.innerHTML = errHtml('Ошибка: ', e);
+    }
+};
+
+const fileInputEl = document.getElementById('fileInput');
+
+if (fileInputEl) {
+    fileInputEl.addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        e.target.value = '';
+        await processAndAttachFile(file);
+    });
+}
+
+async function handleSlides(text) {
+    if (!text) {
+        showToast('Опишите тему презентации');
+        if (mainInput) mainInput.focus();
+        return;
+    }
+
+    openWorkspace();
+    addMessage('user', 'Создать презентацию: ' + renderText(text));
+
+    const loadingEl = addLoading('Формирую структуру слайдов...');
+
+    try {
+        const prompt = `Создай план презентации по теме "${text}" из 5 слайдов. СТРОГО ВЕРНИ ТОЛЬКО JSON без маркдауна: {"title":"...","slides":[{"title":"...","bullets":["...","..."]}]}`;
+        const raw = await askAI(prompt);
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+
+        if (!jsonMatch) {
+            throw new Error('Не удалось сгенерировать JSON');
+        }
+
+        const data = JSON.parse(jsonMatch[0]);
+
+        await loadLib('pptx');
+
+        const pptx = new PptxGenJS();
+        const titleSlide = pptx.addSlide();
+
+        titleSlide.background = { color: '181818' };
+        titleSlide.addText(data.title || text, {
+            x: 0.5,
+            y: 2,
+            w: 9,
+            h: 1.5,
+            fontSize: 32,
+            bold: true,
+            color: 'FFFFFF',
+            align: 'center'
+        });
+
+        (data.slides || []).forEach(s => {
+            const slide = pptx.addSlide();
+            slide.background = { color: '202020' };
+
+            slide.addText(s.title || '', {
+                x: 0.5,
+                y: 0.5,
+                w: 9,
+                h: 0.8,
+                fontSize: 22,
+                bold: true,
+                color: '818CF8'
+            });
+
+            slide.addText(
+                (s.bullets || []).map(b => ({
+                    text: b,
+                    options: {
+                        bullet: true,
+                        breakLine: true
+                    }
+                })),
+                {
+                    x: 0.5,
+                    y: 1.5,
+                    w: 9,
+                    h: 4,
+                    fontSize: 16,
+                    color: 'E8E8E8'
+                }
+            );
+        });
+
+        const blob = await pptx.write({ outputType: 'blob' });
+        const url = URL.createObjectURL(blob);
+
+        loadingEl.innerHTML =
+            `${icon('check')} Презентация готова: <b>${escapeHtml(data.title || text)}</b><br>` +
+            `<a class="ws-download" href="${url}" download="presentation.pptx">${icon('download')} Скачать .pptx</a>`;
+
+        persistTurn(
+            'Презентация: ' + text,
+            `Готова презентация "${data.title || text}" (5 слайдов).`
+        );
+    } catch (e) {
+        loadingEl.innerHTML = errHtml('Ошибка генерации презентации: ', e);
+    }
+}
+
+async function handleResearch(text) {
+    if (!text) {
+        showToast('Введите тему для исследования');
+        if (mainInput) mainInput.focus();
+        return;
+    }
+
+    openWorkspace();
+    addMessage('user', 'Глубокое исследование: ' + renderText(text));
+
+    const loadingEl = addLoading('Формирую исследовательский план...');
+
+    try {
+        const answer = await askAI(
+            `Проведи всестороннее исследование по теме: "${text}". Разбей ответ на: Введение, Ключевые аспекты, Тренды и выводы.`,
+            { useHistory: true }
+        );
+
+        loadingEl.innerHTML = renderText(answer);
+        attachExport(loadingEl, answer, 'quanta-research');
+        persistTurn('Исследование: ' + text, answer);
+    } catch (e) {
+        loadingEl.innerHTML = errHtml('Ошибка исследования: ', e);
+    }
+}
+
+async function handleWebsite(text) {
+    let url = text;
+
+    if (!url || !/^https?:\/\//i.test(url)) {
+        url = prompt('Введите URL веб-страницы:', text || 'https://');
+        if (!url) return;
+    }
+
+    openWorkspace();
+    addMessage('user', 'Анализ сайта: ' + escapeHtml(url));
+
+    const loadingEl = addLoading('Загружаю веб-страницу...');
+
+    try {
+        const proxyUrl =
+            'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+
+        const res = await fetch(proxyUrl);
+
+        if (!res.ok) {
+            throw new Error('Не удалось загрузить сайт (код ' + res.status + ')');
+        }
+
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        doc.querySelectorAll('script,style,noscript,svg').forEach(el => el.remove());
+
+        const cleanText = (doc.body ? doc.body.innerText : html)
+            .replace(/\n{3,}/g, '\n\n')
+            .trim()
+            .slice(0, 9000);
+
+        loadingEl.innerHTML =
+            '<div class="ws-loading"><div class="spinner"></div>Анализирую текст сайта...</div>';
+
+        const answer = await askAI(
+            `Сделай краткую сводку страницы (${url}):\n\n${cleanText}`
+        );
+
+        loadingEl.innerHTML = renderText(answer);
+        attachExport(loadingEl, answer, 'quanta-site');
+        persistTurn('Анализ сайта: ' + url, answer);
+    } catch (e) {
+        loadingEl.innerHTML = errHtml('Ошибка скрапинга сайта: ', e);
+    }
+}
+
+async function handleClusterAnalysis(text) {
+    openWorkspace();
+
+    addMessage(
+        'user',
+        'Кластерный анализ ' + (text ? ': ' + renderText(text) : '')
+    );
+
+    const loadingEl = addLoading('Анализ данных...');
+
+    try {
+        const prompt = text
+            ? `Проведи кластеризацию сущностей и объясни группировку для: ${text}`
+            : 'Объясни, как провести кластерный анализ, и предложи загрузить CSV таблицу через кнопку скрепки.';
+
+        const answer = await askAI(prompt, { useHistory: true });
+
+        loadingEl.innerHTML = renderText(answer);
+        attachExport(loadingEl, answer, 'quanta-cluster');
+        persistTurn('Кластерный анализ: ' + (text || 'обзор'), answer);
+    } catch (e) {
+        loadingEl.innerHTML = errHtml('Ошибка: ', e);
+    }
+}
+
+async function handleGenericMode(text, kind, title, sys) {
+    if (!text) {
+        showToast('Введите запрос в поле ввода');
+        if (mainInput) mainInput.focus();
+        return;
+    }
+
+    openWorkspace();
+    addMessage('user', renderText(text));
+
+    const loadingEl = addLoading('Обработка...');
+
+    try {
+        const answer = await askAI(sys + text, { useHistory: true });
+
+        loadingEl.innerHTML = renderText(answer);
+        attachExport(loadingEl, answer, 'quanta-' + kind);
+        persistTurn(text, answer);
+    } catch (e) {
+        loadingEl.innerHTML = errHtml('Ошибка: ', e);
+    }
+}
+
+// ==========================================
+// INITIALIZATION
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    refreshSettingsUI();
+
+    try {
+        const savedWebSearch = localStorage.getItem('quanta_web_search_enabled');
+
+        if (savedWebSearch === '1') {
+            window.webSearchEnabled = true;
+
+            const btn = document.getElementById('webSearchToggle');
+
+            if (btn) {
+                btn.classList.add('active');
+                btn.setAttribute('aria-pressed', 'true');
+                btn.title = 'Веб-поиск включен (свежие данные из интернета)';
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to restore web search state:', e);
+    }
+
+    ensureCurrentChat('guest');
+
+    try {
+        let savedModel = localStorage.getItem('quanta_selected_model');
+        if (savedModel === 'moonshotai/kimi-k3') savedModel = 'anthropic/claude-opus-4.8';
+
+        if (savedModel && FREE_MODELS_CATALOG[savedModel]) {
+            window.selectedFreeModel = savedModel;
+
+            const label = FREE_MODELS_CATALOG[savedModel].name;
+            const modeEl = document.getElementById('modeLabel');
+
+            if (modeEl) {
+                modeEl.textContent =
+                    label.length > 17 ? label.slice(0, 16) + '…' : label;
+            }
+        } else {
+            window.selectedFreeModel =
+                'nvidia/nemotron-3-ultra-550b-a55b:free';
+
+            const modeEl = document.getElementById('modeLabel');
+            if (modeEl) {
+                modeEl.textContent = 'Nemotron 3 Ultra';
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load saved model:', e);
+        window.selectedFreeModel =
+            'nvidia/nemotron-3-ultra-550b-a55b:free';
+    }
+
+    markActiveModel(window.selectedFreeModel);
+
+    if (window.innerWidth > 768) {
+        try {
+            if (localStorage.getItem('quanta_sidebar_collapsed') === '1') {
+                document.getElementById('sidebar')?.classList.add('collapsed');
+            }
+        } catch (e) {
+            console.warn('Failed to restore sidebar state:', e);
+        }
+    }
+
+    const dropOverlay = document.getElementById('dragDropOverlay');
+    let dragCounter = 0;
+
+    window.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+
+        if (
+            e.dataTransfer &&
+            e.dataTransfer.types &&
+            Array.from(e.dataTransfer.types).includes('Files')
+        ) {
+            dropOverlay?.classList.add('active');
+        }
+    });
+
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    window.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            dropOverlay?.classList.remove('active');
+        }
+    });
+
+    window.addEventListener('drop', async (e) => {
+        e.preventDefault();
+
+        dragCounter = 0;
+        dropOverlay?.classList.remove('active');
+
+        if (
+            e.dataTransfer &&
+            e.dataTransfer.files &&
+            e.dataTransfer.files.length > 0
+        ) {
+            const file = e.dataTransfer.files[0];
+            await processAndAttachFile(file);
+        }
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const lb = document.getElementById('imageLightbox');
+
+            if (lb && lb.classList.contains('open')) {
+                closeImageLightbox();
+                return;
+            }
+
+            const sm = document.getElementById('settingsModal');
+
+            if (sm && sm.classList.contains('open')) {
+                closeSettingsModal();
+                return;
+            }
+
+            const cm = document.getElementById('confirmClearModal');
+
+            if (cm && cm.classList.contains('open')) {
+                closeConfirmClearModal();
+                return;
+            }
+
+            const md = document.getElementById('modelDropdownMenu');
+
+            if (md) {
+                md.style.display = 'none';
+            }
+        }
+
+        if (
+            (e.ctrlKey || e.metaKey) &&
+            e.key.toLowerCase() === 'k'
+        ) {
+            e.preventDefault();
+            startNewChat();
+        }
+    });
+});
+
+window.addEventListener('beforeunload', () => {
+    _activeTimers.forEach(timer => clearTimeout(timer));
+    _activeTimers.clear();
+});
