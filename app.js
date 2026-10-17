@@ -1172,17 +1172,17 @@ window.exportFile = function(id, type, filenameBase) {
 const API_SETTINGS_KEY = 'quanta_api_settings';
 
 const FREE_MODELS_CATALOG = {
-    'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
-    'nvidia/nemotron-3-super:free': { name: 'Nemotron 3 Super', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai' },
+    'nvidia/nemotron-3-super:free': { name: 'Nemotron 3 Super', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai' },
     'google/gemma-4-31b:free': { name: 'Gemma 4 31B', brand: 'Google', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI', isFree: true, requiresKey: false, keylessModel: 'llama' },
-    'deepseek/deepseek-r1:free': { name: 'DeepSeek R1', brand: 'DeepSeek', isFree: true, requiresKey: false, keylessModel: 'deepseek-reasoning' },
-    'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI', isFree: true, requiresKey: false, keylessModel: 'openai' },
+    'deepseek/deepseek-r1:free': { name: 'DeepSeek R1', brand: 'DeepSeek', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
+    'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter', isFree: true, requiresKey: false, keylessModel: 'openai' },
     'cohere/north-mini-code:free': { name: 'Cohere Code', brand: 'Cohere', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
     'inclusionai/ling-3.0-flash-fin:free': { name: 'Ling Flash', brand: 'Inclusion', isFree: true, requiresKey: false, keylessModel: 'openai' },
     'anthropic/claude-sonnet-5.5': { name: 'Claude Sonnet 5.5', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-flash:free', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
-    'anthropic/claude-opus-4.8': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
-    'moonshotai/kimi-k3': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'anthropic/claude-opus-4.8': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai' },
+    'moonshotai/kimi-k3': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai' },
     'flux/image-gen': { name: 'Flux Art', brand: 'Flux / SDXL', isFree: true, requiresKey: false }
 };
 
@@ -1858,17 +1858,19 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
     }
 
     const effectiveList = (!hasApiKey && isDefaultOpenRouter && isFreeModel)
-        ? ['__keyless_fallback__']
+        ? ['__keyless_primary__', '__keyless_openai__', '__keyless_qwen__']
         : modelsToTry;
 
     for (let i = 0; i < effectiveList.length; i++) {
         const curModel = effectiveList[i];
-        const isKeylessStep = curModel === '__keyless_fallback__';
+        const isKeylessStep = curModel.startsWith('__keyless_');
 
         const targetEndpoint = isKeylessStep ? KEYLESS_OPENAI_ENDPOINT : settings.endpoint;
-        const targetModel = isKeylessStep
-            ? ((catalogEntry && catalogEntry.keylessModel) || 'openai-large')
-            : curModel;
+        const targetModel = curModel === '__keyless_openai__'
+            ? 'openai'
+            : (curModel === '__keyless_qwen__'
+                ? 'qwen-coder'
+                : (isKeylessStep ? ((catalogEntry && catalogEntry.keylessModel) || 'openai') : curModel));
 
         const reqHeaders = isKeylessStep
             ? { 'Content-Type': 'application/json' }
@@ -1903,12 +1905,21 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
         }
 
         try {
-            const response = await fetch(targetEndpoint, {
+            let response = await fetch(targetEndpoint, {
                 method: 'POST',
                 headers: reqHeaders,
                 body: JSON.stringify(body),
                 signal: controller.signal
             });
+            for (let retry429 = 0; retry429 < 4 && response.status === 429; retry429++) {
+                await new Promise(r => setTimeout(r, 2600));
+                response = await fetch(targetEndpoint, {
+                    method: 'POST',
+                    headers: reqHeaders,
+                    body: JSON.stringify(body),
+                    signal: controller.signal
+                });
+            }
             clearTimeout(timer);
             if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
 
