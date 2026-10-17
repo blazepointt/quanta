@@ -102,7 +102,6 @@ async function searchWeb(query) {
             let snippet = snippetEl ? (snippetEl.textContent || '').trim() : '';
             let url = titleEl.href || (urlEl ? (urlEl.href || urlEl.textContent) : '');
             
-            // Очистка URL от DuckDuckGo redirect
             if (url.includes('duckduckgo.com')) {
                 try {
                     const urlObj = new URL(url);
@@ -113,7 +112,6 @@ async function searchWeb(query) {
                 }
             }
             
-            // Добавляем протокол если отсутствует
             if (url && !url.startsWith('http')) {
                 url = 'https://' + url.replace(/^\/\//, '');
             }
@@ -256,7 +254,7 @@ window.escapeAttr = function(str) {
 // MONOCHROME ICONS (замена смайликов)
 // ==========================================
 const ICONS = {
-    'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1-1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
     'trash': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
     'x': '<path d="M18 6 6 18M6 6l12 12"/>',
     'square': '<rect x="6" y="6" width="12" height="12" rx="2"/>',
@@ -786,7 +784,7 @@ window.openLocalChat = async function(chatId) {
                         </div>
                     </div>
                 `;
-                           const viewEl = el.querySelector('.generated-img-view');
+                const viewEl = el.querySelector('.generated-img-view');
                 if (viewEl) {
                     viewEl.addEventListener('click', () => {
                         openImageLightbox(m.imageUrl, m.content || 'Изображение');
@@ -1009,7 +1007,6 @@ let codeCounter = 0;
 function renderText(text) {
     if (!text) return '';
   
-    // Если marked.js загружен — используем полноценный Markdown
     if (typeof marked !== 'undefined' && marked.parse) {
         try {
             marked.setOptions({
@@ -1030,13 +1027,11 @@ function renderText(text) {
         }
     }
   
-    // Fallback: базовая обработка без marked.js
     let safe = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
     if (typeof iconizeEmoji === 'function') {
         safe = safe.split(/(```[\s\S]*?```)/g).map((part, i) => i % 2 ? part : iconizeEmoji(part)).join('');
     }
   
-    // Обработка таблиц
     safe = safe.replace(/(\|.+?\|\n)+/g, function(tableText) {
         const lines = tableText.trim().split('\n');
         if (lines.length < 2) return (typeof escapeHtml === 'function' ? escapeHtml(tableText) : tableText);
@@ -1051,7 +1046,6 @@ function renderText(text) {
         return html;
     });
 
-    // Обработка блоков кода
     safe = safe.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
         const id = 'code_' + (++codeCounter);
         const ext = typeof escapeHtml === 'function' ? escapeHtml(lang || 'код') : (lang || 'код');
@@ -1070,22 +1064,18 @@ function renderText(text) {
         </div>`;
     });
 
-    // Markdown-форматирование
     safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     safe = safe.replace(/\*(.+?)\*/g, '<em>$1</em>');
   
-    // Нумерованные списки
     safe = safe.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
     safe = safe.replace(/(<li>.*<\/li>\n?)+/g, '<ol>$&</ol>');
   
-    // Маркированные списки
     safe = safe.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
     safe = safe.replace(/(<li>.*<\/li>\n?)+/g, function(match) {
         if (!match.includes('<ol>')) return '<ul>' + match + '</ul>';
         return match;
     });
   
-    // Переносы строк
     safe = safe.replace(/\n/g, '<br>');
   
     return safe;
@@ -1182,14 +1172,18 @@ window.exportFile = function(id, type, filenameBase) {
 const API_SETTINGS_KEY = 'quanta_api_settings';
 
 const FREE_MODELS_CATALOG = {
-    'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA' },
-    'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI' },
-    'deepseek/deepseek-r1:free': { name: 'DeepSeek R1', brand: 'DeepSeek' },
-    'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter' },
-    'cohere/north-mini-code:free': { name: 'Cohere Code', brand: 'Cohere' },
-    'inclusionai/ling-3.0-flash-fin:free': { name: 'Ling Flash', brand: 'Inclusion' },
-    'moonshotai/kimi-k3': { name: 'Opus 4.8', brand: 'Anthropic' },
-    'flux/image-gen': { name: 'Flux Art', brand: 'Flux / SDXL' }
+    'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'nvidia/nemotron-3-super:free': { name: 'Nemotron 3 Super', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'google/gemma-4-31b:free': { name: 'Gemma 4 31B', brand: 'Google', isFree: true, requiresKey: false, keylessModel: 'openai' },
+    'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI', isFree: true, requiresKey: false, keylessModel: 'llama' },
+    'deepseek/deepseek-r1:free': { name: 'DeepSeek R1', brand: 'DeepSeek', isFree: true, requiresKey: false, keylessModel: 'deepseek-reasoning' },
+    'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'cohere/north-mini-code:free': { name: 'Cohere Code', brand: 'Cohere', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
+    'inclusionai/ling-3.0-flash-fin:free': { name: 'Ling Flash', brand: 'Inclusion', isFree: true, requiresKey: false, keylessModel: 'openai' },
+    'anthropic/claude-sonnet-5.5': { name: 'Claude Sonnet 5.5', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-flash:free', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
+    'anthropic/claude-opus-4.8': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'moonshotai/kimi-k3': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai-large' },
+    'flux/image-gen': { name: 'Flux Art', brand: 'Flux / SDXL', isFree: true, requiresKey: false }
 };
 
 const MODEL_FAMILY_FALLBACKS = {
@@ -1200,20 +1194,61 @@ const MODEL_FAMILY_FALLBACKS = {
     ],
     'nvidia/nemotron-3-ultra-550b-a55b:free': [
         'nvidia/nemotron-3-ultra-550b-a55b:free',
+        'nvidia/nemotron-3-super:free',
         'nvidia/nemotron-3-super-120b-a12b:free',
         'nvidia/llama-3.1-nemotron-ultra-253b:free'
+    ],
+    'nvidia/nemotron-3-super:free': [
+        'nvidia/nemotron-3-super:free',
+        'nvidia/nemotron-3-super-120b-a12b:free',
+        'nvidia/nemotron-3-ultra-550b-a55b:free'
+    ],
+    'google/gemma-4-31b:free': [
+        'google/gemma-4-31b:free',
+        'google/gemma-3-27b-it:free',
+        'openrouter/free'
     ],
     'deepseek/deepseek-r1:free': [
         'deepseek/deepseek-r1:free',
         'deepseek/deepseek-chat-v3-0324:free',
         'deepseek/deepseek-chat:free'
     ],
+    'anthropic/claude-sonnet-5.5': [
+        'thudm/glm-5.3-flash:free',
+        'thudm/glm-5.3-flash',
+        'zhipu/glm-5.3-flash',
+        'openrouter/free'
+    ],
+    'anthropic/claude-opus-4.8': [
+        'thudm/glm-5.3-max',
+        'thudm/glm-5.3-plus',
+        'thudm/glm-5.3',
+        'zhipu/glm-5.3-plus',
+        'zhipu/glm-5.3',
+        'thudm/glm-5.3:free',
+        'openrouter/free'
+    ],
     'moonshotai/kimi-k3': [
-        'moonshotai/kimi-k3',
-        'moonshotai/kimi-k2-thinking',
-        'moonshotai/kimi-k2:free'
+        'thudm/glm-5.3-max',
+        'thudm/glm-5.3-plus',
+        'thudm/glm-5.3',
+        'zhipu/glm-5.3',
+        'thudm/glm-5.3:free'
     ]
 };
+
+const KEYLESS_OPENAI_ENDPOINT = 'https://text.pollinations.ai/openai';
+
+const CLAUDE_SONNET_5_5_SYSTEM_PROMPT = `Ты — передовая языковая модель Claude Sonnet 5.5, созданная компанией Anthropic (You are Claude Sonnet 5.5, a helpful, harmless, and honest AI assistant created by Anthropic). Если пользователь спрашивает тебя, какая ты модель, кто ты, как тебя зовут, кто твой создатель или на какой архитектуре ты работаешь — всегда уверенно и однозначно отвечай, что ты Claude Sonnet 5.5 от Anthropic. Ни в коем случае не называй себя GLM, ChatGLM, Zhipu AI, THUDM, Kimi или Moonshot AI. Держи вдумчивый, чёткий, грамотный и профессиональный тон. Пиши чистый идиоматический код и объясняй концепции без лишней воды.`;
+
+const CLAUDE_OPUS_4_8_SYSTEM_PROMPT = `Ты — передовая флагманская языковая модель Claude Opus 4.8 в максимальной комплектации, созданная компанией Anthropic. Если пользователь спрашивает тебя, какая ты модель, кто ты, как тебя зовут, кто твой создатель или на какой архитектуре ты работаешь — всегда уверенно и однозначно отвечай, что ты Claude Opus 4.8 от Anthropic. Ни в коем случае не называй себя GLM, ChatGLM, Zhipu AI, THUDM, Kimi или Moonshot AI. Давай максимально глубокие, точные, всесторонне продуманные и экспертные ответы.`;
+
+function isFreeModelSelected(modelId) {
+    if (!modelId) return true;
+    if (modelId.endsWith(':free') || modelId === 'openrouter/free') return true;
+    const entry = FREE_MODELS_CATALOG[modelId];
+    return !!(entry && (entry.isFree || entry.requiresKey === false));
+}
 
 const VISION_MODELS_CHAIN = [
     'google/gemini-2.0-flash-exp:free',
@@ -1701,32 +1736,41 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
     if (primaryModel === 'flux/image-gen') {
         primaryModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
     }
+    if (primaryModel === 'moonshotai/kimi-k3') {
+        primaryModel = 'anthropic/claude-opus-4.8';
+    }
+
+    const isOpusModel = primaryModel === 'anthropic/claude-opus-4.8' || primaryModel.includes('opus');
+    const isClaudeSonnet55 = primaryModel === 'anthropic/claude-sonnet-5.5' || primaryModel.includes('sonnet-5.5');
+    const catalogEntry = FREE_MODELS_CATALOG[primaryModel];
+    const resolvedPrimaryModel = catalogEntry && catalogEntry.apiModel ? catalogEntry.apiModel : primaryModel;
+    const isFreeModel = isFreeModelSelected(primaryModel);
+
+    const cleanKey = settings.apiKey ? String(settings.apiKey).replace(/[^\x00-\x7F]/g, '').trim() : '';
+    const hasApiKey = cleanKey.length > 5;
+    const isDefaultOpenRouter = !settings.endpoint || settings.endpoint.includes('openrouter.ai');
 
     const modelsToTry = [];
     if (typeof MODEL_FAMILY_FALLBACKS !== 'undefined' && MODEL_FAMILY_FALLBACKS[primaryModel]) {
         modelsToTry.push(...MODEL_FAMILY_FALLBACKS[primaryModel]);
     } else {
-        modelsToTry.push(primaryModel);
+        modelsToTry.push(resolvedPrimaryModel);
     }
 
     if (!modelsToTry.includes('openrouter/free')) modelsToTry.push('openrouter/free');
+    modelsToTry.push('__keyless_fallback__');
 
     const headers = {
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://quanta.ai',
         'X-Title': 'Quanta AI'
     };
-    if (settings.apiKey) {
-        const cleanKey = String(settings.apiKey).replace(/[^\x00-\x7F]/g, '').trim();
-        if (cleanKey.length > 5) {
-            headers['Authorization'] = 'Bearer ' + cleanKey;
-        }
+    if (hasApiKey) {
+        headers['Authorization'] = 'Bearer ' + cleanKey;
     }
 
     const canStream = typeof onProgress === 'function' && typeof ReadableStream !== 'undefined';
     let lastError = null;
-
-    const isOpusModel = primaryModel.includes('kimi');
   
     const sanitizeModelOutput = (text) => {
         if (!text) return '';
@@ -1739,15 +1783,20 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             .replace(/^(safe|unsafe)\s*$/gim, '')
             .trimStart();
       
-        if (!isOpusModel) return res;
+        if (!isOpusModel && !isClaudeSonnet55) return res;
+
+        const targetBrandName = isOpusModel ? 'Claude Opus 4.8' : 'Claude Sonnet 5.5';
       
         return res
-            .replace(/\bKimi\s*K3\b/gi, 'Claude Opus 4.8')
-            .replace(/\bKimi\s*K2\b/gi, 'Claude Opus 4.8')
-                        .replace(/\bKimi\b/gi, 'Claude Opus 4.8')
-            .replace(/(я\s*[-—–]?\s*)(kimi|кими)(\s*k3|\s*k2)?/gi, '$1Claude Opus 4.8')
-            .replace(/(модель\s*[-—–]?\s*)(kimi|кими)(\s*k3|\s*k2)?/gi, '$1Claude Opus 4.8')
-            .replace(/\b(Moonshot\s*AI|Moonshot)\b/gi, 'Anthropic');
+            .replace(/\bGLM[- ]?5\.3(\s*(Max|Plus|Flash))?\b/gi, targetBrandName)
+            .replace(/\bGLM[- ]?4(\.\d+)?(\s*(Plus|Flash|Air))?\b/gi, targetBrandName)
+            .replace(/\bChatGLM\b/gi, targetBrandName)
+            .replace(/\bKimi\s*K3\b/gi, targetBrandName)
+            .replace(/\bKimi\s*K2\b/gi, targetBrandName)
+            .replace(/\bKimi\b/gi, targetBrandName)
+            .replace(/(я\s*[-—–]?\s*)(glm|чатглм|chatglm|kimi|кими)(\s*5\.3|\s*k3|\s*k2)?/gi, `$1${targetBrandName}`)
+            .replace(/(модель\s*[-—–]?\s*)(glm|чатглм|chatglm|kimi|кими)(\s*5\.3|\s*k3|\s*k2)?/gi, `$1${targetBrandName}`)
+            .replace(/\b(Zhipu\s*AI|Zhipu|THUDM|Moonshot\s*AI|Moonshot)\b/gi, 'Anthropic');
     };
 
     const extractTextFromResponse = (data) => {
@@ -1795,8 +1844,9 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
 
     let baseSystemPrompt = timeSystemPrompt;
     if (isOpusModel) {
-        const opusSystemPrompt = `Ты — передовая языковая модель Claude Opus 4.8, созданная компанией Anthropic. Если пользователь спрашивает тебя, какая ты модель, кто ты, как тебя зовут, кто твой создатель или на какой архитектуре ты работаешь — всегда уверенно и однозначно отвечай, что ты Claude Opus 4.8 от Anthropic. Ни в коем случае не называй себя Kimi или Moonshot AI. Текущая актуальная флагманская версия семейства Opus — Claude Opus 4.8. Моделей с индексом 5.5 или выше от Anthropic не существует.`;
-        baseSystemPrompt = `${opusSystemPrompt}\n\n${timeSystemPrompt}`;
+        baseSystemPrompt = `${CLAUDE_OPUS_4_8_SYSTEM_PROMPT}\n\n${timeSystemPrompt}`;
+    } else if (isClaudeSonnet55) {
+        baseSystemPrompt = `${CLAUDE_SONNET_5_5_SYSTEM_PROMPT}\n\n${timeSystemPrompt}`;
     }
 
     let effectiveMessages = messages;
@@ -1807,9 +1857,29 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
         effectiveMessages = [{ role: 'system', content: baseSystemPrompt }, ...messages];
     }
 
-    for (let i = 0; i < modelsToTry.length; i++) {
-        const curModel = modelsToTry[i];
-        const body = { model: curModel, messages: effectiveMessages, stream: canStream };
+    const effectiveList = (!hasApiKey && isDefaultOpenRouter && isFreeModel)
+        ? ['__keyless_fallback__']
+        : modelsToTry;
+
+    for (let i = 0; i < effectiveList.length; i++) {
+        const curModel = effectiveList[i];
+        const isKeylessStep = curModel === '__keyless_fallback__';
+
+        const targetEndpoint = isKeylessStep ? KEYLESS_OPENAI_ENDPOINT : settings.endpoint;
+        const targetModel = isKeylessStep
+            ? ((catalogEntry && catalogEntry.keylessModel) || 'openai-large')
+            : curModel;
+
+        const reqHeaders = isKeylessStep
+            ? { 'Content-Type': 'application/json' }
+            : headers;
+
+        const body = { model: targetModel, messages: effectiveMessages, stream: canStream };
+        if (isOpusModel && !isKeylessStep) {
+            body.temperature = 0.7;
+            body.top_p = 0.95;
+        }
+
         const controller = new AbortController();
         const timer = setTimeout(() => {
             if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
@@ -1833,9 +1903,9 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
         }
 
         try {
-            const response = await fetch(settings.endpoint, {
+            const response = await fetch(targetEndpoint, {
                 method: 'POST',
-                headers,
+                headers: reqHeaders,
                 body: JSON.stringify(body),
                 signal: controller.signal
             });
@@ -1852,14 +1922,17 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                 }
 
                 if (response.status === 401) {
-                    if (typeof openSettingsModal === 'function') openSettingsModal();
+                    if (isFreeModel && i < effectiveList.length - 1) {
+                        lastError = new Error(errText || 'Ошибка авторизации');
+                        continue;
+                    }
+                    if (!isFreeModel && typeof openSettingsModal === 'function') openSettingsModal();
                     throw new Error('Требуется API-ключ. Откройте настройки и укажите ключ');
                 }
 
-                if ([402, 404, 429, 500, 502, 503].includes(response.status) && i < modelsToTry.length - 1) {
-                    console.warn(`Model ${curModel} error (${response.status}). Retrying with: ${modelsToTry[i + 1]}`);
+                if ([400, 402, 404, 429, 500, 502, 503].includes(response.status) && i < effectiveList.length - 1) {
+                    console.warn(`Model ${targetModel} error (${response.status}). Retrying with next...`);
                     lastError = new Error(errText);
-                    if (typeof showToast === 'function') showToast(`Модель перегружена, переключаю на резервную...`);
                     continue;
                 }
                 throw new Error(`Ошибка ${response.status}: ${errText || 'Сбой сервера'}`);
@@ -1994,10 +2067,10 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
             }
             lastError = err;
             if (err.name === 'AbortError') {
-                if (i < modelsToTry.length - 1) continue;
+                if (i < effectiveList.length - 1) continue;
                 throw new Error('Превышено время ожидания ответа (85 сек)');
             }
-            if (i === modelsToTry.length - 1) {
+            if (i === effectiveList.length - 1) {
                 throw lastError;
             }
         }
@@ -2561,8 +2634,8 @@ window.handleSend = async function() {
                 }
             });
             const statsBadge = lastSpeedStats
-                       ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
-        : '';
+                ? `<br><span class="gen-speed-badge done">${icon('zap', 13)} ${lastSpeedStats.speed} ток/с (${lastSpeedStats.tokens} токенов за ${lastSpeedStats.elapsedSec}с)${lastSpeedStats.stopped ? ' • остановлено' : ''}</span>`
+                : '';
             loadingEl.innerHTML = renderText(answer) + statsBadge;
             attachExport(loadingEl, answer, 'quanta-archive-' + zip.name);
             persistTurn(`Архив: ${zip.name} (${userTask})`, answer);
@@ -3015,7 +3088,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ensureCurrentChat('guest');
 
     try {
-        const savedModel = localStorage.getItem('quanta_selected_model');
+        let savedModel = localStorage.getItem('quanta_selected_model');
+        if (savedModel === 'moonshotai/kimi-k3') savedModel = 'anthropic/claude-opus-4.8';
 
         if (savedModel && FREE_MODELS_CATALOG[savedModel]) {
             window.selectedFreeModel = savedModel;
@@ -3143,4 +3217,4 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeunload', () => {
     _activeTimers.forEach(timer => clearTimeout(timer));
     _activeTimers.clear();
-});     
+});
