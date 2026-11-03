@@ -2280,3 +2280,154 @@ kbd {
 .msg-bubble > .gen-speed-badge { display: flex; width: fit-content; margin-top: 10px; }
 .modal-box.settings-box { height: min(86vh, 780px); }
 @media (max-width: 768px) { .modal-box.settings-box { height: 100%; height: 100dvh; } }
+
+/* ===== Меню моделей: группы, две строки в пункте, подсказка про ключ ===== */
+.model-dropdown-menu { max-height: min(460px, 62dvh); width: min(340px, calc(100vw - 24px)); }
+.model-dropdown-menu.open-down { bottom: auto; top: calc(100% + 8px); }
+.model-group-label {
+    padding: 10px 12px 4px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    user-select: none;
+}
+.model-group-label:first-child { padding-top: 6px; }
+.dropdown-item { align-items: center; }
+.dropdown-item:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.model-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.model-item-text .model-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-item-text .model-item-tag { margin-left: 0; line-height: 1.3; white-space: normal; }
+.dropdown-item.needs-key .model-item-name { color: var(--text-secondary); }
+.dropdown-item.needs-key .model-item-tag { color: #d4a24c; }
+.model-dropdown-note {
+    margin: 8px 4px 4px;
+    padding: 9px 11px;
+    border-radius: 10px;
+    background: #121212;
+    border: 1px solid #262626;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+.model-note-link {
+    display: inline;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #fff;
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+/* ===== Под ответом: модель, которая ответила, и «Размышляет…» ===== */
+.gen-speed-badge { flex-wrap: wrap; max-width: 100%; row-gap: 2px; }
+.gen-model-name { white-space: nowrap; color: var(--text-secondary); }
+.ws-thinking .ws-loading-label { color: var(--text-secondary); }
+.ws-thinking .gen-model-name { color: var(--text-muted); }
+
+/* ===== Панель параметров картинки (режим «Картинки») ===== */
+.img-options-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+}
+.img-options-bar[hidden] { display: none; }
+.img-opt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-width: 0; }
+.img-opt-row[hidden] { display: none; }
+.img-opt-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    margin-right: 2px;
+}
+.img-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    min-width: 0;
+}
+.img-opt select,
+.img-opt input[type="text"] {
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.8rem;
+    padding: 5px 8px;
+    min-height: 32px;
+    min-width: 0;
+    max-width: 100%;
+}
+.img-opt select:focus,
+.img-opt input[type="text"]:focus { outline: none; border-color: #6a6a6a; }
+.img-opt-check { cursor: pointer; user-select: none; }
+.img-opt-check input { width: 16px; height: 16px; accent-color: #fff; cursor: pointer; margin: 0; }
+.img-opt-wide { flex: 1 1 240px; }
+.img-opt-wide input { flex: 1; width: 100%; }
+.img-opt-seed input { width: 110px; }
+.img-opt-more,
+.img-opt-close {
+    border: 1px solid var(--border-light);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 999px;
+    font-size: 0.76rem;
+    min-height: 30px;
+    padding: 4px 11px;
+    cursor: pointer;
+}
+.img-opt-more:hover, .img-opt-close:hover, .img-opt-more.active { color: #fff; border-color: #5a5a5a; background: var(--bg-hover); }
+.img-opt-close { margin-left: auto; width: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+
+/* ===== Карточка картинки: формат, параметры, промпт ===== */
+.generated-img-card .img-skeleton { aspect-ratio: var(--img-ratio, 1 / 1); max-height: min(520px, 62vh); }
+.generated-img-meta { font-size: 0.74rem; color: var(--text-muted); line-height: 1.4; font-family: 'JetBrains Mono', monospace; }
+.img-prompt-details { font-size: 0.78rem; color: var(--text-secondary); }
+.img-prompt-details > summary { cursor: pointer; color: var(--text-muted); user-select: none; width: fit-content; }
+.img-prompt-details > summary:hover { color: #fff; }
+.img-prompt-details[open] > summary { margin-bottom: 8px; }
+.img-prompt-text {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    user-select: text;
+}
+.img-prompt-neg { margin-top: 6px; line-height: 1.45; word-break: break-word; }
+.img-prompt-copy { margin-top: 8px; padding: 6px 11px; min-height: 32px; font-size: 0.78rem; }
+
+/* Инструкция «как получить ключ» */
+.set-steps { margin: 0 0 12px; padding-left: 20px; font-size: 0.8rem; line-height: 1.55; color: var(--text-secondary); }
+.set-steps li { margin: 3px 0; }
+.set-steps a { color: #fff; }
+
+@media (max-width: 768px) {
+    .img-options-bar { padding: 8px; border-radius: 12px; }
+    .img-opt-title { display: none; }
+    .img-opt > span { display: none; }
+    .img-opt-check > span, .img-opt-wide > span, .img-opt-seed > span { display: inline; }
+    .img-opt.img-opt-select { flex: 1 1 40%; flex-direction: column; align-items: stretch; gap: 3px; }
+    .img-opt.img-opt-select > span { display: block; font-size: 0.7rem; line-height: 1.1; color: var(--text-muted); padding-left: 2px; }
+    .img-opt-select select { width: 100%; }
+    .img-opt select, .img-opt input[type="text"] { font-size: 16px; min-height: 36px; }
+    .img-opt-row { gap: 6px 8px; }
+    .img-opt-seed input { width: 124px; }
+    .generated-img-btns .img-action-btn { padding: 7px 11px; }
+}

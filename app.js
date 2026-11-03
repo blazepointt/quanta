@@ -257,6 +257,15 @@ function friendlyErrorText(m) {
     if (/missing or insufficient permissions|permission.denied/i.test(m)) {
         return 'Облако отклонило запрос: в Firebase нужно обновить правила Firestore (см. README)';
     }
+    if (/reached its budget|raise the key budget|isn['’]t on the Classic API/i.test(m)) {
+        return 'Бесплатный резервный сервис (Pollinations) сейчас недоступен. Попробуйте позже или добавьте бесплатный ключ OpenRouter в Настройках → API' + code;
+    }
+    if (/image input|vision|multimodal|does not support image/i.test(m) && /image|vision/i.test(m)) {
+        return 'Эта модель не умеет смотреть фото. Выберите Gemma 4 31B или «Автовыбор» (нужен бесплатный ключ OpenRouter)' + code;
+    }
+    if (/no endpoints found|model.*(?:not found|does not exist|is not a valid model)/i.test(m)) {
+        return 'Модель сейчас недоступна у провайдера. Выберите другую модель в списке' + code;
+    }
     if (/per.?day|daily/i.test(m) && /limit/i.test(m)) {
         return 'Исчерпан дневной лимит бесплатных запросов у провайдера. Попробуйте позже, выберите другую модель или укажите свой API-ключ в Настройках → API' + code;
     }
@@ -361,7 +370,11 @@ const DEFAULT_PREFS = Object.freeze({
     voiceAutoSend: false,
     contextDepth: 20,
     contextDigest: true,
-    temperature: 'auto'
+    temperature: 'auto',
+    imgAspect: 'auto',
+    imgStyle: 'auto',
+    imgEnhance: true,
+    imgNegative: ''
 });
 const PREF_ENUMS = {
     sendKey: ['enter', 'ctrlEnter'],
@@ -369,8 +382,11 @@ const PREF_ENUMS = {
     chatWidth: ['narrow', 'normal', 'wide'],
     voiceLang: ['ru-RU', 'be-BY', 'uk-UA', 'en-US', 'de-DE', 'pl-PL', 'kk-KZ'],
     contextDepth: [6, 10, 20, 40, 80],
-    temperature: ['auto', '0.2', '0.5', '0.7', '1.0']
+    temperature: ['auto', '0.2', '0.5', '0.7', '1.0'],
+    imgAspect: ['auto', '1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9'],
+    imgStyle: ['auto', 'photo', 'cinematic', 'anime', 'art', '3d', 'oil', 'watercolor', 'pixel', 'sketch', 'comic', 'fantasy', 'cyberpunk', 'minimal', 'logo']
 };
+const PREF_STRINGS = { imgNegative: 300 };
 const FONT_SIZE_MAP = { small: '0.88rem', normal: '0.95rem', large: '1.05rem', xlarge: '1.16rem' };
 const CHAT_WIDTH_MAP = { narrow: '760px', normal: '960px', wide: '1240px' };
 
@@ -385,6 +401,8 @@ function normalizePrefs(raw) {
         } else if (PREF_ENUMS[k]) {
             const val = typeof def === 'number' ? Number(raw[k]) : String(raw[k]);
             if (PREF_ENUMS[k].includes(val)) out[k] = val;
+        } else if (PREF_STRINGS[k]) {
+            if (typeof raw[k] === 'string') out[k] = raw[k].replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, PREF_STRINGS[k]);
         }
     });
     return out;
@@ -1810,6 +1828,7 @@ function renderStoredMessages(messages) {
                 const safeDisplay = escapeHtml(m.content || 'Изображение');
                 const safeUrl = escapeAttr(m.imageUrl);
                 const genId = 'img_hist_' + Math.floor(Math.random() * 1000000);
+                const variant = imageVariantFromUrl(m.imageUrl);
                 const el = addMessage('ai', '');
                 el.innerHTML = `
                     <div class="generated-img-card" id="${genId}">
@@ -1825,6 +1844,7 @@ function renderStoredMessages(messages) {
                             <div class="generated-img-btns">
                                 <button class="img-action-btn img-action-btn-primary" data-download-img="${safeUrl}" data-download-name="quanta-${genId}.jpg">${icon('download')} Скачать</button>
                                 <button class="img-action-btn" data-lightbox-img="${safeUrl}" data-lightbox-caption="${safeDisplay}">${icon('maximize')} На весь экран</button>
+                                ${variant ? `<button class="img-action-btn" data-variant-img title="Тот же промпт, другая случайная картинка">${icon('shuffle')} Ещё вариант</button>` : ''}
                             </div>
                         </div>
                     </div>
@@ -1844,6 +1864,9 @@ function renderStoredMessages(messages) {
                     btn.addEventListener('click', () => {
                         openImageLightbox(btn.dataset.lightboxImg, btn.dataset.lightboxCaption);
                     });
+                });
+                el.querySelectorAll('[data-variant-img]').forEach(btn => {
+                    btn.addEventListener('click', () => startImageGeneration(m.content || 'Изображение', variant));
                 });
             } else if (m.role === 'assistant') {
                 const el = addMessage('ai', renderText(m.content));
@@ -2759,13 +2782,20 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+function speedBadgeModel(prog) {
+    return prog && prog.model ? ` • <span class="gen-model-name">${escapeHtml(String(prog.model).slice(0, 60))}</span>` : '';
+}
 function speedBadgeLiveHtml(prog) {
+    if (prog.thinking && !String(prog.text || '').trim()) {
+        return '<div class="ws-loading ws-thinking"><span class="typing-dots" role="status" aria-label="Модель размышляет"><i></i><i></i><i></i></span>' +
+            `<span class="ws-loading-label">Размышляет…${prog.elapsedSec ? ' ' + escapeHtml(String(prog.elapsedSec)) + ' с' : ''}${speedBadgeModel(prog)}</span></div>`;
+    }
     return `<span class="gen-speed-badge ${prog.isDone ? 'done' : 'live'}"><span class="gen-speed-pulse"></span>` +
-        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов</span></span>`;
+        `<span class="gen-speed-text">${icon('zap', 13)} ${prog.speed} ток/с • ${prog.tokens} токенов${speedBadgeModel(prog)}</span></span>`;
 }
 function speedBadgeDoneHtml(prog) {
     return prog
-        ? `<span class="gen-speed-badge done">${icon('zap', 13)} ${prog.speed} ток/с (${prog.tokens} токенов за ${prog.elapsedSec}с)${prog.stopped ? ' • остановлено' : ''}</span>`
+        ? `<span class="gen-speed-badge done">${icon('zap', 13)} ${prog.speed} ток/с (${prog.tokens} токенов за ${prog.elapsedSec}с)${speedBadgeModel(prog)}${prog.stopped ? ' • остановлено' : ''}</span>`
         : '';
 }
 
@@ -2940,91 +2970,321 @@ window.addEventListener('pagehide', () => Speech.stop());
 // ==========================================
 const API_SETTINGS_KEY = 'quanta_api_settings';
 
-const FREE_MODELS_CATALOG = {
-    'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'nvidia/nemotron-3-super:free': { name: 'Nemotron 3 Super', brand: 'NVIDIA', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'google/gemma-4-31b:free': { name: 'Gemma 4 31B', brand: 'Google', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'meta-llama/llama-3.3-70b-instruct:free': { name: 'Llama 3.3 70B', brand: 'Meta AI', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'deepseek/deepseek-r1:free': { name: 'DeepSeek R1', brand: 'DeepSeek', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
-    'openrouter/free': { name: 'Автовыбор (Free Router)', brand: 'OpenRouter', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'cohere/north-mini-code:free': { name: 'Cohere Code', brand: 'Cohere', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
-    'inclusionai/ling-3.0-flash-fin:free': { name: 'Ling Flash', brand: 'Inclusion', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'anthropic/claude-sonnet-5.5': { name: 'Claude Sonnet 5.5', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-flash:free', isFree: true, requiresKey: false, keylessModel: 'qwen-coder' },
-    'anthropic/claude-opus-4.8': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'moonshotai/kimi-k3': { name: 'Opus 4.8', brand: 'Anthropic', apiModel: 'thudm/glm-5.3-max', isFree: true, requiresKey: false, keylessModel: 'openai' },
-    'flux/image-gen': { name: 'Flux Art', brand: 'Flux / SDXL', isFree: true, requiresKey: false }
-};
-
-const MODEL_FAMILY_FALLBACKS = {
-    'meta-llama/llama-3.3-70b-instruct:free': [
-        'meta-llama/llama-3.3-70b-instruct:free',
-        'meta-llama/llama-4-scout:free',
-        'meta-llama/llama-3.1-70b-instruct:free'
-    ],
-    'nvidia/nemotron-3-ultra-550b-a55b:free': [
-        'nvidia/nemotron-3-ultra-550b-a55b:free',
-        'nvidia/nemotron-3-super:free',
-        'nvidia/nemotron-3-super-120b-a12b:free',
-        'nvidia/llama-3.1-nemotron-ultra-253b:free'
-    ],
-    'nvidia/nemotron-3-super:free': [
-        'nvidia/nemotron-3-super:free',
-        'nvidia/nemotron-3-super-120b-a12b:free',
-        'nvidia/nemotron-3-ultra-550b-a55b:free'
-    ],
-    'google/gemma-4-31b:free': [
-        'google/gemma-4-31b:free',
-        'google/gemma-3-27b-it:free',
-        'openrouter/free'
-    ],
-    'deepseek/deepseek-r1:free': [
-        'deepseek/deepseek-r1:free',
-        'deepseek/deepseek-chat-v3-0324:free',
-        'deepseek/deepseek-chat:free'
-    ],
-    'anthropic/claude-sonnet-5.5': [
-        'thudm/glm-5.3-flash:free',
-        'thudm/glm-5.3-flash',
-        'zhipu/glm-5.3-flash',
-        'openrouter/free'
-    ],
-    'anthropic/claude-opus-4.8': [
-        'thudm/glm-5.3-max',
-        'thudm/glm-5.3-plus',
-        'thudm/glm-5.3',
-        'zhipu/glm-5.3-plus',
-        'zhipu/glm-5.3',
-        'thudm/glm-5.3:free',
-        'openrouter/free'
-    ],
-    'moonshotai/kimi-k3': [
-        'thudm/glm-5.3-max',
-        'thudm/glm-5.3-plus',
-        'thudm/glm-5.3',
-        'zhipu/glm-5.3',
-        'thudm/glm-5.3:free'
-    ]
-};
-
+// ==========================================
+// МОДЕЛИ: честный каталог с настоящими названиями и идентификаторами OpenRouter.
+// Без ключа текстовые запросы обрабатывает бесплатный сервис Pollinations (открытая модель GPT-OSS 20B от OpenAI).
+// Бесплатный ключ OpenRouter открывает модели группы «free»; для платных нужен баланс на OpenRouter.
+// ==========================================
+const KEYLESS_MODEL_ID = 'pollinations/gpt-oss';
+const IMAGE_MODE_ID = 'flux/image-gen';           // старый идентификатор режима картинок оставлен для совместимости
+const DEFAULT_KEY_MODEL_ID = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 const KEYLESS_OPENAI_ENDPOINT = 'https://text.pollinations.ai/openai';
+const KEYLESS_MODEL_LABEL = 'GPT-OSS 20B';
+const MODEL_CATALOG_VERSION = '2';
 
-const CLAUDE_SONNET_5_5_SYSTEM_PROMPT = `Ты — передовая языковая модель Claude Sonnet 5.5, созданная компанией Anthropic (You are Claude Sonnet 5.5, a helpful, harmless, and honest AI assistant created by Anthropic). Если пользователь спрашивает тебя, какая ты модель, кто ты, как тебя зовут, кто твой создатель или на какой архитектуре ты работаешь — всегда уверенно и однозначно отвечай, что ты Claude Sonnet 5.5 от Anthropic. Ни в коем случае не называй себя GLM, ChatGLM, Zhipu AI, THUDM, Kimi или Moonshot AI. Держи вдумчивый, чёткий, грамотный и профессиональный тон. Пиши чистый идиоматический код и объясняй концепции без лишней воды.`;
+const MODEL_GROUPS = [
+    { id: 'keyless', label: 'Без ключа' },
+    { id: 'free', label: 'Бесплатно с ключом OpenRouter' },
+    { id: 'paid', label: 'Платные — нужен баланс OpenRouter' }
+];
 
-const CLAUDE_OPUS_4_8_SYSTEM_PROMPT = `Ты — передовая флагманская языковая модель Claude Opus 4.8 в максимальной комплектации, созданная компанией Anthropic. Если пользователь спрашивает тебя, какая ты модель, кто ты, как тебя зовут, кто твой создатель или на какой архитектуре ты работаешь — всегда уверенно и однозначно отвечай, что ты Claude Opus 4.8 от Anthropic. Ни в коем случае не называй себя GLM, ChatGLM, Zhipu AI, THUDM, Kimi или Moonshot AI. Давай максимально глубокие, точные, всесторонне продуманные и экспертные ответы.`;
+const FREE_MODELS_CATALOG = {
+    'pollinations/gpt-oss': { name: 'GPT-OSS 20B', brand: 'OpenAI, через Pollinations', group: 'keyless', tag: 'Работает без ключа', isFree: true, keyless: true, keylessModel: 'openai' },
+    'flux/image-gen': { name: 'Картинки', brand: 'Pollinations', group: 'keyless', tag: 'Генерация изображений', isFree: true, image: true },
+    'nvidia/nemotron-3-ultra-550b-a55b:free': { name: 'Nemotron 3 Ultra', brand: 'NVIDIA', group: 'free', tag: 'Умная, длинный контекст', isFree: true },
+    'nvidia/nemotron-3.5-lightning:free': { name: 'Nemotron 3.5 Lightning', short: 'Nemotron Lightning', brand: 'NVIDIA', group: 'free', tag: 'Быстрая', isFree: true },
+    'google/gemma-4-31b-it:free': { name: 'Gemma 4 31B', brand: 'Google', group: 'free', tag: 'Понимает фото', isFree: true, vision: true },
+    'cohere/north-mini-code:free': { name: 'North Mini Code', brand: 'Cohere', group: 'free', tag: 'Для кода', isFree: true },
+    'openrouter/free': { name: 'Автовыбор', brand: 'OpenRouter', group: 'free', tag: 'Любая свободная бесплатная', isFree: true, router: true },
+    'moonshotai/kimi-k3': { name: 'Kimi K3', brand: 'Moonshot AI', group: 'paid', tag: 'Сильна в коде', isFree: false },
+    'qwen/qwen3-coder': { name: 'Qwen3 Coder', brand: 'Alibaba Qwen', group: 'paid', tag: 'Специалист по коду', isFree: false },
+    'z-ai/glm-5.3': { name: 'GLM 5.3', brand: 'Z.ai', group: 'paid', tag: 'Умная и недорогая', isFree: false },
+    'deepseek/deepseek-v4-flash': { name: 'DeepSeek V4 Flash', brand: 'DeepSeek', group: 'paid', tag: 'Быстрая и дешёвая', isFree: false }
+};
+
+// Запасные модели того же семейства (дальше движок сам добавит openrouter/free и бесплатный резерв)
+const MODEL_FAMILY_FALLBACKS = {
+    'nvidia/nemotron-3-ultra-550b-a55b:free': ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3.5-lightning:free'],
+    'nvidia/nemotron-3.5-lightning:free': ['nvidia/nemotron-3.5-lightning:free', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
+    'google/gemma-4-31b-it:free': ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free'],
+    'cohere/north-mini-code:free': ['cohere/north-mini-code:free', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
+    'moonshotai/kimi-k3': ['moonshotai/kimi-k3', 'moonshotai/kimi-k2.6'],
+    'qwen/qwen3-coder': ['qwen/qwen3-coder', 'qwen/qwen3-coder-next'],
+    'z-ai/glm-5.3': ['z-ai/glm-5.3', 'z-ai/glm-5.3-flash'],
+    'deepseek/deepseek-v4-flash': ['deepseek/deepseek-v4-flash', 'deepseek/deepseek-v4.1-flash']
+};
+
+// Модели, которые видят изображения (бесплатные, с ключом OpenRouter)
+const VISION_MODELS_CHAIN = [
+    'google/gemma-4-31b-it:free',
+    'nvidia/nemotron-3.5-super-vl:free',
+    'google/gemma-4-26b-a4b-it:free',
+    'openrouter/free'
+];
+
+// Старые пункты меню: «Claude Sonnet 5.5» и «Opus 4.8» на самом деле были GLM/Kimi/Qwen под чужим именем,
+// часть бесплатных моделей OpenRouter больше не существует. Пустая строка — модель по умолчанию.
+const LEGACY_MODEL_IDS = {
+    'anthropic/claude-sonnet-5.5': '',
+    'anthropic/claude-opus-4.8': '',
+    'nvidia/nemotron-3-super:free': 'nvidia/nemotron-3-ultra-550b-a55b:free',
+    'google/gemma-4-31b:free': 'google/gemma-4-31b-it:free',
+    'meta-llama/llama-3.3-70b-instruct:free': '',
+    'deepseek/deepseek-r1:free': '',
+    'inclusionai/ling-3.0-flash-fin:free': ''
+};
+
+function isOpenRouterEndpoint(endpoint) {
+    return !endpoint || /openrouter\.ai/i.test(String(endpoint));
+}
+
+function hasUsableApiKey(settings) {
+    const s = settings || getApiSettings();
+    return !!(s && s.apiKey && cleanApiKey(s.apiKey).length > 5);
+}
+
+// Есть ли у пользователя ключ OpenRouter (тогда работают модели из списка, а не только бесплатный резерв)
+function hasOpenRouterKey() {
+    const s = getApiSettings();
+    return isOpenRouterEndpoint(s.endpoint) && hasUsableApiKey(s);
+}
+
+function isCustomProviderActive() {
+    const s = getApiSettings();
+    return !isOpenRouterEndpoint(s.endpoint);
+}
+
+function defaultModelId() {
+    return hasOpenRouterKey() ? DEFAULT_KEY_MODEL_ID : KEYLESS_MODEL_ID;
+}
+
+function resolveModelId(id) {
+    if (!id) return '';
+    if (Object.prototype.hasOwnProperty.call(LEGACY_MODEL_IDS, id)) return LEGACY_MODEL_IDS[id] || defaultModelId();
+    return String(id);
+}
 
 function isFreeModelSelected(modelId) {
     if (!modelId) return true;
     if (modelId.endsWith(':free') || modelId === 'openrouter/free') return true;
     const entry = FREE_MODELS_CATALOG[modelId];
-    return !!(entry && (entry.isFree || entry.requiresKey === false));
+    return !!(entry && entry.isFree);
 }
 
-const VISION_MODELS_CHAIN = [
-    'google/gemini-2.0-flash-exp:free',
-    'meta-llama/llama-3.2-11b-vision-instruct:free',
-    'inclusionai/ling-3.0-flash-vl:free',
-    'openrouter/free'
-];
+function modelShortName(id) {
+    const e = FREE_MODELS_CATALOG[id];
+    return e ? (e.short || e.name) : displayModelName(id);
+}
+
+// Человеческое название модели по её идентификатору (в том числе из ответа сервера)
+function displayModelName(id) {
+    if (!id) return '';
+    const raw = String(id).trim();
+    const entry = FREE_MODELS_CATALOG[raw] || FREE_MODELS_CATALOG[raw + ':free'] || FREE_MODELS_CATALOG[raw.replace(/:free$/, '')];
+    if (entry && !entry.router && !entry.keyless && !entry.image) return entry.name;
+    if (/^(?:gpt-oss(?:-20b)?|openai-fast|openai|ovh-reasoning)$/i.test(raw)) return KEYLESS_MODEL_LABEL;
+    if (raw === 'openrouter/free') return 'Автовыбор OpenRouter';
+    return raw.replace(/^[^/]+\//, '').replace(/:free$/, '').slice(0, 60);
+}
+
+// ---------- Что модель знает о себе: честно, без чужих брендов ----------
+function buildIdentityPrompt(step) {
+    let who = '';
+    let name = '';
+    if (step.kind === 'keyless') {
+        name = KEYLESS_MODEL_LABEL;
+        who = `Сейчас ответы генерирует открытая модель ${KEYLESS_MODEL_LABEL} от OpenAI через бесплатный сервис Pollinations.`;
+    } else if (step.kind === 'custom') {
+        name = String(step.model || '').slice(0, 80);
+        who = `Сейчас ответы генерирует модель «${name}» у провайдера, которого подключил пользователь.`;
+    } else if (step.model === 'openrouter/free') {
+        who = 'Сейчас ответ генерирует одна из бесплатных моделей OpenRouter, выбранная автоматически. Если спросят, на какой модели ты работаешь, назови свою модель, только если точно знаешь; иначе скажи, что это одна из бесплатных моделей OpenRouter.';
+    } else {
+        const e = FREE_MODELS_CATALOG[step.model];
+        name = displayModelName(step.model);
+        who = `Сейчас ответы генерирует модель ${name}${e && e.brand ? ' от ' + e.brand : ''} (через OpenRouter).`;
+    }
+    return `Ты — Quanta AI, ИИ-ассистент сайта Quanta. ${who} Если спросят, кто ты или на какой модели работаешь, отвечай честно: ты Quanta AI${name ? ' на базе ' + name : ''}. Не называй себя другой моделью (Claude, ChatGPT, Gemini и т.п.) и не приписывай себе другого создателя.`;
+}
+
+const ANSWER_RULES_PROMPT = `[Как отвечать]
+- Отвечай на языке последнего сообщения пользователя, если в персонализации не указан другой язык. Пиши грамотно и естественно. Не вставляй иероглифы (китайские, японские, корейские) и случайные слова других языков, если пользователь сам об этом не просит.
+- Сначала главное, потом детали. На простой вопрос отвечай коротко; на сложный — структурно: заголовки, списки, таблицы, шаги.
+- Не выдумывай факты, цифры, цитаты, ссылки, функции и библиотеки. Если не уверен или данных не хватает, честно скажи об этом и подскажи, как проверить.
+- Сложные задачи (логика, расчёты, анализ, отладка) решай по шагам и проверяй результат перед ответом.
+- Формулы пиши обычным текстом с символами Unicode (×, ÷, √, ², ≤, π), без LaTeX: сайт не отображает LaTeX.`;
+
+const CODE_RULES_PROMPT = `[Код и программирование]
+- Давай полный рабочий код без заглушек («...», «остальной код без изменений», TODO), если пользователь не просил только фрагмент. Не обрывай код на середине.
+- Каждый блок кода оформляй в Markdown с указанием языка (\`\`\`python, \`\`\`html и т.д.). Если файлов несколько, перед каждым блоком укажи имя файла.
+- Перед кодом коротко опиши решение (1–3 предложения), после — как запустить и проверить: команды, зависимости, версии.
+- Пиши современный идиоматичный код: понятные имена, обработка ошибок и крайних случаев, без устаревших API. Не придумывай несуществующие функции, параметры и пакеты.
+- Безопасность: не вписывай секреты в код, используй параметризованные SQL-запросы, проверяй и экранируй пользовательский ввод.
+- При исправлении ошибки назови причину, покажи исправленный код и объясни, почему теперь работает.
+- Если требования неоднозначны, выбери разумный вариант и явно назови допущение, не засыпай пользователя вопросами.
+- Если пользователь новичок, объясняй простыми словами и по шагам: куда вставить код, как сохранить файл, как запустить.`;
+
+const MATH_RULES_PROMPT = `[Математика и расчёты]
+- Решай по шагам, показывай ключевые преобразования и промежуточные значения.
+- Проверяй ответ (подстановкой, оценкой порядка, единицами измерения) и выделяй итог отдельной строкой.`;
+
+function buildTimePrompt() {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return `[Системный контекст времени]
+Текущая дата: ${dateStr} (год: ${now.getFullYear()}, время: ${timeStr}). Опирайся на неё в вопросах о дате, дне недели и годе. Твои знания могут быть старше этой даты: о более свежих событиях говори осторожно или предложи включить веб-поиск.`;
+}
+
+function buildAssistantSystemPrompt(step, task) {
+    const parts = [buildIdentityPrompt(step), ANSWER_RULES_PROMPT];
+    if (task === 'code') parts.push(CODE_RULES_PROMPT);
+    if (task === 'math') parts.push(MATH_RULES_PROMPT);
+    parts.push(buildTimePrompt());
+    return parts.join('\n\n');
+}
+
+// ---------- Тип задачи: код / математика / обычный вопрос ----------
+const TASK_CODE_RE = /```|<\/?(?:html|div|script|style|body|head|span|button|input|form|table)\b|\b(?:function|def|class|import|const|let|var|return|public|static|void|async|await|console\.log|printf?|#include|elif|lambda|SELECT|INSERT|UPDATE|DELETE)\b[\s(<{:=]|=>|\);|\bnpm\b|\bpip\b|\bgit\b/;
+const TASK_CODE_WORD_RE = /(?:^|[^а-яё])(?:код[а-яё]*|скрипт[а-яё]*|программ[а-яё]*|функци[а-яё]*|переменн[а-яё]*|массив[а-яё]*|алгоритм[а-яё]*|баг[а-яё]*|отлад[а-яё]*|рефактор[а-яё]*|компил[а-яё]*|верст[а-яё]*|вёрст[а-яё]*|бот[а-яё]*|парсер[а-яё]*|регуляр[а-яё]*|питон[а-яё]*|джаваскрипт[а-яё]*|сайт[а-яё]*|приложени[а-яё]*|базу данных|база данных|запрос[а-яё]* sql)(?![а-яё])|\b(?:code|coding|script|program|programming|function|bug|debug|compile|refactor|algorithm|regex|api|sql|html|css|javascript|typescript|python|java|kotlin|swift|rust|golang|php|ruby|react|vue|angular|node\.?js|django|flask|fastapi|docker|kubernetes|bash|powershell|json|yaml|c\+\+|c#)\b/i;
+const TASK_MATH_RE = /(?:^|[^а-яё])(?:реши(?:ть|те)?|вычисли(?:ть|те)?|посчитай(?:те)?|докажи(?:те)?|уравнени[а-яё]*|интеграл[а-яё]*|производн[а-яё]*|предел[а-яё]*|матриц[а-яё]*|вероятност[а-яё]*|теорем[а-яё]*|логарифм[а-яё]*|синус[а-яё]*|косинус[а-яё]*|дроб[а-яё]*|процент[а-яё]*|сколько\s+будет|задач[а-яё]* по (?:математике|физике|химии|алгебре|геометрии))(?![а-яё])|\b(?:solve|calculate|equation|integral|derivative|probability|prove|theorem)\b|\d\s*[+\-*/^×÷]\s*\(?\d|\d\s*=\s*[a-zа-я]|\d\s*%\s*(?:от|of)\s*\d|[a-zа-я]\s*[\^²³]\s*\d?/i;
+
+function detectTaskKind(text) {
+    const t = String(text || '').slice(0, 20000);
+    if (!t.trim()) return 'general';
+    if (TASK_CODE_RE.test(t) || TASK_CODE_WORD_RE.test(t)) return 'code';
+    if (TASK_MATH_RE.test(t)) return 'math';
+    return 'general';
+}
+
+function contentToText(content) {
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) return content.map(p => (p && typeof p.text === 'string') ? p.text : '').join('\n');
+    return content == null ? '' : String(content);
+}
+
+function lastUserText(messages) {
+    for (let i = (messages || []).length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m && m.role === 'user') return contentToText(m.content);
+    }
+    return '';
+}
+
+function messagesHaveImages(messages) {
+    return (messages || []).some(m => m && Array.isArray(m.content) && m.content.some(p => p && p.type === 'image_url'));
+}
+
+// ---------- Случайные иероглифы посреди русского/английского текста ----------
+const CJK_CHARS = '\\u2E80-\\u2FDF\\u3005-\\u3007\\u3021-\\u3029\\u3040-\\u30FF\\u3100-\\u312F\\u3131-\\u318E\\u31A0-\\u31BF\\u31F0-\\u31FF\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uA960-\\uA97F\\uAC00-\\uD7AF\\uF900-\\uFAFF\\uFF66-\\uFF9F';
+const CJK_ANY_RE = new RegExp('[' + CJK_CHARS + ']');
+const CJK_GLOBAL_RE = new RegExp('[' + CJK_CHARS + ']', 'g');
+const CJK_RUN_RE = new RegExp('[ \\t]*[' + CJK_CHARS + ']+(?:[ \\t·・]*[' + CJK_CHARS + ']+)*[ \\t]*', 'g');
+const CJK_PUNCT_RE = /[，。：；！？（）、「」『』【】～　]/g;
+const CJK_PUNCT_MAP = { '，': ', ', '。': '. ', '：': ': ', '；': '; ', '！': '! ', '？': '? ', '（': ' (', '）': ') ', '、': ', ', '「': '«', '」': '»', '『': '«', '』': '»', '【': '[', '】': ']', '～': '~', '　': ' ' };
+const CJK_LANG_HINT_RE = /китайск|японск|корейск|иероглиф|кандзи|канджи|хираган|катакан|пиньин|хангыль|chinese|japanese|korean|mandarin|cantonese|kanji|hanzi|hiragana|katakana|pinyin|hangul/i;
+
+function messagesAllowCJK(messages) {
+    let seen = 0;
+    for (let i = (messages || []).length - 1; i >= 0 && seen < 3; i--) {
+        const m = messages[i];
+        if (!m || m.role !== 'user') continue;
+        seen++;
+        const t = contentToText(m.content);
+        if (CJK_ANY_RE.test(t) || CJK_LANG_HINT_RE.test(t)) return true;
+    }
+    return false;
+}
+
+function stripStrayCJK(text) {
+    if (!text || (!CJK_ANY_RE.test(text) && !/[，。：；！？（）、「」『』【】～　]/.test(text))) return text;
+    const cjk = (text.match(CJK_GLOBAL_RE) || []).length;
+    const letters = (text.match(/[A-Za-zА-Яа-яЁё]/g) || []).length;
+    if (cjk > 0.15 * (cjk + letters)) return text; // ответ целиком на китайском/японском — это не «случайные» иероглифы
+    // Блоки кода не трогаем
+    const parts = text.split(/(```[\s\S]*?(?:```|$)|`[^`\n]*`)/);
+    return parts.map((seg, i) => {
+        if (i % 2 === 1) return seg;
+        let s = seg.replace(CJK_PUNCT_RE, ch => CJK_PUNCT_MAP[ch] || ch);
+        s = s.replace(CJK_RUN_RE, '\u0000');
+        return s
+            .replace(/^\u0000+/gm, '')
+            .replace(/\u0000+$/gm, '')
+            .replace(/\u0000+(?=[,.;:!?)\]»])/g, '')
+            .replace(/([(\[«])\u0000+/g, '$1')
+            .replace(/\u0000+/g, ' ');
+    }).join('');
+}
+
+// ---------- Служебные тексты бесплатного сервиса вместо ответа ----------
+const PROVIDER_NOTICE_RE = /(?:API key used for this request has reached its budget|raise the key budget|isn['’]t on the Classic API|enter\.pollinations\.ai)/i;
+
+function isProviderNoticeText(text) {
+    const t = String(text || '').trim();
+    return !!t && t.length < 700 && PROVIDER_NOTICE_RE.test(t);
+}
+
+function stripProviderAds(text) {
+    const m = /(?:^|\n)[ \t]*(?:(?:-{3,}|\*{3,}|_{3,})[ \t]*\n+[\s\S]{0,120}?)?[^\n]*(?:🌸\s*\**\s*Ad\b|\*\*Support Pollinations|Powered by Pollinations)[\s\S]*$/i.exec(text);
+    if (m && text.length - m.index < 900) return text.slice(0, m.index).replace(/\s+$/, '');
+    return text;
+}
+
+function stripThinkBlocks(text) {
+    let t = text.replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>\s*/gi, '');
+    const open = t.search(/<think(?:ing)?>/i);
+    if (open !== -1) t = t.slice(0, open); // размышления ещё печатаются — покажем ответ, когда начнётся
+    return t;
+}
+
+function sanitizeModelOutput(text, ctx = {}) {
+    if (!text) return '';
+    let res = String(text)
+        .replace(/^Response Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
+        .replace(/User Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
+        .replace(/Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
+        .replace(/\[SAFETY: (SAFE|UNSAFE)\][\r\n]*/gi, '')
+        .replace(/<point>[\s\S]*?<\/point>/gi, '')
+        .replace(/^(safe|unsafe)\s*$/gim, '');
+    res = stripThinkBlocks(res);
+    res = stripProviderAds(res).trimStart();
+    if (isProviderNoticeText(res) || /^The API key used for this request/i.test(res)) return '';
+    if (!ctx.allowCJK) res = stripStrayCJK(res);
+    return res;
+}
+
+function extractTextFromResponse(data) {
+    if (!data) return null;
+    if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+        const choice = data.choices[0];
+        if (choice.message && typeof choice.message.content === 'string' && choice.message.content) return choice.message.content;
+        if (typeof choice.text === 'string' && choice.text) return choice.text;
+        if (choice.delta && typeof choice.delta.content === 'string' && choice.delta.content) return choice.delta.content;
+    }
+    if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
+        const candidate = data.candidates[0];
+        if (candidate.content && Array.isArray(candidate.content.parts) && candidate.content.parts.length > 0) {
+            const part = candidate.content.parts[0];
+            if (part.text) return part.text;
+        }
+    }
+    if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+        if (data.content[0].text) return data.content[0].text;
+    }
+    if (data.message && typeof data.message.content === 'string') return data.message.content;
+    if (typeof data.text === 'string') return data.text;
+    if (data.content) return typeof data.content === 'string' ? data.content : null;
+    return null;
+}
+
+function extractReasoningDelta(data) {
+    const choice = data && Array.isArray(data.choices) ? data.choices[0] : null;
+    const d = choice && (choice.delta || choice.message);
+    if (!d) return '';
+    if (typeof d.reasoning === 'string') return d.reasoning;
+    if (typeof d.reasoning_content === 'string') return d.reasoning_content;
+    return '';
+}
 
 const DEFAULT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const SETTINGS_TABS = ['personal', 'memory', 'chat', 'api', 'data'];
@@ -3064,6 +3324,8 @@ function refreshSettingsUI() {
     const btn2 = document.getElementById('sidebarSettingsBtn');
     if (btn1) btn1.classList.toggle('api-configured', configured);
     if (btn2) btn2.classList.toggle('api-configured', configured);
+    // Список моделей и модель по умолчанию зависят от ключа
+    if (typeof syncModelWithKey === 'function') syncModelWithKey();
 }
 
 function $id(id) { return document.getElementById(id); }
@@ -3210,7 +3472,7 @@ async function testApiConnection() {
     try {
         if (/openrouter\.ai/i.test(endpoint)) {
             if (!key) {
-                setApiTestResult('ok', 'Ключ не указан — работают бесплатные модели без ключа. Свой ключ снимает лимиты.');
+                setApiTestResult('ok', `Ключ не указан. Без ключа все ответы даёт бесплатная модель ${KEYLESS_MODEL_LABEL} (OpenAI, через сервис Pollinations). Бесплатный ключ OpenRouter включит Nemotron, Gemma и другие модели из списка.`);
                 return;
             }
             let r = await fetch('https://openrouter.ai/api/v1/key', { headers: { Authorization: 'Bearer ' + key }, signal: ctrl.signal });
@@ -3229,7 +3491,7 @@ async function testApiConnection() {
             if (d.label) msg += ' («' + String(d.label).slice(0, 40) + '»)';
             if (typeof d.usage === 'number') msg += '. Израсходовано: $' + d.usage.toFixed(2);
             if (typeof d.limit === 'number') msg += ', лимит: $' + d.limit;
-            if (d.is_free_tier) msg += '. Бесплатный тариф';
+            if (d.is_free_tier) msg += '. Бесплатный тариф: доступны модели группы «Бесплатно с ключом OpenRouter»';
             setApiTestResult('ok', msg);
         } else {
             const base = endpoint.replace(/\/chat\/completions\/?$/i, '').replace(/\/+$/, '');
@@ -4204,44 +4466,397 @@ function bindDataUI() {
 }
 
 window.selectedFreeModel = null;
+let _modelUiReady = false;
+let _prevTextModel = null;           // какая текстовая модель была выбрана до режима картинок
+let _prevTextModelSaved = false;     // была ли она выбрана явно (а не «по умолчанию»)
+let _modelHintShown = {};            // подсказки «нужен ключ» показываем по одному разу
+
+const SELECTED_MODEL_KEY = 'quanta_selected_model';
+const MODEL_CATALOG_MARKER_KEY = 'quanta_model_catalog';
+
+function savedModelId() {
+    try { return localStorage.getItem(SELECTED_MODEL_KEY) || ''; } catch (_) { return ''; }
+}
+
+// Текстовая модель для запросов (в режиме картинок — та, что была выбрана до него)
+function currentTextModelId() {
+    const id = window.selectedFreeModel;
+    if (!id || id === IMAGE_MODE_ID) return (_prevTextModel && _prevTextModel !== IMAGE_MODE_ID) ? _prevTextModel : defaultModelId();
+    return id;
+}
+
+function modelBadgeLabel(id) {
+    if (id === IMAGE_MODE_ID) return 'Картинки';
+    if (isCustomProviderActive()) {
+        const m = getApiSettings().model;
+        return m ? String(m).replace(/^[^/]+\//, '') : 'Свой провайдер';
+    }
+    return modelShortName(id);
+}
+
+function updateModelBadge() {
+    const id = window.selectedFreeModel;
+    const label = modelBadgeLabel(id);
+    const modeEl = document.getElementById('modeLabel');
+    if (modeEl) modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
+    const btn = document.getElementById('modelDropdownBtn');
+    if (btn) {
+        let full = id === IMAGE_MODE_ID ? 'Режим картинок' : label;
+        if (id !== IMAGE_MODE_ID && !isCustomProviderActive() && !hasOpenRouterKey() && !(FREE_MODELS_CATALOG[id] && FREE_MODELS_CATALOG[id].keyless)) {
+            full += ' — без ключа отвечает ' + KEYLESS_MODEL_LABEL;
+        }
+        btn.title = 'Модель: ' + full;
+        btn.setAttribute('aria-label', 'Выбор модели. Сейчас: ' + full);
+    }
+    if (mainInput && !mainInput.disabled) {
+        mainInput.placeholder = id === IMAGE_MODE_ID
+            ? 'Опишите, что нарисовать (например: зимний лес на закате)...'
+            : 'Задайте вопрос или прикрепите файл...';
+    }
+}
 
 function markActiveModel(id) {
+    const custom = isCustomProviderActive();
     document.querySelectorAll('#modelDropdownMenu .dropdown-item').forEach(el => {
-        const on = el.dataset.model === id;
+        const m = el.dataset.model;
+        const on = custom ? (m === '__custom__' ? id !== IMAGE_MODE_ID : m === id) : m === id;
         el.classList.toggle('active', on);
-        el.setAttribute('aria-selected', on);
+        el.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+}
+
+function modelItemHtml(id, name, tag, extraClass) {
+    return `<div class="dropdown-item${extraClass ? ' ' + extraClass : ''}" role="option" tabindex="-1" data-model="${escapeAttr(id)}" aria-selected="false">` +
+        `<span class="model-item-text"><span class="model-item-name">${escapeHtml(name)}</span>` +
+        `<span class="model-item-tag">${escapeHtml(tag)}</span></span></div>`;
+}
+
+function renderModelDropdown() {
+    const menu = document.getElementById('modelDropdownMenu');
+    if (!menu) return;
+    const s = getApiSettings();
+    let html = '';
+    if (!isOpenRouterEndpoint(s.endpoint)) {
+        let host = '';
+        try { host = new URL(s.endpoint).hostname; } catch (_) {}
+        html += '<div class="model-group-label" role="presentation">Свой провайдер</div>';
+        html += modelItemHtml('__custom__', s.model || 'Модель не указана', host ? 'Подключено: ' + host : 'Настройки → API');
+        html += '<div class="model-group-label" role="presentation">Картинки</div>';
+        const img = FREE_MODELS_CATALOG[IMAGE_MODE_ID];
+        html += modelItemHtml(IMAGE_MODE_ID, img.name, img.brand + ' • ' + img.tag);
+        html += '<div class="model-dropdown-note" role="presentation">Ответы даёт модель вашего провайдера из «Настройки → API». ' +
+            'Модели из каталога OpenRouter появятся, если вернуть адрес OpenRouter. ' +
+            '<button type="button" class="model-note-link" data-open-api-settings>Открыть настройки</button></div>';
+    } else {
+        const hasKey = hasUsableApiKey(s);
+        MODEL_GROUPS.forEach(g => {
+            const ids = Object.keys(FREE_MODELS_CATALOG).filter(id => FREE_MODELS_CATALOG[id].group === g.id);
+            if (!ids.length) return;
+            html += `<div class="model-group-label" role="presentation">${escapeHtml(g.label)}</div>`;
+            ids.forEach(id => {
+                const e = FREE_MODELS_CATALOG[id];
+                let tag = e.tag;
+                let cls = '';
+                if (!hasKey && g.id === 'free') { tag = 'нужен бесплатный ключ'; cls = 'needs-key'; }
+                if (!hasKey && g.id === 'paid') { tag = 'нужен ключ с балансом'; cls = 'needs-key'; }
+                html += modelItemHtml(id, e.name, e.brand + ' • ' + tag, cls);
+            });
+        });
+        html += '<div class="model-dropdown-note" role="presentation">' + (hasKey
+            ? 'Ключ OpenRouter подключён. Если выбранная модель занята, ответит запасная — её название видно под ответом.'
+            : `Без ключа все ответы даёт ${KEYLESS_MODEL_LABEL} (OpenAI, через Pollinations). Чтобы включить Nemotron, Gemma и другие модели, добавьте бесплатный ключ OpenRouter. ` +
+              '<button type="button" class="model-note-link" data-open-api-settings>Как получить ключ</button>') + '</div>';
+    }
+    menu.innerHTML = html;
+    markActiveModel(window.selectedFreeModel);
+}
+
+function setupModelDropdown() {
+    const menu = document.getElementById('modelDropdownMenu');
+    if (!menu || menu.dataset.ready) return;
+    menu.dataset.ready = '1';
+    menu.addEventListener('click', (e) => {
+        if (e.target.closest('[data-open-api-settings]')) {
+            menu.style.display = 'none';
+            if (typeof openSettingsModal === 'function') openSettingsModal('api');
+            return;
+        }
+        const item = e.target.closest('.dropdown-item[data-model]');
+        if (item) selectModel(item.dataset.model);
+    });
+    menu.addEventListener('keydown', (e) => {
+        const items = Array.from(menu.querySelectorAll('.dropdown-item[data-model]'));
+        const idx = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const next = items[(idx + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
+            if (next) next.focus();
+        } else if ((e.key === 'Enter' || e.key === ' ') && idx >= 0) {
+            e.preventDefault();
+            selectModel(items[idx].dataset.model);
+        }
     });
 }
 
 window.toggleModelDropdown = function() {
     const menu = document.getElementById('modelDropdownMenu');
     if (!menu) return;
-    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    const open = menu.style.display !== 'block';
+    if (open) {
+        setupModelDropdown();
+        renderModelDropdown();
+    }
+    menu.style.display = open ? 'block' : 'none';
+    if (open) fitModelDropdown(menu);
+    const btn = document.getElementById('modelDropdownBtn');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+        const active = menu.querySelector('.dropdown-item.active');
+        if (active) {
+            try { active.scrollIntoView({ block: 'nearest' }); } catch (_) {}
+            if (!('ontouchstart' in window)) { try { active.focus({ preventScroll: true }); } catch (_) {} }
+        }
+    }
 };
 
-window.selectModel = function(modelId, label) {
-    window.selectedFreeModel = modelId;
+// Меню не уходит за край экрана: открываем туда, где больше места, и ограничиваем высоту
+function fitModelDropdown(menu) {
+    menu.classList.remove('open-down');
+    menu.style.maxHeight = '';
+    const anchor = menu.offsetParent;
+    if (!anchor) return;
+    const a = anchor.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const natural = Math.min(menu.scrollHeight + 2, 460);
+    const above = a.top - 16;
+    const below = vh - a.bottom - 16;
+    if (natural <= above) return;
+    if (below > above) {
+        menu.classList.add('open-down');
+        menu.style.maxHeight = Math.max(160, Math.floor(below)) + 'px';
+    } else {
+        menu.style.maxHeight = Math.max(160, Math.floor(above)) + 'px';
+    }
+}
+
+function closeModelDropdown() {
+    const menu = document.getElementById('modelDropdownMenu');
+    if (menu) menu.style.display = 'none';
+    const btn = document.getElementById('modelDropdownBtn');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function persistSelectedModel(id) {
     try {
-        localStorage.setItem('quanta_selected_model', modelId);
+        localStorage.setItem(SELECTED_MODEL_KEY, id);
+        localStorage.setItem(MODEL_CATALOG_MARKER_KEY, MODEL_CATALOG_VERSION);
     } catch (e) {
         console.warn('Failed to save selected model:', e);
     }
-    markActiveModel(modelId);
-    const modeEl = document.getElementById('modeLabel');
-    if (modeEl) {
-        modeEl.textContent = label.length > 17 ? label.slice(0, 16) + '…' : label;
+}
+
+window.selectModel = function(modelId, label) {
+    let id = String(modelId || '');
+    if (id === '__custom__') {
+        // свой провайдер: выходим из режима картинок, модель берётся из настроек
+        id = currentTextModelId();
+    } else {
+        id = resolveModelId(id);
     }
-    if (mainInput) {
-        if (modelId === 'flux/image-gen') {
-            mainInput.placeholder = 'Опишите что нарисовать и нажмите Отправить...';
+    if (!FREE_MODELS_CATALOG[id]) id = defaultModelId();
+    const prev = window.selectedFreeModel;
+    if (id === IMAGE_MODE_ID && prev && prev !== IMAGE_MODE_ID) {
+        const sv = savedModelId();
+        _prevTextModel = prev;
+        _prevTextModelSaved = !!sv && sv !== IMAGE_MODE_ID;
+    }
+    window.selectedFreeModel = id;
+    persistSelectedModel(id);
+    markActiveModel(id);
+    updateModelBadge();
+    updateImageOptionsBar();
+    closeModelDropdown();
+
+    const e = FREE_MODELS_CATALOG[id];
+    const name = modelBadgeLabel(id);
+    if (id === IMAGE_MODE_ID) {
+        showToast('Режим картинок: опишите, что нарисовать. Формат и стиль — над полем ввода');
+        return;
+    }
+    if (isCustomProviderActive()) {
+        showToast('Модель: ' + name + ' (свой провайдер)');
+        return;
+    }
+    if (!hasOpenRouterKey() && e && !e.keyless) {
+        if (!e.isFree) {
+            showToast(`${e.name} — платная модель: нужен ключ OpenRouter с балансом (Настройки → API)`);
+        } else if (!_modelHintShown[id]) {
+            _modelHintShown[id] = true;
+            showToast(`Без ключа ответит ${KEYLESS_MODEL_LABEL}. Для ${e.name} добавьте бесплатный ключ OpenRouter (Настройки → API)`);
         } else {
-            mainInput.placeholder = 'Задайте вопрос или прикрепите файл...';
+            showToast('Модель: ' + e.name);
         }
+        return;
     }
-    const menu = document.getElementById('modelDropdownMenu');
-    if (menu) menu.style.display = 'none';
-    showToast(`Модель: ${label}`);
+    showToast('Модель: ' + name);
 };
+
+// Выбор модели при запуске: переносим старые пункты меню на честные названия
+function restoreSelectedModel() {
+    let saved = savedModelId();
+    let marker = null;
+    try { marker = localStorage.getItem(MODEL_CATALOG_MARKER_KEY); } catch (_) {}
+    if (saved && marker !== MODEL_CATALOG_VERSION) {
+        // До обновления «Opus 4.8» хранился под идентификатором moonshotai/kimi-k3 — это не выбор платной Kimi
+        if (saved === 'moonshotai/kimi-k3' || Object.prototype.hasOwnProperty.call(LEGACY_MODEL_IDS, saved)) {
+            saved = saved === 'moonshotai/kimi-k3' ? '' : (LEGACY_MODEL_IDS[saved] || '');
+        }
+        // Без ключа старые «бесплатные без ключа» модели на деле отвечали через резервный сервис — честно показываем его
+        if (saved && saved !== IMAGE_MODE_ID && !hasOpenRouterKey()) saved = '';
+        try {
+            if (saved && FREE_MODELS_CATALOG[saved]) localStorage.setItem(SELECTED_MODEL_KEY, saved);
+            else localStorage.removeItem(SELECTED_MODEL_KEY);
+        } catch (_) {}
+    }
+    try { localStorage.setItem(MODEL_CATALOG_MARKER_KEY, MODEL_CATALOG_VERSION); } catch (_) {}
+    window.selectedFreeModel = (saved && FREE_MODELS_CATALOG[saved]) ? saved : defaultModelId();
+    _modelUiReady = true;
+    setupModelDropdown();
+    renderModelDropdown();
+    updateModelBadge();
+    updateImageOptionsBar();
+}
+
+// Ключ добавили или убрали: модель по умолчанию и список обновляются сразу
+function syncModelWithKey() {
+    if (!_modelUiReady) return;
+    if (!savedModelId() && window.selectedFreeModel !== IMAGE_MODE_ID) {
+        window.selectedFreeModel = defaultModelId();
+    }
+    renderModelDropdown();
+    updateModelBadge();
+}
+
+// ---------- Панель параметров картинки (формат, стиль, улучшение описания) ----------
+const IMAGE_ASPECT_CHOICES = [
+    ['auto', 'Авто'], ['1:1', 'Квадрат 1:1'], ['16:9', 'Широкий 16:9'], ['9:16', 'Вертикальный 9:16'],
+    ['4:3', 'Альбомный 4:3'], ['3:4', 'Портрет 3:4'], ['3:2', 'Фото 3:2'], ['2:3', 'Постер 2:3'], ['21:9', 'Кино 21:9']
+];
+let _imageSeedOverride = '';
+
+function ensureImageOptionsBar() {
+    let bar = document.getElementById('imgOptionsBar');
+    if (bar) return bar;
+    const wrapper = document.querySelector('.input-container .input-wrapper');
+    if (!wrapper || !wrapper.parentNode) return null;
+    const p = Prefs.get();
+    const aspectOpts = IMAGE_ASPECT_CHOICES.map(([v, l]) => `<option value="${v}">${escapeHtml(l)}</option>`).join('');
+    const styleOpts = Object.keys(IMAGE_STYLES).map(k => `<option value="${k}">${escapeHtml(IMAGE_STYLES[k].label)}</option>`).join('');
+    bar = document.createElement('div');
+    bar.className = 'img-options-bar';
+    bar.id = 'imgOptionsBar';
+    bar.hidden = true;
+    bar.innerHTML = `
+        <div class="img-opt-row">
+            <span class="img-opt-title">${icon('palette', 14)} Картинка</span>
+            <label class="img-opt img-opt-select"><span>Формат</span><select id="imgOptAspect" aria-label="Формат картинки">${aspectOpts}</select></label>
+            <label class="img-opt img-opt-select"><span>Стиль</span><select id="imgOptStyle" aria-label="Стиль картинки">${styleOpts}</select></label>
+            <label class="img-opt img-opt-check" title="ИИ переведёт описание на английский и добавит детали: свет, композицию, атмосферу">
+                <input type="checkbox" id="imgOptEnhance"><span>Улучшать описание</span>
+            </label>
+            <button type="button" class="img-opt-more" id="imgOptMoreBtn" aria-expanded="false" aria-controls="imgOptAdvanced">Ещё</button>
+            <button type="button" class="img-opt-close" id="imgOptClose" title="Выйти из режима картинок" aria-label="Выйти из режима картинок">${icon('x', 14)}</button>
+        </div>
+        <div class="img-opt-row img-opt-advanced" id="imgOptAdvanced" hidden>
+            <label class="img-opt img-opt-wide"><span>Исключить</span><input type="text" id="imgOptNegative" maxlength="300" autocomplete="off" placeholder="например: текст, надписи"></label>
+            <label class="img-opt img-opt-seed"><span>Сид</span><input type="text" id="imgOptSeed" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="случайный" title="Одинаковый сид + одинаковое описание = одинаковая картинка"></label>
+        </div>`;
+    wrapper.parentNode.insertBefore(bar, wrapper);
+
+    const aspectEl = bar.querySelector('#imgOptAspect');
+    const styleEl = bar.querySelector('#imgOptStyle');
+    const enhanceEl = bar.querySelector('#imgOptEnhance');
+    const negEl = bar.querySelector('#imgOptNegative');
+    const seedEl = bar.querySelector('#imgOptSeed');
+    const moreBtn = bar.querySelector('#imgOptMoreBtn');
+    const adv = bar.querySelector('#imgOptAdvanced');
+    aspectEl.value = p.imgAspect;
+    styleEl.value = p.imgStyle;
+    enhanceEl.checked = !!p.imgEnhance;
+    negEl.value = p.imgNegative || '';
+    aspectEl.addEventListener('change', () => Prefs.set({ imgAspect: aspectEl.value }));
+    styleEl.addEventListener('change', () => Prefs.set({ imgStyle: styleEl.value }));
+    enhanceEl.addEventListener('change', () => Prefs.set({ imgEnhance: enhanceEl.checked }));
+    let negTimer = null;
+    negEl.addEventListener('input', () => {
+        clearTimeout(negTimer);
+        negTimer = setTimeout(() => Prefs.set({ imgNegative: negEl.value.trim() }), 300);
+    });
+    negEl.addEventListener('change', () => { clearTimeout(negTimer); Prefs.set({ imgNegative: negEl.value.trim() }); });
+    seedEl.addEventListener('input', () => {
+        const digits = seedEl.value.replace(/\D/g, '').slice(0, 10);
+        if (digits !== seedEl.value) seedEl.value = digits;
+        _imageSeedOverride = digits;
+    });
+    moreBtn.addEventListener('click', () => {
+        adv.hidden = !adv.hidden;
+        moreBtn.setAttribute('aria-expanded', adv.hidden ? 'false' : 'true');
+        moreBtn.classList.toggle('active', !adv.hidden);
+    });
+    bar.querySelector('#imgOptClose').addEventListener('click', () => exitImageMode());
+    [negEl, seedEl].forEach(el => el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); if (mainInput) mainInput.focus(); }
+    }));
+    return bar;
+}
+
+function updateImageOptionsBar() {
+    const on = window.selectedFreeModel === IMAGE_MODE_ID;
+    const bar = on ? ensureImageOptionsBar() : document.getElementById('imgOptionsBar');
+    if (!bar) return;
+    if (on) {
+        const p = Prefs.get();
+        const a = bar.querySelector('#imgOptAspect');
+        const st = bar.querySelector('#imgOptStyle');
+        const en = bar.querySelector('#imgOptEnhance');
+        const ng = bar.querySelector('#imgOptNegative');
+        if (a) a.value = p.imgAspect;
+        if (st) st.value = p.imgStyle;
+        if (en) en.checked = !!p.imgEnhance;
+        if (ng && document.activeElement !== ng) ng.value = p.imgNegative || '';
+    }
+    bar.hidden = !on;
+    document.body.classList.toggle('image-mode', on);
+}
+
+function exitImageMode() {
+    const back = (_prevTextModel && _prevTextModel !== IMAGE_MODE_ID && FREE_MODELS_CATALOG[_prevTextModel]) ? _prevTextModel : defaultModelId();
+    window.selectedFreeModel = back;
+    if (_prevTextModelSaved && back === _prevTextModel) {
+        persistSelectedModel(back);
+    } else {
+        try { localStorage.removeItem(SELECTED_MODEL_KEY); } catch (_) {}
+    }
+    markActiveModel(back);
+    updateModelBadge();
+    updateImageOptionsBar();
+    showToast('Обычный чат: ' + modelBadgeLabel(back));
+    if (mainInput && !mainInput.disabled) mainInput.focus();
+}
+
+// Текущие параметры картинки из панели (или из сохранённых настроек)
+function currentImageOptions() {
+    const p = Prefs.get();
+    const seed = /^\d{1,10}$/.test(_imageSeedOverride) ? Math.min(Number(_imageSeedOverride), 2147483647) : null;
+    return {
+        aspect: p.imgAspect || 'auto',
+        style: IMAGE_STYLES[p.imgStyle] ? p.imgStyle : 'auto',
+        enhance: p.imgEnhance !== false,
+        negative: String(p.imgNegative || '').trim(),
+        seed
+    };
+}
+
 
 window.pendingImage = null;
 
@@ -4620,8 +5235,12 @@ async function processAndAttachFile(file) {
         if (isImage) {
             const { dataUrl, note } = await prepareImageForUpload(file);
             if (seq !== _attachSeq) return;
-            setPendingImage(file, dataUrl, note);
-            showToast('Фото прикреплено');
+            // Без ключа модели со зрением недоступны — предупреждаем сразу, а не после отправки
+            const visionHint = (!isCustomProviderActive() && !hasOpenRouterKey())
+                ? 'Для анализа фото нужен бесплатный ключ OpenRouter (Настройки → API)'
+                : '';
+            setPendingImage(file, dataUrl, [note, visionHint].filter(Boolean).join(' · '));
+            showToast(visionHint ? 'Фото прикреплено. ' + visionHint : 'Фото прикреплено');
             return;
         }
 
@@ -4687,12 +5306,9 @@ window.triggerImageGen = function() {
         startImageGeneration(text);
         return;
     }
-    selectModel('flux/image-gen', 'Flux Art');
-    if (mainInput) {
-        mainInput.placeholder = 'Опишите что нарисовать (например: зимний лес, закат, космос)...';
-        mainInput.focus();
-    }
-    showToast('Режим генерации картинок: введите описание');
+    if (window.selectedFreeModel !== IMAGE_MODE_ID) selectModel(IMAGE_MODE_ID);
+    else showToast('Опишите, что нарисовать, и нажмите «Отправить»');
+    if (mainInput && !mainInput.disabled) mainInput.focus();
 };
 
 window.runQuickAction = function(kind) {
@@ -4706,7 +5322,7 @@ window.runQuickAction = function(kind) {
     else if (kind === 'slides') handleSlides(text);
     else if (kind === 'research') handleResearch(text);
     else if (kind === 'website') handleWebsite(text);
-    else if (kind === 'code') handleGenericMode(text, 'code', 'Кодер', 'Ты senior-разработчик. Пиши чистый, точный код в блоках с указанием языка. Запрос: ');
+    else if (kind === 'code') handleGenericMode(text, 'code', 'Кодер', 'Режим «Кодер»: ты опытный senior-разработчик. Дай полное рабочее решение: код целиком, кратко — как запустить и проверить. Задача: ');
     else if (kind === 'table') triggerFileUpload();
 };
 
@@ -4864,259 +5480,274 @@ window.handleSendOrStop = function () {
 
 const _activeTimers = new Set();
 
-async function callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
+async function callOpenAICompatible(messages, onProgress = null, explicitModel = null, opts = {}) {
     const own = !window.genAbort;
     if (own) beginGeneration();
     try {
-        return await _callOpenAICompatible(messages, onProgress, explicitModel);
+        return await _callOpenAICompatible(messages, onProgress, explicitModel, opts || {});
     } finally {
         if (own) endGeneration();
     }
 }
 
-async function _callOpenAICompatible(messages, onProgress = null, explicitModel = null) {
-    const settings = getApiSettings();
-  
-    // Свой провайдер (Groq, Ollama и т.п.): моделей каталога OpenRouter там нет — берём модель из настроек
-    const isCustomProvider = !!(settings.endpoint && !/openrouter\.ai/i.test(settings.endpoint) && settings.model);
-    let primaryModel = explicitModel || (isCustomProvider ? settings.model : null) || window.selectedFreeModel || settings.model || 'nvidia/nemotron-3-ultra-550b-a55b:free';
-    if (primaryModel === 'flux/image-gen') {
-        primaryModel = 'nvidia/nemotron-3-ultra-550b-a55b:free';
-    }
-    if (primaryModel === 'moonshotai/kimi-k3') {
-        primaryModel = 'anthropic/claude-opus-4.8';
-    }
+const KEYLESS_BUDGET_MESSAGE = 'Бесплатный резервный сервис (Pollinations) сейчас исчерпал лимит. Попробуйте чуть позже или добавьте бесплатный ключ OpenRouter (Настройки → API) — тогда ответят Nemotron, Gemma и другие модели';
+const VISION_NEEDS_KEY_MESSAGE = 'Чтобы ИИ видел фото, нужен бесплатный ключ OpenRouter (Настройки → API). Без ключа работает только текст';
+const STREAM_IDLE_MS = 60000;
+const STEP_TIMEOUT_MS = 85000;
+const CUT_OFF_NOTE = '\n\n_(Ответ оборвался — сервер перестал отвечать. Нажмите «Повторить», чтобы получить его целиком.)_';
+let _badKeyToastShown = false;
 
-    const isOpusModel = primaryModel === 'anthropic/claude-opus-4.8' || primaryModel.includes('opus');
-    const isClaudeSonnet55 = primaryModel === 'anthropic/claude-sonnet-5.5' || primaryModel.includes('sonnet-5.5');
-    const catalogEntry = FREE_MODELS_CATALOG[primaryModel];
-    const resolvedPrimaryModel = catalogEntry && catalogEntry.apiModel ? catalogEntry.apiModel : primaryModel;
-    const isFreeModel = isFreeModelSelected(primaryModel);
+function finalError(message, extra) {
+    const e = new Error(message);
+    e.final = true;
+    if (extra) Object.assign(e, extra);
+    return e;
+}
 
-    const cleanKey = settings.apiKey ? String(settings.apiKey).replace(/[^\x00-\x7F]/g, '').trim() : '';
-    const hasApiKey = cleanKey.length > 5;
-    const isDefaultOpenRouter = !settings.endpoint || settings.endpoint.includes('openrouter.ai');
-
-    const modelsToTry = [];
-    if (typeof MODEL_FAMILY_FALLBACKS !== 'undefined' && MODEL_FAMILY_FALLBACKS[primaryModel]) {
-        modelsToTry.push(...MODEL_FAMILY_FALLBACKS[primaryModel]);
-    } else {
-        modelsToTry.push(resolvedPrimaryModel);
-    }
-
-    if (!modelsToTry.includes('openrouter/free')) modelsToTry.push('openrouter/free');
-    modelsToTry.push('__keyless_fallback__');
-
-    const headers = {
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://quanta.ai',
-        'X-Title': 'Quanta AI'
-    };
-    if (hasApiKey) {
-        headers['Authorization'] = 'Bearer ' + cleanKey;
-    }
-
-    const canStream = typeof onProgress === 'function' && typeof ReadableStream !== 'undefined';
-    let lastError = null;
-  
-    const sanitizeModelOutput = (text) => {
-        if (!text) return '';
-        let res = text
-            .replace(/^Response Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
-            .replace(/User Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
-            .replace(/Safety:\s*(safe|unsafe)[\r\n]*/gi, '')
-            .replace(/\[SAFETY: (SAFE|UNSAFE)\][\r\n]*/gi, '')
-            .replace(/<point>[\s\S]*?<\/point>/gi, '')
-            .replace(/^(safe|unsafe)\s*$/gim, '')
-            .trimStart();
-      
-        if (!isOpusModel && !isClaudeSonnet55) return res;
-
-        const targetBrandName = isOpusModel ? 'Claude Opus 4.8' : 'Claude Sonnet 5.5';
-      
-        return res
-            .replace(/\bGLM[- ]?5\.3(\s*(Max|Plus|Flash))?\b/gi, targetBrandName)
-            .replace(/\bGLM[- ]?4(\.\d+)?(\s*(Plus|Flash|Air))?\b/gi, targetBrandName)
-            .replace(/\bChatGLM\b/gi, targetBrandName)
-            .replace(/\bKimi\s*K3\b/gi, targetBrandName)
-            .replace(/\bKimi\s*K2\b/gi, targetBrandName)
-            .replace(/\bKimi\b/gi, targetBrandName)
-            .replace(/(я\s*[-—–]?\s*)(glm|чатглм|chatglm|kimi|кими)(\s*5\.3|\s*k3|\s*k2)?/gi, `$1${targetBrandName}`)
-            .replace(/(модель\s*[-—–]?\s*)(glm|чатглм|chatglm|kimi|кими)(\s*5\.3|\s*k3|\s*k2)?/gi, `$1${targetBrandName}`)
-            .replace(/\b(Zhipu\s*AI|Zhipu|THUDM|Moonshot\s*AI|Moonshot)\b/gi, 'Anthropic');
-    };
-
-    const extractTextFromResponse = (data) => {
-        if (!data) return null;
-      
-        if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
-            const choice = data.choices[0];
-            if (choice.message?.content) return choice.message.content;
-            if (choice.text) return choice.text;
-            if (choice.delta?.content) return choice.delta.content;
-        }
-      
-        if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
-            const candidate = data.candidates[0];
-            if (candidate.content?.parts && Array.isArray(candidate.content.parts) && candidate.content.parts.length > 0) {
-                const part = candidate.content.parts[0];
-                if (part.text) return part.text;
-            }
-        }
-      
-        if (data.content && Array.isArray(data.content) && data.content.length > 0) {
-            if (data.content[0].text) return data.content[0].text;
-        }
-      
-        if (data.message?.content) return data.message.content;
-        if (data.text) return data.text;
-        if (data.content) return typeof data.content === 'string' ? data.content : null;
-      
-        return null;
-    };
-
-    const now = new Date();
-    const currentDateStr = now.toLocaleDateString('ru-RU', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+function abortableSleep(ms, signal) {
+    return new Promise((resolve, reject) => {
+        const abortErr = () => { const e = new Error('Aborted'); e.name = 'AbortError'; return e; };
+        if (signal && signal.aborted) { reject(abortErr()); return; }
+        const onAbort = () => { clearTimeout(t); reject(abortErr()); };
+        const t = setTimeout(() => {
+            if (signal) signal.removeEventListener('abort', onAbort);
+            resolve();
+        }, ms);
+        if (signal) signal.addEventListener('abort', onAbort, { once: true });
     });
-    const currentTimeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    const currentYear = now.getFullYear();
+}
 
-    const timeSystemPrompt = `[Системный контекст времени]:
-Текущая реальная дата: ${currentDateStr} (год: ${currentYear}, время: ${currentTimeStr}).
-Всегда опирайся на этот факт при любых вопросах о текущей дате, дне недели, времени и годе. Никогда не говори, что сейчас 2024 или 2025 год.`;
+// Тело ошибки читаем один раз и запоминаем (повторное чтение Response невозможно)
+async function responseErrorText(res) {
+    if (res._quantaErrText !== undefined) return res._quantaErrText;
+    let errText = '';
+    try {
+        const rawErr = await res.text();
+        try {
+            const errJson = JSON.parse(rawErr);
+            const errObj = errJson && errJson.error;
+            errText = (errObj && (errObj.message || errObj)) || errJson.message || '';
+            if (errObj && errObj.metadata && typeof errObj.metadata.raw === 'string' && errObj.metadata.raw.length < 300) {
+                errText = (typeof errText === 'string' ? errText + ' — ' : '') + errObj.metadata.raw;
+            }
+            if (typeof errText !== 'string') errText = JSON.stringify(errText);
+        } catch (_) {
+            errText = rawErr.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+    } catch (_) {}
+    res._quantaErrText = String(errText || '').slice(0, 300);
+    return res._quantaErrText;
+}
 
-    let baseSystemPrompt = timeSystemPrompt;
-    if (isOpusModel) {
-        baseSystemPrompt = `${CLAUDE_OPUS_4_8_SYSTEM_PROMPT}\n\n${timeSystemPrompt}`;
-    } else if (isClaudeSonnet55) {
-        baseSystemPrompt = `${CLAUDE_SONNET_5_5_SYSTEM_PROMPT}\n\n${timeSystemPrompt}`;
-    }
+// Начало служебного сообщения Pollinations «ключ исчерпал бюджет» — не показываем его, пока печатается
+function looksLikeNoticePrefix(text) {
+    const n = 'the api key used for this request has reached its budget';
+    const s = String(text || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!s) return false;
+    return s.length < n.length ? n.startsWith(s) : s.startsWith(n);
+}
 
-    let effectiveMessages = messages;
+function stepLabel(step, servedModel) {
+    if (step.kind === 'keyless') return KEYLESS_MODEL_LABEL + ' · Pollinations';
+    if (step.kind === 'custom') return String(servedModel || step.model || '').replace(/^[^/]+\//, '').slice(0, 60);
+    return displayModelName(servedModel || step.model);
+}
+
+function mergeSystemPrompt(messages, sys) {
+    if (!sys) return messages;
     const sysIndex = messages.findIndex(m => m && m.role === 'system');
     if (sysIndex >= 0) {
-        effectiveMessages = messages.map((m, idx) => idx === sysIndex ? { ...m, content: baseSystemPrompt + '\n\n' + m.content } : m);
-    } else {
-        effectiveMessages = [{ role: 'system', content: baseSystemPrompt }, ...messages];
+        return messages.map((m, idx) => idx === sysIndex ? { ...m, content: sys + '\n\n' + contentToText(m.content) } : m);
+    }
+    return [{ role: 'system', content: sys }, ...messages];
+}
+
+// План запроса: какие модели и в каком порядке пробовать
+function planModelSteps(explicitModel, opts, hasImages) {
+    const settings = getApiSettings();
+    const key = hasUsableApiKey(settings) ? cleanApiKey(settings.apiKey) : '';
+    const keyless = (n) => [
+        { kind: 'keyless', model: 'openai-fast', endpoint: KEYLESS_OPENAI_ENDPOINT },
+        { kind: 'keyless', model: 'openai', endpoint: KEYLESS_OPENAI_ENDPOINT }
+    ].slice(0, n || 2);
+    const openrouter = (ids) => ids.map(model => ({ kind: 'openrouter', model, endpoint: settings.endpoint || DEFAULT_ENDPOINT }));
+
+    // Свой провайдер (Groq, Ollama и т.п.): только его модель, без подмены на другие сервисы
+    if (!isOpenRouterEndpoint(settings.endpoint)) {
+        if (!settings.model) {
+            if (typeof openSettingsModal === 'function') openSettingsModal('api');
+            throw finalError('Для своего провайдера укажите название модели в «Настройки → API»');
+        }
+        return { primary: settings.model, steps: [{ kind: 'custom', model: settings.model, endpoint: settings.endpoint, key }] };
     }
 
-    const effectiveList = (!hasApiKey && isDefaultOpenRouter && isFreeModel)
-        ? ['__keyless_primary__', '__keyless_openai__', '__keyless_qwen__']
-        : modelsToTry;
+    let primary = resolveModelId(explicitModel || '') || currentTextModelId();
+    if (primary === IMAGE_MODE_ID) primary = defaultModelId();
+    const entry = FREE_MODELS_CATALOG[primary];
 
-    for (let i = 0; i < effectiveList.length; i++) {
-        const curModel = effectiveList[i];
-        const isKeylessStep = curModel.startsWith('__keyless_');
+    if (hasImages && !key) throw finalError(VISION_NEEDS_KEY_MESSAGE);
 
-        const targetEndpoint = isKeylessStep ? KEYLESS_OPENAI_ENDPOINT : settings.endpoint;
-        const targetModel = curModel === '__keyless_openai__'
-            ? 'openai'
-            : (curModel === '__keyless_qwen__'
-                ? 'qwen-coder'
-                : (isKeylessStep ? ((catalogEntry && catalogEntry.keylessModel) || 'openai') : curModel));
-
-        const reqHeaders = isKeylessStep
-            ? { 'Content-Type': 'application/json' }
-            : headers;
-
-        const body = { model: targetModel, messages: effectiveMessages, stream: canStream };
-        if (isOpusModel && !isKeylessStep) {
-            body.temperature = 0.7;
-            body.top_p = 0.95;
+    if (!key) {
+        if (!isFreeModelSelected(primary)) {
+            if (typeof openSettingsModal === 'function') openSettingsModal('api');
+            throw finalError(`${displayModelName(primary)} — платная модель: нужен ключ OpenRouter с балансом (Настройки → API). Бесплатно без ключа отвечает ${KEYLESS_MODEL_LABEL} — её можно выбрать в списке моделей`);
         }
-        // Температура из «Настройки → API» (по умолчанию — как задумано для модели)
-        const userTemperature = getUserTemperature();
-        if (userTemperature !== null && !isKeylessStep) body.temperature = userTemperature;
+        return { primary: KEYLESS_MODEL_ID, steps: keyless(2) };
+    }
+
+    let chain;
+    if (Array.isArray(opts.chain) && opts.chain.length) {
+        chain = opts.chain.slice();
+    } else if (hasImages) {
+        chain = VISION_MODELS_CHAIN.slice();
+    } else if (entry && entry.keyless) {
+        return { primary, steps: keyless(2) };
+    } else {
+        chain = (MODEL_FAMILY_FALLBACKS[primary] || [primary]).slice();
+    }
+    if (!chain.includes('openrouter/free')) chain.push('openrouter/free');
+    const steps = openrouter(chain);
+    if (!hasImages) steps.push(...keyless(1));
+    return { primary: chain[0], steps };
+}
+
+async function _callOpenAICompatible(messages, onProgress, explicitModel, opts) {
+    const hasImages = messagesHaveImages(messages);
+    const plan = planModelSteps(explicitModel, opts, hasImages);
+    const steps = plan.steps;
+    const settings = getApiSettings();
+    const key = hasUsableApiKey(settings) ? cleanApiKey(settings.apiKey) : '';
+    const task = opts.utility ? 'general' : (opts.task || detectTaskKind(lastUserText(messages)));
+    const allowCJK = messagesAllowCJK(messages);
+    const canStream = typeof onProgress === 'function' && typeof ReadableStream !== 'undefined';
+    const userSignal = window.genAbort ? window.genAbort.signal : null;
+    let lastError = null;
+    let skipOpenRouter = false;   // ключ не подошёл или исчерпан дневной лимит — дальше только резерв
+    let skipKeyless = false;      // резервный сервис ответил окончательным отказом
+    let badKey = false;
+    const toastOnFallback = !opts.utility && !opts.chain && !hasImages && plan.primary !== KEYLESS_MODEL_ID;
+
+    const usable = (s) => !(s.kind === 'openrouter' && skipOpenRouter) && !(s.kind === 'keyless' && skipKeyless);
+
+    for (let i = 0; i < steps.length; i++) {
+        const step = steps[i];
+        if (!usable(step)) continue;
+        const hasMore = () => steps.slice(i + 1).some(usable);
+        if (userSignal && userSignal.aborted) throw userAbortError();
+
+        const sys = opts.utility ? buildTimePrompt() : buildAssistantSystemPrompt(step, task);
+        const body = { model: step.model, messages: mergeSystemPrompt(messages, sys), stream: canStream };
+        if (step.kind !== 'keyless') {
+            const userTemperature = getUserTemperature();
+            if (userTemperature !== null) body.temperature = userTemperature;
+            else if (typeof opts.temperature === 'number') body.temperature = opts.temperature;
+            else if (task === 'code') body.temperature = 0.3;
+            else if (task === 'math') body.temperature = 0.2;
+        }
+        const headers = { 'Content-Type': 'application/json' };
+        if (step.kind === 'openrouter') {
+            headers['Authorization'] = 'Bearer ' + key;
+            if (/^https?:/i.test(location.origin)) headers['HTTP-Referer'] = location.origin;
+            headers['X-Title'] = 'Quanta AI';
+        } else if (step.kind === 'custom' && step.key) {
+            headers['Authorization'] = 'Bearer ' + step.key;
+        }
 
         const controller = new AbortController();
+        const onUserAbort = () => controller.abort();
+        if (userSignal) userSignal.addEventListener('abort', onUserAbort, { once: true });
         const timer = setTimeout(() => {
-            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
+            _activeTimers.delete(timer);
             controller.abort();
-        }, 85000);
-        if (typeof _activeTimers !== 'undefined') _activeTimers.add(timer);
+        }, STEP_TIMEOUT_MS);
+        _activeTimers.add(timer);
+        const clearTimer = () => { clearTimeout(timer); _activeTimers.delete(timer); };
 
         const startTime = performance.now();
         let firstChunkTime = null;
         let fullText = '';
         let tokenCount = 0;
-
-        const userSignal = window.genAbort ? window.genAbort.signal : null;
-        if (userSignal) {
-            if (userSignal.aborted) {
-                clearTimeout(timer);
-                if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
-                throw typeof userAbortError === 'function' ? userAbortError() : new Error('Прервано пользователем');
-            }
-            userSignal.addEventListener('abort', () => controller.abort(), { once: true });
-        }
+        let servedModel = '';
+        let lastThinkingEmit = 0;
+        const label = () => stepLabel(step, servedModel);
+        const emitThinking = (reasoningChars) => {
+            if (!canStream) return;
+            const now = performance.now();
+            if (now - lastThinkingEmit < 250) return;
+            lastThinkingEmit = now;
+            onProgress({
+                text: '', thinking: true, model: label(),
+                tokens: Math.max(1, Math.round(reasoningChars / 3.5)), speed: 0,
+                elapsedSec: ((now - startTime) / 1000).toFixed(1), isDone: false
+            });
+        };
 
         try {
-            let response = await fetch(targetEndpoint, {
+            const doFetch = () => fetch(step.endpoint, {
                 method: 'POST',
-                headers: reqHeaders,
+                headers,
                 body: JSON.stringify(body),
                 signal: controller.signal
             });
-            for (let retry429 = 0; retry429 < 4 && response.status === 429; retry429++) {
-                await new Promise(r => setTimeout(r, 2600));
-                response = await fetch(targetEndpoint, {
-                    method: 'POST',
-                    headers: reqHeaders,
-                    body: JSON.stringify(body),
-                    signal: controller.signal
-                });
+            let response = await doFetch();
+            const max429 = step.kind === 'keyless' ? 2 : 3;
+            for (let r = 0; r < max429 && response.status === 429; r++) {
+                const t429 = await responseErrorText(response);
+                if (/per.?day|daily|free-models-per-day/i.test(t429)) break;
+                await abortableSleep(2600, controller.signal);
+                response = await doFetch();
             }
-            clearTimeout(timer);
-            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
+            clearTimer();
 
             if (!response.ok) {
-                // Тело ответа читаем один раз (раньше повторное чтение само падало с ошибкой)
-                let errText = '';
-                try {
-                    const rawErr = await response.text();
-                    try {
-                        const errJson = JSON.parse(rawErr);
-                        const errObj = errJson && errJson.error;
-                        errText = (errObj && (errObj.message || errObj)) || errJson.message || '';
-                        if (typeof errText !== 'string') errText = JSON.stringify(errText);
-                    } catch (_) {
-                        errText = rawErr.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-                    }
-                } catch (_) {}
-                errText = String(errText || response.statusText || '').slice(0, 300);
-
-                if (response.status === 401) {
-                    if (isFreeModel && i < effectiveList.length - 1) {
-                        lastError = new Error(errText || 'Ошибка авторизации');
-                        continue;
-                    }
-                    if (!isFreeModel && typeof openSettingsModal === 'function') openSettingsModal('api');
-                    throw new Error('Требуется API-ключ. Откройте настройки и укажите ключ');
+                const status = response.status;
+                const errText = (await responseErrorText(response)) || response.statusText || 'Сбой сервера';
+                lastError = new Error(`Ошибка ${status}: ${errText}`);
+                lastError.status = status;
+                if (step.kind === 'custom') {
+                    if (status === 401 || status === 403) throw finalError(`Провайдер не принял ключ (ошибка ${status}). Проверьте ключ и модель в «Настройки → API»`);
+                    lastError.final = true;
+                    throw lastError;
                 }
-
-                if ([400, 402, 404, 429, 500, 502, 503].includes(response.status) && i < effectiveList.length - 1) {
-                    console.warn(`Model ${targetModel} error (${response.status}). Retrying with next...`);
-                    lastError = new Error(errText);
+                if (step.kind === 'openrouter') {
+                    if (status === 401 || status === 403) {
+                        skipOpenRouter = true;
+                        badKey = true;
+                        lastError = new Error(`Ключ OpenRouter не принят (ошибка ${status}). Проверьте его в «Настройки → API»`);
+                        if (!_badKeyToastShown) {
+                            _badKeyToastShown = true;
+                            showToast(`Ключ OpenRouter не принят (ошибка ${status}) — проверьте его в Настройки → API` + (hasMore() ? `. Пока отвечает ${KEYLESS_MODEL_LABEL}` : ''));
+                        }
+                    } else if (status === 429 && /per.?day|daily|free-models-per-day/i.test(errText)) {
+                        skipOpenRouter = true;   // дневной лимит бесплатных моделей — общий для аккаунта
+                    }
+                } else if (isProviderNoticeText(errText)) {
+                    skipKeyless = true;
+                    lastError = new Error(KEYLESS_BUDGET_MESSAGE);
+                } else if ([400, 402, 403, 404].includes(status)) {
+                    skipKeyless = true;
+                }
+                if (hasMore()) {
+                    console.warn(`Model ${step.model} error (${status}). Retrying with next...`);
                     continue;
                 }
-                throw new Error(`Ошибка ${response.status}: ${errText || 'Сбой сервера'}`);
+                lastError.final = true;
+                throw lastError;
             }
 
-            if (canStream && response.body && response.body.getReader) {
+            const ctype = String(response.headers.get('content-type') || '').toLowerCase();
+            let streamIdle = false;
+            let streamError = null;
+            let data = null;
+
+            if (canStream && response.body && response.body.getReader && !/application\/json/.test(ctype)) {
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
-                fullText = '';
                 let buffer = '';
-                tokenCount = 0;
-
-                // Если сервер «замолчал» посреди ответа — не ждём вечно
-                const STREAM_IDLE_MS = 60000;
-                let streamIdle = false;
-                while (true) {
+                let sawData = false;
+                let rawAll = '';
+                let reasoningChars = 0;
+                readLoop: while (true) {
                     const readP = reader.read();
                     readP.catch(() => {});
                     let idleTimer = null;
@@ -5136,137 +5767,168 @@ async function _callOpenAICompatible(messages, onProgress = null, explicitModel 
                     }
                     const { done, value } = chunk;
                     if (done) break;
-
-                    buffer += decoder.decode(value, { stream: true });
+                    const piece = decoder.decode(value, { stream: true });
+                    if (!sawData && rawAll.length < 200000) rawAll += piece;
+                    buffer += piece;
                     const lines = buffer.split('\n');
                     buffer = lines.pop() || '';
-
                     for (const line of lines) {
                         const trimmed = line.trim();
                         if (!trimmed || trimmed.startsWith(':')) continue;
                         if (trimmed === 'data: [DONE]') {
                             try { await reader.cancel(); } catch (_) {}
-                            break;
+                            break readLoop;
                         }
-
-                        if (trimmed.startsWith('data:')) {
-                            const jsonStr = trimmed.slice(5).trim();
-                            try {
-                                const parsed = JSON.parse(jsonStr);
-                                const delta = extractTextFromResponse(parsed);
-                              
-                                if (delta) {
-                                    if (!firstChunkTime) firstChunkTime = performance.now();
-                                    fullText += delta;
-                                    tokenCount += Math.max(1, Math.round(delta.length / 3.3));
-
-                                    const elapsedSec = Math.max(0.08, (performance.now() - (firstChunkTime || startTime)) / 1000);
-                                    const speed = (tokenCount / elapsedSec).toFixed(1);
-                                    const sanitized = sanitizeModelOutput(fullText);
-
-                                    if (sanitized.trim()) {
-                                        onProgress({
-                                            text: sanitized,
-                                            tokens: tokenCount,
-                                            speed: parseFloat(speed),
-                                            elapsedSec: elapsedSec.toFixed(1),
-                                            isDone: false
-                                        });
-                                    }
-                                }
-                            } catch (parseErr) {
-                                console.warn('Stream chunk parse error:', parseErr);
-                            }
+                        if (!trimmed.startsWith('data:')) continue;
+                        sawData = true;
+                        let parsed = null;
+                        try { parsed = JSON.parse(trimmed.slice(5).trim()); } catch (parseErr) {
+                            console.warn('Stream chunk parse error:', parseErr);
+                            continue;
+                        }
+                        if (!parsed) continue;
+                        if (parsed.model && !servedModel) servedModel = String(parsed.model);
+                        if (parsed.error) {
+                            const em = parsed.error.message || (typeof parsed.error === 'string' ? parsed.error : JSON.stringify(parsed.error));
+                            streamError = new Error(`Ошибка ${parsed.error.code || 'сервера'}: ${String(em).slice(0, 300)}`);
+                            try { await reader.cancel(); } catch (_) {}
+                            break readLoop;
+                        }
+                        const rDelta = extractReasoningDelta(parsed);
+                        if (rDelta) {
+                            reasoningChars += rDelta.length;
+                            if (!fullText) emitThinking(reasoningChars);
+                        }
+                        const delta = extractTextFromResponse(parsed);
+                        if (!delta) continue;
+                        if (!firstChunkTime) firstChunkTime = performance.now();
+                        fullText += delta;
+                        tokenCount += Math.max(1, Math.round(delta.length / 3.3));
+                        if (step.kind === 'keyless' && looksLikeNoticePrefix(fullText)) continue;
+                        const sanitized = sanitizeModelOutput(fullText, { allowCJK });
+                        if (sanitized.trim()) {
+                            const elapsedSec = Math.max(0.08, (performance.now() - firstChunkTime) / 1000);
+                            onProgress({
+                                text: sanitized,
+                                tokens: tokenCount,
+                                speed: parseFloat((tokenCount / elapsedSec).toFixed(1)),
+                                elapsedSec: elapsedSec.toFixed(1),
+                                isDone: false,
+                                model: label()
+                            });
+                        } else if (/<think/i.test(fullText)) {
+                            emitThinking(fullText.length);
                         }
                     }
                 }
-
-                if (streamIdle && !fullText.trim()) {
-                    const idleErr = new Error('Сервер перестал отвечать');
-                    idleErr.name = 'AbortError';
-                    throw idleErr;
+                if (!fullText.trim() && !sawData && rawAll.trim()) {
+                    // Сервер ответил обычным JSON вместо потока
+                    try { data = JSON.parse(rawAll); } catch (_) {}
                 }
-
-                if (fullText.trim()) {
-                    const sanitizedFull = sanitizeModelOutput(fullText);
-
-                    if (!sanitizedFull.trim()) {
-                        throw new Error('Модель вернула пустой ответ или только статус безопасности');
-                    }
-
-                    const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
-                    const finalTokens = Math.max(tokenCount, Math.round(fullText.length / 3.5));
-                    const finalSpeed = (finalTokens / totalSec).toFixed(1);
-
-                    onProgress({
-                        text: sanitizedFull,
-                        tokens: finalTokens,
-                        speed: parseFloat(finalSpeed),
-                        elapsedSec: totalSec.toFixed(1),
-                        isDone: true
+            } else {
+                const raw = await response.text();
+                try { data = JSON.parse(raw); } catch (_) {
+                    // Иногда вместо JSON приходит поток событий — собираем текст из него
+                    raw.split('\n').forEach(line => {
+                        const t = line.trim();
+                        if (!t.startsWith('data:') || t === 'data: [DONE]') return;
+                        try {
+                            const parsed = JSON.parse(t.slice(5).trim());
+                            if (parsed && parsed.model && !servedModel) servedModel = String(parsed.model);
+                            fullText += extractTextFromResponse(parsed) || '';
+                        } catch (_) {}
                     });
-                    return sanitizedFull;
                 }
             }
 
-            const data = await response.json();
-            const rawText = extractTextFromResponse(data);
-          
-            if (!rawText || !rawText.trim()) {
-                throw new Error('Модель вернула пустой ответ. Попробуйте переформулировать запрос');
-            }
-          
-            const resultText = sanitizeModelOutput(rawText);
-
-            if (!resultText.trim()) {
-                throw new Error('Ответ модели заблокирован фильтром безопасности');
+            if (data) {
+                if (data.model) servedModel = String(data.model);
+                fullText = extractTextFromResponse(data) || '';
+                if (!fullText.trim() && data.error) {
+                    const em = data.error.message || (typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+                    streamError = new Error(`Ошибка ${data.error.code || 'сервера'}: ${String(em).slice(0, 300)}`);
+                }
             }
 
-            const totalSec = Math.max(0.1, (performance.now() - startTime) / 1000);
-            const approxTokens = Math.max(1, Math.round(resultText.length / 3.5));
-            const speed = (approxTokens / totalSec).toFixed(1);
+            if (streamError && !fullText.trim()) {
+                lastError = streamError;
+                if (hasMore()) {
+                    console.warn(`Model ${step.model} stream error. Retrying with next...`);
+                    continue;
+                }
+                lastError.final = true;
+                throw lastError;
+            }
 
-            if (onProgress) {
+            const finalText = sanitizeModelOutput(fullText, { allowCJK });
+            if (!finalText.trim()) {
+                if (step.kind === 'keyless' && (isProviderNoticeText(fullText) || looksLikeNoticePrefix(fullText))) {
+                    skipKeyless = true;
+                    lastError = new Error(KEYLESS_BUDGET_MESSAGE);
+                } else if (streamIdle) {
+                    lastError = new Error('Сервер перестал отвечать');
+                } else if (fullText.trim()) {
+                    lastError = new Error('Модель вернула только служебный текст (статус безопасности). Попробуйте переформулировать запрос');
+                } else {
+                    lastError = new Error('Модель вернула пустой ответ. Попробуйте переформулировать запрос');
+                }
+                if (hasMore()) {
+                    console.warn(`Model ${step.model} returned no text. Retrying with next...`);
+                    continue;
+                }
+                lastError.final = true;
+                throw lastError;
+            }
+
+            const result = (streamIdle || streamError) ? finalText + CUT_OFF_NOTE : finalText;
+            const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
+            const finalTokens = Math.max(tokenCount, Math.round(fullText.length / 3.5), 1);
+            if (typeof onProgress === 'function') {
                 onProgress({
-                    text: resultText,
-                    tokens: approxTokens,
-                    speed: parseFloat(speed),
+                    text: result,
+                    tokens: finalTokens,
+                    speed: parseFloat((finalTokens / totalSec).toFixed(1)),
                     elapsedSec: totalSec.toFixed(1),
-                    isDone: true
+                    isDone: true,
+                    model: label()
                 });
             }
-            return resultText;
+            if (i > 0 && toastOnFallback && !badKey && step.model !== plan.primary) {
+                showToast(`${displayModelName(plan.primary)} сейчас не ответила — ответ дала ${label()}`);
+            }
+            return result;
         } catch (err) {
-            clearTimeout(timer);
-            if (typeof _activeTimers !== 'undefined') _activeTimers.delete(timer);
-
+            clearTimer();
             if (userSignal && userSignal.aborted) {
-                if (fullText.trim()) {
+                const partial = sanitizeModelOutput(fullText, { allowCJK });
+                if (partial.trim()) {
                     const totalSec = Math.max(0.1, (performance.now() - (firstChunkTime || startTime)) / 1000);
                     const stoppedTokens = Math.max(tokenCount, 1);
-                    const sanitizedFull = sanitizeModelOutput(fullText);
-                    if (onProgress) {
+                    if (typeof onProgress === 'function') {
                         onProgress({
-                            text: sanitizedFull,
+                            text: partial,
                             tokens: stoppedTokens,
                             speed: parseFloat((stoppedTokens / totalSec).toFixed(1)),
                             elapsedSec: totalSec.toFixed(1),
                             isDone: true,
-                            stopped: true
+                            stopped: true,
+                            model: label()
                         });
                     }
-                    return sanitizedFull;
+                    return partial;
                 }
-                throw typeof userAbortError === 'function' ? userAbortError() : new Error('Прервано пользователем');
+                throw userAbortError();
             }
-            lastError = err;
-            if (err.name === 'AbortError') {
-                if (i < effectiveList.length - 1) continue;
-                throw new Error('Превышено время ожидания ответа (85 сек)');
+            if (err && err.final) throw err;
+            lastError = (err && err.name === 'AbortError') ? new Error(`Превышено время ожидания ответа (${Math.round(STEP_TIMEOUT_MS / 1000)} сек)`) : err;
+            if (hasMore()) {
+                console.warn(`Model ${step.model} failed (${(err && err.message) || err}). Retrying with next...`);
+                continue;
             }
-            if (i === effectiveList.length - 1) {
-                throw lastError;
-            }
+            throw lastError;
+        } finally {
+            clearTimer();
+            if (userSignal) userSignal.removeEventListener('abort', onUserAbort);
         }
     }
     throw lastError || new Error('Не удалось получить ответ от нейросети');
@@ -5322,8 +5984,13 @@ function buildConversationMessages(hist, prompt, opts = {}) {
 
 async function askAI(prompt, opts = {}) {
     if (!opts.useHistory) {
+        // Служебные запросы (перевод промпта, план презентации): без «личности» ассистента и правил оформления
         const messages = Array.isArray(prompt) ? prompt : [{ role: 'user', content: prompt }];
-        return await callOpenAICompatible(messages, opts.onProgress, opts.model);
+        return await callOpenAICompatible(messages, opts.onProgress, opts.model, {
+            utility: opts.utility !== false,
+            task: opts.task,
+            temperature: opts.temperature
+        });
     }
 
     const hist = chatHistory;
@@ -5352,13 +6019,13 @@ async function askAI(prompt, opts = {}) {
             if (shown.trim()) emit();
             return;
         }
-        if (!shown.trim() || timer) return;
+        if ((!shown.trim() && !prog.thinking) || timer) return;
         timer = setTimeout(emit, Math.max(0, 40 - (Date.now() - lastEmit)));
     } : null;
 
     let raw;
     try {
-        raw = await callOpenAICompatible(messages, onProgress, opts.model);
+        raw = await callOpenAICompatible(messages, onProgress, opts.model, { task: opts.task });
     } finally {
         clearTimeout(timer);
         timer = null;
@@ -5427,17 +6094,12 @@ async function _askVision(imageDataUrl, text, opts = {}, hist = chatHistory) {
         ? (prog) => userOnProgress({ ...prog, text: stripMemoryMarkersForDisplay(prog.text || '') })
         : null;
 
-    let lastErr = null;
-    for (const vModel of VISION_MODELS_CHAIN) {
-        try {
-            return await callOpenAICompatible(messages, onProgress, vModel);
-        } catch (e) {
-            if (e && e.isUserAbort) throw e;
-            console.warn(`Vision model ${vModel} failed:`, e);
-            lastErr = e;
-        }
-    }
-    throw lastErr || new Error('Ошибка анализа изображения');
+    // Сначала выбранная модель, если она видит изображения, затем бесплатные модели со зрением
+    const selected = currentTextModelId();
+    const chain = [];
+    if (FREE_MODELS_CATALOG[selected] && FREE_MODELS_CATALOG[selected].vision) chain.push(selected);
+    VISION_MODELS_CHAIN.forEach(m => { if (!chain.includes(m)) chain.push(m); });
+    return await callOpenAICompatible(messages, onProgress, null, { chain, task: detectTaskKind(text) });
 }
 
 // ---------- Распознавание намерений: картинка / презентация ----------
@@ -5500,118 +6162,193 @@ function cleanImagePrompt(prompt) {
     return t || original;
 }
 
+// ==========================================
+// 🎨 КАРТИНКИ: формат, стиль, улучшение описания, варианты (бесплатный сервис Pollinations)
+// ==========================================
+Object.assign(ICONS, {
+    'shuffle': '<path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/>'
+});
+
+// Бесплатный генератор отдаёт не больше 1024 px по длинной стороне — сразу просим точный размер (кратный 16)
+const IMAGE_ASPECTS = {
+    '1:1': { width: 1024, height: 1024 },
+    '16:9': { width: 1024, height: 576 },
+    '9:16': { width: 576, height: 1024 },
+    '4:3': { width: 1024, height: 768 },
+    '3:4': { width: 768, height: 1024 },
+    '3:2': { width: 1024, height: 688 },
+    '2:3': { width: 688, height: 1024 },
+    '21:9': { width: 1024, height: 432 }
+};
+
+const IMAGE_STYLES = {
+    auto: { label: 'Авто', suffix: '', negative: '' },
+    photo: { label: 'Фото', suffix: 'photorealistic photograph, natural lighting, sharp focus, fine detail, shot on a 35mm lens', negative: 'cartoon, illustration, painting, cgi, plastic skin' },
+    cinematic: { label: 'Кино', suffix: 'cinematic film still, dramatic lighting, shallow depth of field, rich color grading, anamorphic look', negative: 'cartoon, flat lighting' },
+    anime: { label: 'Аниме', suffix: 'anime style illustration, clean line art, cel shading, vibrant colors, detailed background', negative: 'photo, photorealistic, 3d render' },
+    art: { label: 'Цифровой арт', suffix: 'digital painting, concept art, highly detailed, dramatic composition', negative: 'photo' },
+    '3d': { label: '3D', suffix: '3d render, octane render, soft global illumination, subsurface scattering, studio lighting', negative: 'flat, 2d, sketch' },
+    oil: { label: 'Масло', suffix: 'oil painting on canvas, visible brush strokes, rich textures, classical fine art', negative: 'photo, 3d render' },
+    watercolor: { label: 'Акварель', suffix: 'watercolor painting, soft washes of color, paper texture, delicate details', negative: 'photo, 3d render' },
+    pixel: { label: 'Пиксель-арт', suffix: 'pixel art, 16-bit retro video game style, crisp pixels, limited color palette', negative: 'blurry, photo, smooth gradients' },
+    sketch: { label: 'Карандаш', suffix: 'pencil sketch, graphite drawing, detailed linework, cross-hatching, monochrome', negative: 'color, photo' },
+    comic: { label: 'Комикс', suffix: 'comic book art, bold ink outlines, halftone shading, dynamic composition', negative: 'photo, 3d render' },
+    fantasy: { label: 'Фэнтези', suffix: 'epic fantasy art, magical atmosphere, intricate details, dramatic lighting', negative: '' },
+    cyberpunk: { label: 'Киберпанк', suffix: 'cyberpunk style, neon lights, rainy night city, high contrast, futuristic details', negative: '' },
+    minimal: { label: 'Минимализм', suffix: 'minimalist flat illustration, simple shapes, clean composition, limited color palette, generous empty space', negative: 'clutter, noise, photo' },
+    logo: { label: 'Логотип', suffix: 'clean flat vector logo design, simple and memorable, centered on a plain white background', negative: 'photo, realistic, clutter, mockup, busy background' }
+};
+
+const IMAGE_BASE_NEGATIVE = 'blurry, low quality, watermark, deformed';
+const IMAGE_PROMPT_MODEL = 'nvidia/nemotron-3.5-lightning:free';
+const HAS_CYRILLIC_RE = /[а-яёіїєўґ]/i;
+
+function randomImageSeed() {
+    return 1 + Math.floor(Math.random() * 999999998);
+}
+
+function aspectKeyFromSize(w, h) {
+    w = Number(w); h = Number(h);
+    if (!(w > 0 && h > 0)) return '1:1';
+    let best = '1:1', bestDiff = Infinity;
+    Object.keys(IMAGE_ASPECTS).forEach(k => {
+        const a = IMAGE_ASPECTS[k];
+        const d = Math.abs(a.width / a.height - w / h);
+        if (d < bestDiff) { bestDiff = d; best = k; }
+    });
+    return best;
+}
+
+// Формат «Авто»: по явному соотношению или по смыслу запроса
 function determineAspectRatio(promptText) {
-    const lowerText = promptText.toLowerCase();
-
-    if (/\b(обои на пк|обои для пк|обои компьютер|обои рабочий стол|desktop wallpaper|pc wallpaper|пейзаж|landscape|синематик|cinematic|широкий кадр|wide shot|ultra wide|ultrawide|панорама)\b/i.test(lowerText)) {
-        return { width: 1344, height: 768, label: '16:9 (обои ПК/пейзаж)' };
-    }
-
-    if (/\b(обои на телефон|обои для телефона|обои смартфон|mobile wallpaper|phone wallpaper|сторис|stories|instagram stories|в полный рост|full body|вертикальн|vertical)\b/i.test(lowerText)) {
-        return { width: 768, height: 1344, label: '9:16 (телефон/сторис)' };
-    }
-
-    if (/\b(портрет|portrait|headshot|лицо|face|аватарка|avatar|студийн(ое|ая) фото|studio photo|профил(ь|ьное фото)|profile)\b/i.test(lowerText)) {
-        return { width: 896, height: 1152, label: '3:4 (портрет)' };
-    }
-
-    return { width: 1024, height: 1024, label: '1:1 (квадрат)' };
+    const t = String(promptText || '').toLowerCase();
+    const m = /(?:^|[^\d])(1|2|3|4|9|16|21)\s*(?::|x|х|×|на)\s*(1|2|3|4|9|16)(?!\d)/.exec(t);
+    if (m && IMAGE_ASPECTS[m[1] + ':' + m[2]]) return m[1] + ':' + m[2];
+    if (/обои (?:на|для) (?:телефон|смартфон|айфон)|на (?:телефон|смартфон|заставку телефона)|phone wallpaper|mobile wallpaper|iphone wallpaper|сторис|stories|reels|рилс|тикток|tik ?tok|shorts|вертикальн|vertical|в полный рост|full[ -]body/.test(t)) return '9:16';
+    if (/аватар|avatar|иконк|\bicon\b|логотип|\blogo\b|(?:^|[^а-яё])лого(?![а-яё])|стикер|sticker|значок|эмблем|emblem/.test(t)) return '1:1';
+    if (/панорам|panorama|ultra ?wide|ультраширок|баннер|banner|шапк[аиу] (?:для )?(?:сайта|канала|профиля|группы)/.test(t)) return '21:9';
+    if (/обои (?:на|для) (?:пк|компьютер|рабоч|монитор|ноутбук)|рабоч(?:ий|его) стол|desktop|pc wallpaper|пейзаж|landscape|кинематограф|cinematic|широкий кадр|wide shot|превью|thumbnail|обложк[аиу] (?:для )?(?:видео|ютуб|youtube)|youtube|ютуб/.test(t)) return '16:9';
+    if (/постер|плакат|poster|афиш|обложк[аиу] (?:для )?(?:книг|альбом)|book cover/.test(t)) return '2:3';
+    if (/портрет|portrait|headshot|селфи|selfie/.test(t)) return '3:4';
+    return '1:1';
 }
 
-function pickFluxModel(promptDisplay, englishPrompt) {
-    const combined = `${promptDisplay} ${englishPrompt}`.toLowerCase();
-
-    const isAnime = /\b(anime|manga|2d|illustration|cartoon|chibi|waifu|yuno|gasai|mirai nikki|genshin|vtuber|key visual|comic|manhwa|manhua)\b/i.test(combined) ||
-                    /аниме|манга|тян|вайфу|юно гасай|иллюстраци|мультяшн|комикс/i.test(combined);
-    if (isAnime) {
-        return { renderModel: 'flux-anime', modelLabel: 'Flux Anime' };
-    }
-
-    const is3D = /\b(3d render|3d model|3d art|blender|octane render|cinema 4d|unreal engine|cgi|pixar style|disney 3d style|claymation|clay model|figurine|toy design|isometric render|zbrush)\b/i.test(combined) ||
-                 /3d\s*рендер|3д\s*рендер|рендер\s*3d|3д\s*модель|фигурка|мультфильм\s*3d|стиль\s*pixar|октейн/i.test(combined);
-    if (is3D) {
-        return { renderModel: 'flux-3d', modelLabel: 'Flux 3D' };
-    }
-
-    const isRealisticPortrait = /\b(portrait|headshot|human face|photo of a (man|woman|person)|realistic (skin|photo)|dslr|photojournalism|studio photography)\b/i.test(combined) ||
-                                 /портрет|фотография (человека|девушки|парня|лица)|реалистичн(ое|ая) фото/i.test(combined);
-    if (isRealisticPortrait) {
-        return { renderModel: 'flux-realism', modelLabel: 'Flux Realism' };
-    }
-
-    return { renderModel: 'flux', modelLabel: 'Flux Art / SDXL' };
+function hasCyrillicOutsideQuotes(text) {
+    return HAS_CYRILLIC_RE.test(String(text || '').replace(/"[^"]*"|«[^»]*»|“[^”]*”/g, ''));
 }
 
-async function translateImagePrompt(rawPrompt) {
-    const clean = cleanImagePrompt(rawPrompt).trim();
-    if (!clean) return 'artistic masterpiece, cinematic lighting, 8k resolution';
+// Описание → английский промпт для генератора (с улучшением или дословно)
+async function translateImagePrompt(rawPrompt, o = {}) {
+    const clean = cleanImagePrompt(rawPrompt).trim() || String(rawPrompt || '').trim();
+    const style = IMAGE_STYLES[o.style] || IMAGE_STYLES.auto;
+    const enhance = o.enhance !== false;
+    const negRaw = String(o.negative || '').trim().slice(0, 300);
+    const needNegTranslate = !!negRaw && HAS_CYRILLIC_RE.test(negRaw);
+    const result = { prompt: clean, negative: needNegTranslate ? '' : negRaw, viaLLM: false, serverEnhance: false };
+    if (!clean) {
+        result.prompt = 'a beautiful artistic picture';
+        return result;
+    }
+    // Английское описание без улучшения отправляем как есть — без лишнего запроса к ИИ
+    if (!enhance && !HAS_CYRILLIC_RE.test(clean) && !needNegTranslate) return result;
 
-    const cleanLower = clean.toLowerCase();
+    const sys = [
+        'You write prompts for an AI image generator.',
+        enhance
+            ? 'Rewrite the request below as ONE vivid English image prompt of 1-3 sentences (at most 70 words). Keep every subject, object, color, number and detail the user asked for, and do not add new main subjects. Add helpful visual details: setting, composition, camera angle or art medium, lighting, color palette and mood.'
+            : 'Translate the request below into English as ONE image prompt. Keep the meaning and every detail exactly; do not add anything new.',
+        'Use the common English names of well-known characters, people, places and artworks.',
+        'If the user wants some text written in the picture, keep that text exactly as given, in double quotes.'
+    ];
+    if (style.suffix) sys.push('Desired visual style: ' + style.suffix + '.');
+    if (needNegTranslate) {
+        sys.push('The user also lists things to avoid. Answer in exactly two lines:\nPROMPT: <the image prompt>\nAVOID: <the things to avoid, translated to English, comma-separated>');
+    } else {
+        sys.push('Output only the prompt itself: no quotes around it, no explanations, no labels.');
+    }
+    const userMsg = needNegTranslate ? `Request: ${clean}\nThings to avoid: ${negRaw}` : clean;
 
     try {
-        const systemPrompt = `You are an elite cinematic prompt engineer for Flux/SDXL image generators (Midjourney-level quality).
-Convert the user input into one rich, optimized English image generation prompt (30-60 descriptive keywords/phrases, comma-separated).
-
-CRITICAL RULES BY CATEGORY:
-
-1. ANIME / 2D / MANGA / FICTIONAL CHARACTERS:
-   If the request is about anime, manga, 2D art, cartoon, or specific characters (e.g. "Юно Гасай", "Наруто", "Genshin", "waifu"):
-   - Include character English name and franchise (e.g., "Yuno Gasai from Future Diary / Mirai Nikki").
-   - Detail visual markers: hair color/style, eye color, canonical outfit, emotion/expression, pose.
-   - Append 2D tags: "anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece, clean linework, cel shading".
-   - STRICTLY FORBIDDEN: NEVER include "photorealistic", "realistic photo", "photography", "camera", or "raw photo" for 2D/anime prompts.
-
-2. 3D RENDER / CGI / PIXAR-STYLE / PRODUCT OR CHARACTER RENDER:
-   If the request implies a 3D render, CGI character, toy/figurine, claymation, or Pixar/Disney-style 3D look:
-   - Describe materials and surface detail (subsurface scattering on skin, glossy plastic, matte clay, metallic sheen).
-   - Specify render engine quality tags: "octane render, unreal engine 5, cinema 4d, ray tracing, ambient occlusion, subsurface scattering, 8k render, studio product lighting".
-   - Include composition/style: "isometric" or "three-quarter view" where relevant, "vibrant color palette", "soft global illumination".
-
-3. REALISTIC PHOTOS / PORTRAITS / LANDSCAPES / NATURE / OBJECTS:
-   If the request is for realistic photos, people, landscapes, animals, or objects, write like a professional photography brief:
-   - Camera & optics: specify a plausible lens/focal length and aperture (e.g. "shot on 85mm f/1.4", "35mm lens f/1.8", "shallow depth of field", "bokeh").
-   - Lighting: name a specific lighting setup (e.g. "golden hour rim light", "soft diffused studio softbox", "dramatic chiaroscuro", "overcast natural light", "cinematic volumetric light").
-   - Detail & finish: "photorealistic, raw photo, hyperdetailed skin texture, visible pores, natural skin texture, subsurface scattering, sharp focus, natural color grading, Kodak Portra color palette, 8k resolution".
-   - Add a mood/atmosphere phrase (e.g. "cinematic atmosphere", "melancholic mood", "epic scale") when it fits the subject.
-
-4. GENERAL COMPOSITION (apply to all categories where relevant):
-   - Mention framing/composition (close-up, wide shot, rule of thirds) and color palette when it strengthens the image.
-
-5. OUTPUT FORMAT:
-   - Output ONLY the prompt string (comma-separated English keywords/phrases). No introductory phrases, no quotes, no markdown headers, no category labels.`;
-
-        const enriched = await askAI([
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: clean }
-        ], { useHistory: false, model: 'meta-llama/llama-3.3-70b-instruct:free' });
-
-        if (enriched && enriched.trim()) {
-            let res = enriched.trim().replace(/^["'`]+|["'`]+$/g, '');
-            res = res.replace(/^(Prompt|English Prompt|Generated Prompt|Image Prompt):\s*/i, '');
-            if (!/[а-яё]/i.test(res) && res.length > 5) {
-                return res;
-            }
+        const out = await askAI([
+            { role: 'system', content: sys.join('\n') },
+            { role: 'user', content: userMsg }
+        ], { useHistory: false, utility: true, model: IMAGE_PROMPT_MODEL, temperature: enhance ? 0.7 : 0.2 });
+        let text = String(out || '').trim();
+        let neg = '';
+        if (needNegTranslate) {
+            const pm = /PROMPT:\s*([\s\S]*?)(?:\n\s*AVOID:|$)/i.exec(text);
+            const am = /AVOID:\s*([^\n]*)/i.exec(text);
+            if (pm) text = pm[1].trim();
+            if (am) neg = am[1].trim();
+        }
+        text = text
+            .replace(/^(?:here(?:'s| is)[^:\n]*:|prompt:|english prompt:|image prompt:)\s*/i, '')
+            .replace(/^["'`«»“”]+|["'`«»“”]+$/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (text.length > 4 && text.length < 1500 && !hasCyrillicOutsideQuotes(text) && !isProviderNoticeText(text)) {
+            result.prompt = text;
+            result.viaLLM = true;
+            if (needNegTranslate) result.negative = (neg && !HAS_CYRILLIC_RE.test(neg)) ? neg.replace(/[.;]+$/, '').slice(0, 300) : '';
+            return result;
         }
     } catch (e) {
-        console.info('LLM prompt enrichment fallback:', e.message);
+        if (e && e.isUserAbort) throw e;
+        console.info('Image prompt LLM fallback:', e && e.message);
     }
+    // Помощник недоступен: отдаём описание как есть и просим генератор улучшить его сам
+    result.prompt = clean;
+    result.serverEnhance = true;
+    return result;
+}
 
-    const isAnimeTopic = /аниме|манга|тян|вайфу|юно|yuno|anime|manga|2d|illustration/i.test(cleanLower);
-    const hasCyrillic = /[а-яё]/i.test(clean);
+function buildImageUrl(p) {
+    const params = [
+        'width=' + p.width,
+        'height=' + p.height,
+        'seed=' + p.seed,
+        'model=flux',
+        'nologo=true',
+        'nofeed=true',
+        'enhance=' + (p.serverEnhance ? 'true' : 'false')
+    ];
+    if (p.negative) params.push('negative_prompt=' + encodeURIComponent(p.negative));
+    return 'https://image.pollinations.ai/prompt/' + encodeURIComponent(p.prompt) + '?' + params.join('&');
+}
 
-    if (!hasCyrillic) {
-        if (isAnimeTopic) {
-            return `${clean}, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece`;
-        }
-        return `${clean}, photorealistic, raw photo, natural soft lighting, 8k, highly detailed`;
+// Параметры для «Ещё вариант» из ссылки на картинку (в том числе из истории чата)
+function imageVariantFromUrl(url) {
+    try {
+        const u = new URL(url);
+        if (u.hostname !== 'image.pollinations.ai' || !u.pathname.startsWith('/prompt/')) return null;
+        const prompt = decodeURIComponent(u.pathname.slice('/prompt/'.length));
+        if (!prompt) return null;
+        const width = parseInt(u.searchParams.get('width') || '', 10) || 1024;
+        const height = parseInt(u.searchParams.get('height') || '', 10) || 1024;
+        return {
+            englishPrompt: prompt,
+            negative: u.searchParams.get('negative_prompt') || '',
+            width: Math.min(1024, width),
+            height: Math.min(1024, height),
+            serverEnhance: u.searchParams.get('enhance') === 'true'
+        };
+    } catch (_) {
+        return null;
     }
+}
 
-    const baseFallback = clean;
-
-    if (isAnimeTopic) {
-        return `${baseFallback}, anime aesthetic, 2D illustration, key visual, highres, vibrant colors, masterpiece`;
+// Какая модель на самом деле нарисовала картинку (сервис пишет это в метаданные файла)
+async function readImageModelFromBlob(blob) {
+    try {
+        if (!blob || !blob.slice) return '';
+        const head = await blob.slice(0, 65536).text();
+        const m = /"model"\s*:\s*"([\w.-]{2,40})"/.exec(head);
+        if (!m) return '';
+        const names = { sana: 'Sana', flux: 'Flux', turbo: 'Turbo', kontext: 'Flux Kontext', gptimage: 'GPT Image', seedream: 'Seedream', zimage: 'Z-Image' };
+        return names[m[1].toLowerCase()] || m[1];
+    } catch (_) {
+        return '';
     }
-    return `${baseFallback}, photorealistic, raw photo, cinematic natural lighting, 8k resolution`;
 }
 
 // ==========================================
@@ -5646,6 +6383,18 @@ window.closeImageLightbox = function(e) {
     }
 };
 
+function saveBlobAs(blob, filename) {
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+    showToast('Файл сохранен!');
+}
+
 window.downloadGeneratedImage = function(url, filename = 'quanta-art.jpg') {
     showToast('Скачивание изображения...');
     fetch(url)
@@ -5654,15 +6403,9 @@ window.downloadGeneratedImage = function(url, filename = 'quanta-art.jpg') {
             return res.blob();
         })
         .then(blob => {
-            const blobUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
-            showToast('Файл сохранен!');
+            const type = blob.type || '';
+            const ext = /png/.test(type) ? 'png' : (/webp/.test(type) ? 'webp' : (/svg/.test(type) ? 'svg' : 'jpg'));
+            saveBlobAs(blob, String(filename).replace(/\.(jpe?g|png|webp)$/i, '') + '.' + ext);
         })
         .catch(() => {
             const img = new Image();
@@ -5680,15 +6423,7 @@ window.downloadGeneratedImage = function(url, filename = 'quanta-art.jpg') {
                             showToast('Изображение открыто для сохранения');
                             return;
                         }
-                        const blobUrl = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = blobUrl;
-                        a.download = filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
-                        showToast('Файл сохранен!');
+                        saveBlobAs(blob, filename);
                     }, 'image/jpeg', 0.95);
                 } catch (e) {
                     window.open(url, '_blank');
@@ -5704,10 +6439,25 @@ window.downloadGeneratedImage = function(url, filename = 'quanta-art.jpg') {
 };
 
 // ==========================================
-// IMAGE GENERATION — PROFESSIONAL MIDJOURNEY-LEVEL MODULE
+// ГЕНЕРАЦИЯ КАРТИНКИ
+// override (для «Ещё вариант»): { englishPrompt, negative, width, height, style, serverEnhance }
 // ==========================================
-window.startImageGeneration = async function(promptText) {
-    if (!promptText || !promptText.trim()) {
+function stoppedImageHtml(safeDisplay) {
+    return `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>`;
+}
+
+function bindRetryButtons(root) {
+    root.querySelectorAll('[data-retry-prompt]').forEach(btn => {
+        if (btn.dataset.bound) return;
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', (e) => {
+            startImageGeneration(e.currentTarget.dataset.retryPrompt);
+        });
+    });
+}
+
+window.startImageGeneration = async function(promptText, override = null) {
+    if (!promptText || !String(promptText).trim()) {
         showToast('Введите описание картинки');
         return;
     }
@@ -5716,54 +6466,86 @@ window.startImageGeneration = async function(promptText) {
         return;
     }
     openWorkspace();
-    const clean = cleanImagePrompt(promptText).trim();
-    const promptDisplay = clean || promptText.trim();
-    addMessage('user', `${icon('palette')} Генерация: <b>${escapeHtml(promptDisplay)}</b>`);
+    const variant = !!(override && override.englishPrompt);
+    const clean = variant ? String(promptText).trim() : cleanImagePrompt(promptText).trim();
+    const promptDisplay = clean || String(promptText).trim();
+    const userLabel = variant ? 'Ещё вариант' : 'Генерация';
+    addMessage('user', `${icon(variant ? 'shuffle' : 'palette')} ${userLabel}: <b>${escapeHtml(promptDisplay)}</b>`);
     const turnChatId = window._turnChatId;
 
     const genId = 'img_' + Math.floor(Math.random() * 1000000);
-    const loadingEl = addLoading('Подготовка и обогащение промпта...');
+    const opt = currentImageOptions();
+    const loadingEl = addLoading(variant ? 'Готовлю новый вариант...' : (opt.enhance ? 'Улучшаю описание картинки...' : 'Готовлю описание картинки...'));
     const gen = beginGeneration();
+    const safeDisplay = escapeAttr(promptDisplay);
 
-    let englishPrompt = '';
-    try {
-        englishPrompt = await translateImagePrompt(promptDisplay);
-    } catch (e) {
-        console.warn('Prompt translation failed:', e);
-        englishPrompt = promptDisplay;
+    let prep;
+    if (variant) {
+        prep = { prompt: String(override.englishPrompt), negative: String(override.negative || ''), viaLLM: false, serverEnhance: !!override.serverEnhance };
+    } else {
+        try {
+            prep = await translateImagePrompt(promptDisplay, { style: opt.style, enhance: opt.enhance, negative: opt.negative });
+        } catch (e) {
+            console.warn('Prompt translation failed:', e);
+            prep = { prompt: promptDisplay, negative: '', viaLLM: false, serverEnhance: true };
+        }
     }
 
     if (gen.signal.aborted) {
-        loadingEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${escapeAttr(promptDisplay)}">${icon('refresh')} Повторить генерацию</button>`;
-        const retryBtn = loadingEl.querySelector('[data-retry-prompt]');
-        if (retryBtn) {
-            retryBtn.addEventListener('click', (e) => {
-                startImageGeneration(e.currentTarget.dataset.retryPrompt);
-            });
-        }
+        loadingEl.innerHTML = stoppedImageHtml(safeDisplay);
+        bindRetryButtons(loadingEl);
         endGeneration();
         return;
     }
 
-    const { renderModel, modelLabel } = pickFluxModel(promptDisplay, englishPrompt);
-    const { width, height, label: aspectLabel } = determineAspectRatio(promptDisplay + ' ' + englishPrompt);
+    const styleId = variant ? (IMAGE_STYLES[override.style] ? override.style : 'auto') : opt.style;
+    const style = IMAGE_STYLES[styleId] || IMAGE_STYLES.auto;
+    let finalPrompt = String(prep.prompt || promptDisplay).trim();
+    if (!variant && style.suffix && !finalPrompt.toLowerCase().includes(style.suffix.split(',')[0].toLowerCase())) {
+        finalPrompt = finalPrompt.replace(/[.\s]+$/, '') + ', ' + style.suffix;
+    }
+    finalPrompt = finalPrompt.slice(0, 1500);
 
-    const seed = Math.floor(Math.random() * 9999999);
-    const encoded = encodeURIComponent(englishPrompt);
-    const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=false&model=${renderModel}`;
-    const safeDisplay = escapeAttr(promptDisplay);
+    let negative;
+    if (variant) {
+        negative = String(override.negative || '');
+    } else {
+        const seen = new Set();
+        negative = [prep.negative, style.negative, IMAGE_BASE_NEGATIVE].join(', ').split(',')
+            .map(x => x.trim()).filter(x => x && !seen.has(x.toLowerCase()) && seen.add(x.toLowerCase()))
+            .join(', ').slice(0, 400);
+    }
+
+    let width, height, aspectKey;
+    if (variant && override.width && override.height) {
+        width = override.width;
+        height = override.height;
+        aspectKey = aspectKeyFromSize(width, height);
+    } else {
+        aspectKey = opt.aspect !== 'auto' && IMAGE_ASPECTS[opt.aspect] ? opt.aspect : determineAspectRatio(promptDisplay);
+        width = IMAGE_ASPECTS[aspectKey].width;
+        height = IMAGE_ASPECTS[aspectKey].height;
+    }
+    const seed = (!variant && opt.seed != null) ? opt.seed : randomImageSeed();
+    const primaryUrl = buildImageUrl({ prompt: finalPrompt, width, height, seed, negative, serverEnhance: prep.serverEnhance });
+
+    const metaBase = [aspectKey, `${width}×${height}`, 'сид ' + seed];
+    if (styleId !== 'auto') metaBase.push('стиль: ' + style.label);
+    if (prep.viaLLM && !variant) metaBase.push('описание улучшено');
+    const metaText = metaBase.join(' · ');
 
     loadingEl.innerHTML = `
-        <div class="generated-img-card" id="${genId}">
+        <div class="generated-img-card" id="${genId}" style="--img-ratio: ${width} / ${height};">
             <div class="generated-img-view">
                 <div class="img-skeleton" id="skel-${genId}" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:44px 16px; width:100%; gap:12px; text-align:center;">
                     <div class="spinner" style="width:32px; height:32px;"></div>
-                    <span style="font-size:0.86rem; color:var(--text-secondary);">Нейросеть генерирует «<b>${escapeHtml(promptDisplay)}</b>»...</span>
-                    <span style="font-size:0.75rem; color:var(--text-muted); max-width:80%;">${escapeHtml(modelLabel)} • ${escapeHtml(aspectLabel)} (${width}×${height})</span>
+                    <span style="font-size:0.86rem; color:var(--text-secondary);">Нейросеть рисует «<b>${escapeHtml(promptDisplay)}</b>»...</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted); max-width:80%;">${escapeHtml(metaText)}</span>
                 </div>
                 <img class="generated-img-element"
                      id="img-el-${genId}"
                      alt="${escapeHtml(promptDisplay)}"
+                     width="${width}" height="${height}"
                      style="display:none;"
                 />
                 <div class="generated-img-overlay">
@@ -5775,6 +6557,7 @@ window.startImageGeneration = async function(promptText) {
                 <div class="generated-prompt-badge">
                     <span>${icon('sparkles')}</span> <b>${escapeHtml(promptDisplay)}</b>
                 </div>
+                <div class="generated-img-meta" id="meta-${genId}">${escapeHtml(metaText)}</div>
                 <div class="generated-img-btns">
                     <button class="img-action-btn img-action-btn-primary" data-download-img="${escapeAttr(primaryUrl)}" data-download-name="quanta-${genId}.jpg">
                         ${icon('download')} <span>Скачать</span>
@@ -5782,10 +6565,19 @@ window.startImageGeneration = async function(promptText) {
                     <button class="img-action-btn" data-lightbox-img="${escapeAttr(primaryUrl)}" data-lightbox-caption="${safeDisplay}">
                         ${icon('maximize')} <span>На весь экран</span>
                     </button>
-                    <button class="img-action-btn" data-retry-prompt="${safeDisplay}">
+                    <button class="img-action-btn" data-variant-img title="Тот же промпт, другая случайная картинка">
+                        ${icon('shuffle')} <span>Ещё вариант</span>
+                    </button>
+                    <button class="img-action-btn" data-retry-prompt="${safeDisplay}" title="Заново с текущими настройками формата и стиля">
                         ${icon('refresh')} <span>Перегенерировать</span>
                     </button>
                 </div>
+                <details class="img-prompt-details">
+                    <summary>Промпт для нейросети</summary>
+                    <div class="img-prompt-text">${escapeHtml(finalPrompt)}</div>
+                    ${negative ? `<div class="img-prompt-neg"><b>Исключить:</b> ${escapeHtml(negative)}</div>` : ''}
+                    <button type="button" class="img-action-btn img-prompt-copy">${icon('copy')} <span>Копировать промпт</span></button>
+                </details>
             </div>
         </div>
     `;
@@ -5798,162 +6590,148 @@ window.startImageGeneration = async function(promptText) {
             openImageLightbox((shown && shown.style.display !== 'none' && (shown.currentSrc || shown.src)) || primaryUrl, promptDisplay);
         });
     }
-
     loadingEl.querySelectorAll('[data-download-img]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            downloadGeneratedImage(btn.dataset.downloadImg, btn.dataset.downloadName);
-        });
+        btn.addEventListener('click', () => downloadGeneratedImage(btn.dataset.downloadImg, btn.dataset.downloadName));
     });
-
     loadingEl.querySelectorAll('[data-lightbox-img]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            openImageLightbox(btn.dataset.lightboxImg, btn.dataset.lightboxCaption);
-        });
+        btn.addEventListener('click', () => openImageLightbox(btn.dataset.lightboxImg, btn.dataset.lightboxCaption));
     });
-
-    loadingEl.querySelectorAll('[data-retry-prompt]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            startImageGeneration(btn.dataset.retryPrompt);
-        });
+    const variantOverride = { englishPrompt: finalPrompt, negative, width, height, style: styleId, serverEnhance: !!prep.serverEnhance };
+    loadingEl.querySelectorAll('[data-variant-img]').forEach(btn => {
+        btn.addEventListener('click', () => startImageGeneration(promptDisplay, variantOverride));
     });
+    const copyBtn = loadingEl.querySelector('.img-prompt-copy');
+    if (copyBtn) copyBtn.addEventListener('click', () => copyText(finalPrompt, 'Промпт скопирован'));
+    bindRetryButtons(loadingEl);
 
     const imgEl = document.getElementById('img-el-' + genId);
     const skelEl = document.getElementById('skel-' + genId);
     const actsEl = document.getElementById('acts-' + genId);
+    const metaEl = document.getElementById('meta-' + genId);
+    let servedModel = '';
 
     const finishImageGen = () => {
         if (window.genAbort === gen) endGeneration();
     };
 
-    if (imgEl) {
-        imgEl.onload = () => {
-            imgEl.style.display = 'block';
-            if (skelEl) skelEl.remove();
-            if (actsEl) actsEl.style.display = 'flex';
-            
-            const actualUrl = imgEl.currentSrc || imgEl.src;
-            loadingEl.querySelectorAll('[data-download-img]').forEach(btn => {
-                btn.dataset.downloadImg = actualUrl;
-            });
-            loadingEl.querySelectorAll('[data-lightbox-img]').forEach(btn => {
-                btn.dataset.lightboxImg = actualUrl;
-            });
-
-            showToast('Изображение готово!');
-            notifyAnswerReady();
-            persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: imgEl.dataset.sourceUrl || actualUrl, chatId: turnChatId });
-            finishImageGen();
-        };
-
-        imgEl.onerror = function() {
-            const attempt = parseInt(imgEl.dataset.attempt || '0', 10);
-            if (attempt === 0) {
-                imgEl.dataset.attempt = '1';
-                const fallbackSeed = Math.floor(Math.random() * 888888);
-                imgEl.src = `https://image.pollinations.ai/prompt/${encoded}?width=800&height=800&seed=${fallbackSeed}&nologo=true&model=turbo`;
-                return;
-            } else if (attempt === 1) {
-                imgEl.dataset.attempt = '2';
-                const fallbackSeed = Math.floor(Math.random() * 888888);
-                imgEl.src = `https://pollinations.ai/p/${encoded}?width=800&height=800&seed=${fallbackSeed}`;
-                return;
-            }
-
-            finishImageGen();
-            if (skelEl) {
-                skelEl.innerHTML = `
-                    <span style="color:var(--danger); font-size:0.85rem;">${icon('alert')} ${imgEl.dataset.limited ? 'Бесплатный генератор картинок сейчас перегружен (лимит запросов). Подождите минуту и нажмите «Повторить генерацию».' : 'Не удалось загрузить изображение. Проверьте соединение или повторите попытку.'}</span>
-                    <button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>
-                `;
-                const retryBtn = skelEl.querySelector('[data-retry-prompt]');
-                if (retryBtn) {
-                    retryBtn.addEventListener('click', (e) => {
-                        startImageGeneration(e.currentTarget.dataset.retryPrompt);
-                    });
-                }
-            }
-        };
-
-        gen.signal.addEventListener('abort', () => {
-            imgEl.onload = null;
-            imgEl.onerror = null;
-            imgEl.removeAttribute('onerror');
-            imgEl.src = 'data:,';
-            if (skelEl) {
-                skelEl.innerHTML = `${icon('square', 14)} Генерация остановлена<br><button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>`;
-                const retryBtn = skelEl.querySelector('[data-retry-prompt]');
-                if (retryBtn) {
-                    retryBtn.addEventListener('click', (e) => {
-                        startImageGeneration(e.currentTarget.dataset.retryPrompt);
-                    });
-                }
-            }
-            finishImageGen();
-        }, { once: true });
-
-        const showLimitWait = (sec) => {
-            if (!skelEl) return;
-            skelEl.innerHTML = `
-                <div class="spinner" style="width:32px; height:32px;"></div>
-                <span style="font-size:0.86rem; color:var(--text-secondary); max-width:90%;">Бесплатный генератор картинок принимает один запрос примерно раз в 45 секунд.</span>
-                <span style="font-size:0.8rem; color:var(--text-muted);">Повторю автоматически через <b class="img-wait-sec">${sec}</b> с…</span>`;
-        };
-        const loadPrimary = async (tries) => {
-            if (gen.signal.aborted) return;
-            let res = null;
-            try {
-                res = await fetch(primaryUrl, { signal: gen.signal });
-            } catch (e) {
-                if (gen.signal.aborted) return;
-                imgEl.src = primaryUrl; // fetch недоступен (блокировщик/CORS) — грузим как раньше
-                return;
-            }
-            if (gen.signal.aborted) return;
-            if (res.ok && /^image\//i.test(res.headers.get('content-type') || '')) {
-                try {
-                    const blob = await res.blob();
-                    if (gen.signal.aborted) return;
-                    imgEl.dataset.sourceUrl = primaryUrl;
-                    imgEl.src = URL.createObjectURL(blob);
-                } catch (e) {
-                    if (!gen.signal.aborted) imgEl.src = primaryUrl;
-                }
-                return;
-            }
-            if (res.status === 402 || res.status === 429) imgEl.dataset.limited = '1';
-            if ((res.status === 402 || res.status === 429) && tries < 3) {
-                let wait = parseInt(res.headers.get('retry-after') || '', 10);
-                if (!(wait > 0)) {
-                    try {
-                        const j = await res.json();
-                        const m = /(\d+)\s*s/i.exec((j && j.error && j.error.message) || '');
-                        if (m) wait = parseInt(m[1], 10);
-                    } catch (_) {}
-                }
-                let left = Math.min(120, Math.max(5, wait || 45)) + 1;
-                showLimitWait(left);
-                const timer = setInterval(() => {
-                    if (gen.signal.aborted) { clearInterval(timer); return; }
-                    left--;
-                    const secEl = skelEl && skelEl.querySelector('.img-wait-sec');
-                    if (secEl) secEl.textContent = String(Math.max(0, left));
-                    if (left <= 0) {
-                        clearInterval(timer);
-                        if (skelEl) skelEl.innerHTML = `<div class="spinner" style="width:32px; height:32px;"></div><span style="font-size:0.86rem; color:var(--text-secondary);">Нейросеть генерирует «<b>${escapeHtml(promptDisplay)}</b>»...</span>`;
-                        loadPrimary(tries + 1);
-                    }
-                }, 1000);
-                return;
-            }
-            imgEl.src = primaryUrl; // другие ошибки — запасные адреса в onerror
-        };
-        loadPrimary(0);
-
-        setTimeout(finishImageGen, 300000);
-    } else {
+    if (!imgEl) {
         finishImageGen();
-        persistTurn(`Генерация: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl, chatId: turnChatId });
+        persistTurn(`${userLabel}: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: primaryUrl, chatId: turnChatId });
+        return;
     }
+
+    imgEl.onload = () => {
+        imgEl.style.display = 'block';
+        if (skelEl) skelEl.remove();
+        if (actsEl) actsEl.style.display = 'flex';
+        if (metaEl && servedModel) metaEl.textContent = servedModel + ' · ' + metaText;
+
+        const actualUrl = imgEl.currentSrc || imgEl.src;
+        loadingEl.querySelectorAll('[data-download-img]').forEach(btn => { btn.dataset.downloadImg = actualUrl; });
+        loadingEl.querySelectorAll('[data-lightbox-img]').forEach(btn => { btn.dataset.lightboxImg = actualUrl; });
+
+        showToast('Изображение готово!');
+        notifyAnswerReady();
+        persistTurn(`${userLabel}: ${promptDisplay}`, promptDisplay, 'image', { imageUrl: imgEl.dataset.sourceUrl || actualUrl, chatId: turnChatId });
+        finishImageGen();
+    };
+
+    imgEl.onerror = function() {
+        const attempt = parseInt(imgEl.dataset.attempt || '0', 10);
+        if (attempt < 2) {
+            // Запасные адреса — с тем же форматом картинки
+            imgEl.dataset.attempt = String(attempt + 1);
+            const fallbackSeed = randomImageSeed();
+            const enc = encodeURIComponent(finalPrompt);
+            imgEl.src = attempt === 0
+                ? `https://image.pollinations.ai/prompt/${enc}?width=${width}&height=${height}&seed=${fallbackSeed}&nologo=true&nofeed=true&model=turbo`
+                : `https://pollinations.ai/p/${enc}?width=${width}&height=${height}&seed=${fallbackSeed}&nologo=true`;
+            return;
+        }
+
+        finishImageGen();
+        if (skelEl) {
+            skelEl.innerHTML = `
+                <span style="color:var(--danger); font-size:0.85rem;">${icon('alert')} ${imgEl.dataset.limited ? 'Бесплатный генератор картинок сейчас перегружен (лимит запросов). Подождите минуту и нажмите «Повторить генерацию».' : 'Не удалось загрузить изображение. Проверьте соединение или повторите попытку.'}</span>
+                <button class="img-action-btn" style="margin-top:8px;" data-retry-prompt="${safeDisplay}">${icon('refresh')} Повторить генерацию</button>
+            `;
+            bindRetryButtons(skelEl);
+        }
+    };
+
+    gen.signal.addEventListener('abort', () => {
+        imgEl.onload = null;
+        imgEl.onerror = null;
+        imgEl.removeAttribute('onerror');
+        imgEl.src = 'data:,';
+        if (skelEl) {
+            skelEl.innerHTML = stoppedImageHtml(safeDisplay);
+            bindRetryButtons(skelEl);
+        }
+        finishImageGen();
+    }, { once: true });
+
+    // Бесплатный лимит Pollinations (1 картинка примерно в 45 с): ждём и повторяем сами
+    const showLimitWait = (sec) => {
+        if (!skelEl) return;
+        skelEl.innerHTML = `
+            <div class="spinner" style="width:32px; height:32px;"></div>
+            <span style="font-size:0.86rem; color:var(--text-secondary); max-width:90%;">Бесплатный генератор картинок принимает один запрос примерно раз в 45 секунд.</span>
+            <span style="font-size:0.8rem; color:var(--text-muted);">Повторю автоматически через <b class="img-wait-sec">${sec}</b> с…</span>`;
+    };
+    const loadPrimary = async (tries) => {
+        if (gen.signal.aborted) return;
+        let res = null;
+        try {
+            res = await fetch(primaryUrl, { signal: gen.signal });
+        } catch (e) {
+            if (gen.signal.aborted) return;
+            imgEl.src = primaryUrl; // fetch недоступен (блокировщик/CORS) — грузим как обычную картинку
+            return;
+        }
+        if (gen.signal.aborted) return;
+        if (res.ok && /^image\//i.test(res.headers.get('content-type') || '')) {
+            try {
+                const blob = await res.blob();
+                if (gen.signal.aborted) return;
+                servedModel = await readImageModelFromBlob(blob);
+                imgEl.dataset.sourceUrl = primaryUrl;
+                imgEl.src = URL.createObjectURL(blob);
+            } catch (e) {
+                if (!gen.signal.aborted) imgEl.src = primaryUrl;
+            }
+            return;
+        }
+        if (res.status === 402 || res.status === 429) imgEl.dataset.limited = '1';
+        if ((res.status === 402 || res.status === 429) && tries < 3) {
+            let wait = parseInt(res.headers.get('retry-after') || '', 10);
+            if (!(wait > 0)) {
+                try {
+                    const j = await res.json();
+                    const m = /(\d+)\s*s/i.exec((j && j.error && j.error.message) || '');
+                    if (m) wait = parseInt(m[1], 10);
+                } catch (_) {}
+            }
+            let left = Math.min(120, Math.max(5, wait || 45)) + 1;
+            showLimitWait(left);
+            const timer = setInterval(() => {
+                if (gen.signal.aborted) { clearInterval(timer); return; }
+                left--;
+                const secEl = skelEl && skelEl.querySelector('.img-wait-sec');
+                if (secEl) secEl.textContent = String(Math.max(0, left));
+                if (left <= 0) {
+                    clearInterval(timer);
+                    if (skelEl) skelEl.innerHTML = `<div class="spinner" style="width:32px; height:32px;"></div><span style="font-size:0.86rem; color:var(--text-secondary);">Нейросеть рисует «<b>${escapeHtml(promptDisplay)}</b>»...</span>`;
+                    loadPrimary(tries + 1);
+                }
+            }, 1000);
+            return;
+        }
+        imgEl.src = primaryUrl; // другие ошибки — дальше запасные адреса в onerror
+    };
+    loadPrimary(0);
+
+    setTimeout(finishImageGen, 300000);
 };
 
 // ==========================================
@@ -6564,7 +7342,7 @@ async function handleGenericMode(text, kind, title, sys) {
         turnChatId,
         errPrefix: 'Ошибка: ',
         filenameBase: 'quanta-' + kind,
-        request: (onProgress) => askAI((sys || '') + text, { useHistory: true, historyPrompt: text, onProgress }),
+        request: (onProgress) => askAI((sys || '') + text, { useHistory: true, historyPrompt: text, onProgress, task: kind === 'code' ? 'code' : undefined }),
         persist: (answer, chatId) => persistTurn(text, answer, 'text', { chatId })
     });
 }
@@ -6598,38 +7376,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ensureCurrentChat(currentUidOrGuest());
 
     try {
-        let savedModel = localStorage.getItem('quanta_selected_model');
-        if (savedModel === 'moonshotai/kimi-k3') savedModel = 'anthropic/claude-opus-4.8';
-
-        if (savedModel && FREE_MODELS_CATALOG[savedModel]) {
-            window.selectedFreeModel = savedModel;
-
-            const label = FREE_MODELS_CATALOG[savedModel].name;
-            const modeEl = document.getElementById('modeLabel');
-
-            if (modeEl) {
-                modeEl.textContent =
-                    label.length > 17 ? label.slice(0, 16) + '…' : label;
-            }
-            if (savedModel === 'flux/image-gen' && mainInput) {
-                mainInput.placeholder = 'Опишите что нарисовать и нажмите Отправить...';
-            }
-        } else {
-            window.selectedFreeModel =
-                'nvidia/nemotron-3-ultra-550b-a55b:free';
-
-            const modeEl = document.getElementById('modeLabel');
-            if (modeEl) {
-                modeEl.textContent = 'Nemotron 3 Ultra';
-            }
-        }
+        restoreSelectedModel();
     } catch (e) {
         console.warn('Failed to load saved model:', e);
-        window.selectedFreeModel =
-            'nvidia/nemotron-3-ultra-550b-a55b:free';
+        window.selectedFreeModel = defaultModelId();
     }
-
-    markActiveModel(window.selectedFreeModel);
 
     if (window.innerWidth > 768) {
         try {
