@@ -374,11 +374,18 @@ const DEFAULT_PREFS = Object.freeze({
     imgAspect: 'auto',
     imgStyle: 'auto',
     imgEnhance: true,
-    imgNegative: ''
+    imgNegative: '',
+    theme: 'dark',
+    accent: 'mono',
+    ttsRate: '1',
+    ttsVoice: ''
 });
 const PREF_ENUMS = {
     sendKey: ['enter', 'ctrlEnter'],
-    fontSize: ['small', 'normal', 'large', 'xlarge'],
+    fontSize: ['small', 'normal', 'large', 'xlarge', 'xxlarge'],
+    theme: ['dark', 'light', 'system'],
+    accent: ['mono', 'blue', 'violet', 'green', 'orange', 'pink', 'teal'],
+    ttsRate: ['0.85', '1', '1.15', '1.3', '1.5'],
     chatWidth: ['narrow', 'normal', 'wide'],
     voiceLang: ['ru-RU', 'be-BY', 'uk-UA', 'en-US', 'de-DE', 'pl-PL', 'kk-KZ'],
     contextDepth: [6, 10, 20, 40, 80],
@@ -386,8 +393,8 @@ const PREF_ENUMS = {
     imgAspect: ['auto', '1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9'],
     imgStyle: ['auto', 'photo', 'cinematic', 'anime', 'art', '3d', 'oil', 'watercolor', 'pixel', 'sketch', 'comic', 'fantasy', 'cyberpunk', 'minimal', 'logo']
 };
-const PREF_STRINGS = { imgNegative: 300 };
-const FONT_SIZE_MAP = { small: '0.88rem', normal: '0.95rem', large: '1.05rem', xlarge: '1.16rem' };
+const PREF_STRINGS = { imgNegative: 300, ttsVoice: 200 };
+const FONT_SIZE_MAP = { small: '0.88rem', normal: '0.95rem', large: '1.05rem', xlarge: '1.16rem', xxlarge: '1.3rem' };
 const CHAT_WIDTH_MAP = { narrow: '760px', normal: '960px', wide: '1240px' };
 
 function normalizePrefs(raw) {
@@ -445,6 +452,10 @@ function applyPrefs() {
     }
     const input = document.getElementById('mainInput');
     if (input) input.setAttribute('enterkeyhint', p.sendKey === 'enter' ? 'send' : 'enter');
+    // Тема и цвет акцента (раздел «Оформление»)
+    if (typeof applyTheme === 'function') {
+        try { applyTheme(); } catch (e) { console.warn('Theme apply error:', e); }
+    }
 }
 
 function getUserTemperature() {
@@ -1901,6 +1912,8 @@ window.openLocalChat = async function(chatId, opts = {}) {
     if (!opts.quiet) {
         if (window.genAbort) window.stopGeneration();
         Speech.stop();
+        if (typeof closeVoiceChat === 'function') closeVoiceChat();
+        if (typeof endSharedView === 'function') endSharedView();
     }
     const seq = ++_openChatSeq;
     window.currentChatId = chatId;
@@ -2192,6 +2205,8 @@ window.startNewChat = function(opts) {
     // Остановить текущую генерацию: иначе ответ «утекал» бы в новый чат
     if (window.genAbort) window.stopGeneration();
     if (typeof Speech !== 'undefined') Speech.stop();
+    if (typeof closeVoiceChat === 'function') closeVoiceChat();
+    if (typeof endSharedView === 'function') endSharedView();
     _openChatSeq++;
     closeWorkspace();
     resetChatHistory();
@@ -2217,6 +2232,8 @@ function addMessage(role, contentHtml) {
     if (!body) return document.createElement('div');
 
     if (role === 'user' && !_restoringHistory) {
+        // Ответ в открытом по ссылке чужом чате — сначала сохраняем копию чата себе
+        if (typeof adoptSharedChatBeforeReply === 'function') adoptSharedChatBeforeReply();
         // Запоминаем, в каком чате задан вопрос — ответ сохранится именно туда
         if (!window.currentChatId) window.currentChatId = newChatId();
         window._turnChatId = window.currentChatId;
@@ -2877,7 +2894,9 @@ function markdownToPlain(md) {
 }
 
 function splitForSpeech(text, max) {
-    const sentences = text.replace(/\n+/g, '. ').match(/[^.!?…]+[.!?…]*\s*/g) || [text];
+    // Перенос строки — как конец фразы, но без лишней точки после «!», «?» и т. п.
+    const flat = text.replace(/([.!?…:;,])?[ \t]*\n+[ \t]*/g, (m, p) => p ? p + ' ' : '. ');
+    const sentences = flat.match(/[^.!?…]+[.!?…]*\s*/g) || [flat];
     const out = [];
     let cur = '';
     sentences.forEach(s => {
@@ -2936,14 +2955,13 @@ const Speech = {
             showToast('Нечего озвучивать');
             return;
         }
-        const pref = Prefs.get().voiceLang;
-        const cyr = /[а-яёіўєїґ]/i.test(plain);
-        const lang = cyr ? (['ru-RU', 'be-BY', 'uk-UA', 'kk-KZ'].includes(pref) ? pref : 'ru-RU') : (['en-US', 'de-DE', 'pl-PL'].includes(pref) ? pref : 'en-US');
+        // Голос и скорость — как в голосовом разговоре (Настройки → Чат → Голос)
+        let lang = 'ru-RU';
         let voice = null;
         try {
-            const voices = window.speechSynthesis.getVoices() || [];
-            voice = voices.find(v => v.lang && v.lang.toLowerCase() === lang.toLowerCase()) ||
-                voices.find(v => v.lang && v.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase())) || null;
+            const pick = pickSpeechVoice(plain);
+            lang = pick.lang;
+            voice = pick.voice;
         } catch (_) {}
         const token = {};
         this._token = token;
@@ -2952,7 +2970,7 @@ const Speech = {
             const u = new SpeechSynthesisUtterance(chunk);
             u.lang = lang;
             if (voice) u.voice = voice;
-            u.rate = 1;
+            u.rate = typeof speechRate === 'function' ? speechRate() : 1;
             if (i === chunks.length - 1) u.onend = () => { if (this._token === token) this.stop(); };
             u.onerror = (ev) => {
                 if (this._token !== token) return;
@@ -3140,6 +3158,7 @@ function buildAssistantSystemPrompt(step, task) {
     const parts = [buildIdentityPrompt(step), ANSWER_RULES_PROMPT];
     if (task === 'code') parts.push(CODE_RULES_PROMPT);
     if (task === 'math') parts.push(MATH_RULES_PROMPT);
+    if (typeof voiceRulesActive === 'function' && voiceRulesActive()) parts.push(voiceRulesPrompt());
     parts.push(buildTimePrompt());
     return parts.join('\n\n');
 }
@@ -3287,7 +3306,7 @@ function extractReasoningDelta(data) {
 }
 
 const DEFAULT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-const SETTINGS_TABS = ['personal', 'memory', 'chat', 'api', 'data'];
+const SETTINGS_TABS = ['personal', 'memory', 'look', 'chat', 'api', 'data'];
 
 function cleanApiKey(k) {
     return String(k || '').replace(/[^\x00-\x7F]/g, '').replace(/^\s*bearer\s+/i, '').replace(/\s+/g, '').trim();
@@ -3685,6 +3704,10 @@ window.openSettingsModal = function(tab) {
     fillPersonalizationFields(false);
     fillMemoryToggles();
     fillPrefFields();
+    // Оформление, установка приложения, голос
+    if (typeof renderLookControls === 'function') renderLookControls();
+    if (typeof renderInstallSection === 'function') renderInstallSection();
+    if (typeof fillVoiceSettings === 'function') fillVoiceSettings();
     const ms = $id('memSearchInput');
     if (ms) ms.value = '';
     _memEditingId = null;
@@ -3809,6 +3832,9 @@ function bindSettingsUI() {
 
     bindMemoryUI();
     bindDataUI();
+    if (typeof bindLookUI === 'function') bindLookUI();
+    if (typeof bindInstallUI === 'function') bindInstallUI();
+    if (typeof bindVoiceSettings === 'function') bindVoiceSettings();
 }
 
 
@@ -5429,16 +5455,18 @@ function setSendButtonMode(mode) {
     if (_sendIconHtml === null) _sendIconHtml = btn.innerHTML;
     if (mode === 'stop') {
         btn.innerHTML = STOP_ICON_HTML;
+        btn.classList.remove('is-voice');
         btn.classList.add('is-stop');
         btn.title = 'Остановить генерацию';
         btn.setAttribute('aria-label', 'Остановить генерацию');
         btn.disabled = false;
     } else {
         btn.innerHTML = _sendIconHtml;
-        btn.classList.remove('is-stop');
+        btn.classList.remove('is-stop', 'is-voice');
         btn.title = 'Отправить';
         btn.setAttribute('aria-label', 'Отправить');
         btn.disabled = false;
+        if (typeof refreshVoiceSendButton === 'function') refreshVoiceSendButton();
     }
 }
 
@@ -5473,6 +5501,8 @@ window.stopGeneration = function () {
 window.handleSendOrStop = function () {
     if (window.genAbort) {
         window.stopGeneration();
+    } else if (typeof shouldOpenVoiceFromSend === 'function' && shouldOpenVoiceFromSend()) {
+        openVoiceChat();
     } else {
         window.handleSend();
     }
@@ -5995,7 +6025,8 @@ async function askAI(prompt, opts = {}) {
 
     const hist = chatHistory;
     const chatId = window._turnChatId || window.currentChatId;
-    const untrusted = !!opts.untrusted;
+    // Чат, сохранённый из чужой ссылки: его текст писал другой человек — автопамять из ответов не берём
+    const untrusted = !!opts.untrusted || (typeof isChatFromShare === 'function' && isChatFromShare(chatId));
     const allowAutoMemory = !untrusted && !opts.skipAutoMemory;
     _memoryNoticeQueue.length = 0;
     const messages = buildConversationMessages(hist, prompt, { allowAutoMemory });
@@ -6765,10 +6796,13 @@ function isLastMessage(el) {
 // Общий цикл: запрос → живая печать → готовый ответ с кнопками → сохранение в нужный чат
 async function runAnswerTurn(loadingEl, cfg) {
     const turnChatId = cfg.turnChatId || window._turnChatId || window.currentChatId;
+    // Голосовой разговор: ответ читается вслух по мере печати
+    const voiceTurn = typeof voiceTurnForRequest === 'function' ? voiceTurnForRequest() : null;
     let lastStats = null;
     try {
         const answer = await cfg.request((prog) => {
             lastStats = prog;
+            if (voiceTurn) voiceOnProgress(voiceTurn, prog.text);
             if (!loadingEl.isConnected) return;
             loadingEl.innerHTML = renderText(prog.text) + speedBadgeLiveHtml(prog);
             scrollToBottom();
@@ -6776,11 +6810,13 @@ async function runAnswerTurn(loadingEl, cfg) {
         loadingEl.innerHTML = renderText(answer) + speedBadgeDoneHtml(lastStats) + (cfg.extraHtml ? cfg.extraHtml() : '');
         attachExport(loadingEl, answer, cfg.filenameBase);
         if (cfg.persist) cfg.persist(answer, turnChatId);
+        if (voiceTurn) voiceOnAnswer(voiceTurn, answer);
         return answer;
     } catch (e) {
         window._pendingTurn = null;
         loadingEl.innerHTML = errHtml(cfg.errPrefix || 'Ошибка: ', e);
         addRetryButton(loadingEl, cfg, turnChatId);
+        if (voiceTurn) voiceOnError(voiceTurn, e);
         return null;
     }
 }
@@ -7572,4 +7608,1690 @@ window.addEventListener('storage', (e) => {
     } catch (err) {
         console.warn('Storage sync notice:', err);
     }
+});
+
+// ==========================================
+// 🎨 ОФОРМЛЕНИЕ: тёмная / светлая тема, цвет акцента, размер текста
+// (хранится на этом устройстве вместе с остальными настройками интерфейса)
+// ==========================================
+function themeAccentList() {
+    return [
+        { id: 'mono', name: 'Монохром', dark: '#ffffff', light: '#18181b' },
+        { id: 'blue', name: 'Синий', dark: '#3b82f6', light: '#2563eb' },
+        { id: 'violet', name: 'Фиолетовый', dark: '#8b5cf6', light: '#7c3aed' },
+        { id: 'green', name: 'Зелёный', dark: '#22c55e', light: '#16a34a' },
+        { id: 'orange', name: 'Оранжевый', dark: '#f97316', light: '#ea580c' },
+        { id: 'pink', name: 'Розовый', dark: '#ec4899', light: '#db2777' },
+        { id: 'teal', name: 'Бирюзовый', dark: '#14b8a6', light: '#0d9488' }
+    ];
+}
+
+function systemPrefersLight() {
+    try { return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches); } catch (_) { return false; }
+}
+
+function resolveTheme(pref) {
+    if (pref === 'light' || pref === 'dark') return pref;
+    return systemPrefersLight() ? 'light' : 'dark';
+}
+
+var _systemThemeBound = false;
+function bindSystemThemeListener() {
+    if (_systemThemeBound || !window.matchMedia) return;
+    _systemThemeBound = true;
+    try {
+        const mql = window.matchMedia('(prefers-color-scheme: light)');
+        const onChange = () => { if (Prefs.get().theme === 'system') applyTheme(); };
+        if (mql.addEventListener) mql.addEventListener('change', onChange);
+        else if (mql.addListener) mql.addListener(onChange);
+    } catch (_) {}
+}
+
+function applyTheme() {
+    let p;
+    try { p = Prefs.get(); } catch (_) { return; }
+    const root = document.documentElement;
+    if (!root) return;
+    const theme = resolveTheme(p.theme);
+    if (root.getAttribute('data-theme') !== theme) root.setAttribute('data-theme', theme);
+    if (p.accent && p.accent !== 'mono') root.setAttribute('data-accent', p.accent);
+    else root.removeAttribute('data-accent');
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'light' ? '#ffffff' : '#000000');
+    const cs = document.querySelector('meta[name="color-scheme"]');
+    if (cs) cs.setAttribute('content', theme);
+    bindSystemThemeListener();
+    renderLookControls();
+}
+window.applyTheme = applyTheme;
+
+// ---------- Раздел «Оформление» в настройках ----------
+function renderLookControls() {
+    const modal = document.getElementById('settingsModal');
+    if (!modal) return;
+    let p;
+    try { p = Prefs.get(); } catch (_) { return; }
+    const theme = resolveTheme(p.theme);
+    modal.querySelectorAll('[data-theme-choice]').forEach(btn => {
+        const on = btn.dataset.themeChoice === p.theme;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+        btn.tabIndex = on ? 0 : -1;
+    });
+    const list = themeAccentList();
+    modal.querySelectorAll('[data-accent-choice]').forEach(btn => {
+        const a = list.find(x => x.id === btn.dataset.accentChoice);
+        if (a) btn.style.setProperty('--sw', theme === 'light' ? a.light : a.dark);
+        const on = btn.dataset.accentChoice === p.accent;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+        btn.tabIndex = on ? 0 : -1;
+    });
+    const sys = document.getElementById('lookSystemNote');
+    if (sys) {
+        sys.textContent = p.theme === 'system'
+            ? 'Сейчас в системе ' + (theme === 'light' ? 'светлая' : 'тёмная') + ' тема — Quanta переключается вместе с ней.'
+            : '';
+        sys.hidden = p.theme !== 'system';
+    }
+}
+
+function bindRadioGroup(container, attr, onPick) {
+    if (!container) return;
+    const items = () => Array.from(container.querySelectorAll('[' + attr + ']'));
+    container.addEventListener('click', e => {
+        const btn = e.target.closest('[' + attr + ']');
+        if (btn && container.contains(btn)) onPick(btn);
+    });
+    container.addEventListener('keydown', e => {
+        const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'];
+        if (!keys.includes(e.key)) return;
+        const all = items();
+        const idx = all.indexOf(document.activeElement);
+        if (idx < 0) return;
+        e.preventDefault();
+        const step = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1;
+        const next = all[(idx + step + all.length) % all.length];
+        next.focus();
+        onPick(next);
+    });
+}
+
+var _lookBound = false;
+function bindLookUI() {
+    if (_lookBound) return;
+    const modal = document.getElementById('settingsModal');
+    if (!modal) return;
+    _lookBound = true;
+    const accents = document.getElementById('lookAccents');
+    if (accents && !accents.children.length) {
+        accents.innerHTML = themeAccentList().map(a =>
+            `<button type="button" class="look-accent" role="radio" aria-checked="false" data-accent-choice="${a.id}" title="${a.name}" aria-label="${a.name}"><span class="look-accent-dot"></span></button>`
+        ).join('');
+    }
+    bindRadioGroup(modal.querySelector('.look-themes'), 'data-theme-choice', btn => {
+        if (Prefs.get().theme === btn.dataset.themeChoice) return;
+        Prefs.set({ theme: btn.dataset.themeChoice });
+        flashSaved();
+    });
+    bindRadioGroup(accents, 'data-accent-choice', btn => {
+        if (Prefs.get().accent === btn.dataset.accentChoice) return;
+        Prefs.set({ accent: btn.dataset.accentChoice });
+        flashSaved();
+    });
+    renderLookControls();
+}
+
+// ==========================================
+// 📲 ПРИЛОЖЕНИЕ (PWA): установка на компьютер и телефон, запуск без интернета
+// ==========================================
+var _installPromptEvent = null;   // beforeinstallprompt (Chrome, Edge, Яндекс, Android)
+
+function isStandaloneApp() {
+    try {
+        if (window.navigator.standalone === true) return true;
+        return !!(window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches ||
+            window.matchMedia('(display-mode: minimal-ui)').matches ||
+            window.matchMedia('(display-mode: window-controls-overlay)').matches));
+    } catch (_) { return false; }
+}
+
+function pwaPlatform() {
+    const ua = navigator.userAgent || '';
+    const iOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const android = /Android/i.test(ua);
+    const firefox = /Firefox\/|FxiOS/i.test(ua);
+    const samsung = /SamsungBrowser/i.test(ua);
+    const safari = /Safari\//.test(ua) && !/Chrome|CriOS|Chromium|Edg|OPR|FxiOS|YaBrowser|SamsungBrowser/.test(ua);
+    return { iOS, android, firefox, samsung, safari, mobile: iOS || android };
+}
+
+function installHelpHtml() {
+    const p = pwaPlatform();
+    if (p.iOS) return 'На iPhone и iPad откройте сайт в <b>Safari</b>, нажмите <b>Поделиться</b> (квадрат со стрелкой вверх) → <b>На экран «Домой»</b> → <b>Добавить</b>.';
+    if (p.android && p.firefox) return 'В Firefox на Android: меню <b>⋮</b> → <b>Установить</b> (или «Добавить на главный экран»).';
+    if (p.android && p.samsung) return 'В Samsung Internet: меню <b>≡</b> → <b>Добавить страницу на</b> → <b>Главный экран</b>.';
+    if (p.android) return 'На Android: меню браузера <b>⋮</b> → <b>Установить приложение</b> (или «Добавить на главный экран»).';
+    if (p.firefox) return 'Firefox и Zen на компьютере пока не умеют устанавливать сайты как приложения. Откройте <b>quanta-app.pages.dev</b> в Chrome, Edge или Яндекс Браузере и нажмите значок установки в правой части адресной строки (монитор со стрелкой). А на телефоне Quanta устанавливается из Chrome.';
+    if (p.safari) return 'В Safari на Mac: меню <b>Файл</b> → <b>Добавить в Dock</b>.';
+    return 'Нажмите значок установки в правой части адресной строки (монитор со стрелкой) или меню браузера <b>⋮</b> → <b>Трансляция, сохранение и отправка</b> → <b>Установить страницу как приложение</b>.';
+}
+
+function renderInstallSection() {
+    const standalone = isStandaloneApp();
+    const sideBtn = document.getElementById('sidebarInstallBtn');
+    if (sideBtn) sideBtn.hidden = standalone || !_installPromptEvent;
+    const title = document.getElementById('lookInstallTitle');
+    const desc = document.getElementById('lookInstallDesc');
+    const btn = document.getElementById('lookInstallBtn');
+    const help = document.getElementById('lookInstallHelp');
+    if (!btn) return;
+    if (standalone) {
+        if (title) title.textContent = 'Quanta уже установлена';
+        if (desc) desc.textContent = 'Вы пользуетесь приложением. Значок есть на рабочем столе или главном экране, чаты и настройки — те же, что на сайте.';
+        btn.hidden = true;
+        if (help) help.hidden = true;
+        return;
+    }
+    if (title) title.textContent = 'Установить Quanta как приложение';
+    if (desc) desc.textContent = 'Отдельное окно без адресной строки, значок на рабочем столе или главном экране телефона, запуск даже без интернета';
+    btn.hidden = false;
+    btn.textContent = _installPromptEvent ? 'Установить' : 'Как установить';
+}
+
+window.installQuantaApp = async function () {
+    if (isStandaloneApp()) {
+        showToast('Quanta уже открыта как приложение');
+        return;
+    }
+    const ev = _installPromptEvent;
+    if (ev && typeof ev.prompt === 'function') {
+        _installPromptEvent = null;
+        try {
+            await ev.prompt();
+            const choice = ev.userChoice ? await ev.userChoice : null;
+            if (choice && choice.outcome === 'accepted') showToast('Quanta устанавливается — значок появится на рабочем столе');
+        } catch (e) {
+            console.info('Install prompt notice:', e && e.message);
+            showInstallHelp();
+        }
+        renderInstallSection();
+        return;
+    }
+    showInstallHelp();
+};
+
+function showInstallHelp() {
+    const modal = document.getElementById('settingsModal');
+    if (!modal || !modal.classList.contains('open')) openSettingsModal('look');
+    const help = document.getElementById('lookInstallHelp');
+    if (!help) return;
+    help.innerHTML = installHelpHtml();
+    help.hidden = false;
+    try { help.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+}
+
+var _installUiBound = false;
+function bindInstallUI() {
+    if (_installUiBound) return;
+    const btn = document.getElementById('lookInstallBtn');
+    if (!btn) return;
+    _installUiBound = true;
+    btn.addEventListener('click', () => installQuantaApp());
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Свою кнопку «Установить» показываем сами — без всплывающей полоски браузера
+    e.preventDefault();
+    _installPromptEvent = e;
+    renderInstallSection();
+});
+
+window.addEventListener('appinstalled', () => {
+    _installPromptEvent = null;
+    renderInstallSection();
+    showToast('Quanta AI установлена — ищите значок на рабочем столе или в списке приложений');
+});
+
+function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (location.protocol !== 'https:' && !local) return;
+    navigator.serviceWorker.register('sw.js').then(reg => {
+        window._quantaSW = reg;
+    }).catch(err => {
+        console.info('Service worker не зарегистрирован:', err && err.message);
+    });
+}
+
+// Ярлыки приложения (долгое нажатие на значок): новый чат, голосовой разговор, картинка
+function handleLaunchParams() {
+    let url;
+    try { url = new URL(location.href); } catch (_) { return; }
+    const sp = url.searchParams;
+    const wantNew = sp.get('new') === '1';
+    const wantVoice = sp.get('voice') === '1';
+    const wantImage = sp.get('mode') === 'image';
+    if (!wantNew && !wantVoice && !wantImage) return;
+    ['new', 'voice', 'mode'].forEach(k => sp.delete(k));
+    try { history.replaceState(history.state, '', url.pathname + (sp.toString() ? '?' + sp.toString() : '') + url.hash); } catch (_) {}
+    if (wantNew || wantVoice || wantImage) {
+        if (document.getElementById('workspaceBody') && document.getElementById('workspaceBody').children.length) {
+            startNewChat({ silent: true });
+        }
+    }
+    if (wantImage && typeof triggerImageGen === 'function') {
+        setTimeout(() => triggerImageGen(), 0);
+    } else if (wantVoice && typeof openVoiceChat === 'function') {
+        // Микрофон и звук браузер включает только после нажатия — показываем окно с кнопкой «Начать»
+        setTimeout(() => openVoiceChat({ waitTap: true }), 0);
+    } else if (mainInput && window.innerWidth > 768) {
+        try { mainInput.focus(); } catch (_) {}
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderInstallSection();
+    handleLaunchParams();
+    try {
+        const mql = window.matchMedia && window.matchMedia('(display-mode: standalone)');
+        if (mql && mql.addEventListener) mql.addEventListener('change', renderInstallSection);
+    } catch (_) {}
+});
+
+if (document.readyState === 'complete') setTimeout(registerServiceWorker, 1200);
+else window.addEventListener('load', () => setTimeout(registerServiceWorker, 1200));
+
+// ==========================================
+// 🎙️ ГОЛОСОВОЙ РАЗГОВОР (как в ChatGPT): вы говорите — Quanta отвечает голосом
+// Речь распознаёт сам браузер (Web Speech API: Chrome, Edge, Яндекс, Safari, Android),
+// ответ читает встроенный синтезатор речи. В Firefox и Zen распознавания речи нет.
+// ==========================================
+Object.assign(ICONS, {
+    'mic': '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+    'mic-off': '<line x1="2" x2="22" y1="2" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><line x1="12" x2="12" y1="19" y2="22"/>',
+    'waves': '<path d="M4 10v4"/><path d="M8 6.5v11"/><path d="M12 3v18"/><path d="M16 6.5v11"/><path d="M20 10v4"/>'
+});
+
+const VOICE_WAVE_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4"/><path d="M8 6.5v11"/><path d="M12 3v18"/><path d="M16 6.5v11"/><path d="M20 10v4"/></svg>';
+
+function voiceRecognitionCtor() {
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+function voiceModeSupported() {
+    return !!voiceRecognitionCtor() && typeof Speech !== 'undefined' && Speech.supported();
+}
+
+function voiceRulesPrompt() {
+    return `[Голосовой разговор]
+Пользователь разговаривает с тобой голосом: твой ответ прочитает вслух синтезатор речи.
+- Отвечай коротко, как в живом разговоре: обычно 1–4 предложения. Подробности — только если попросят.
+- Пиши простым разговорным языком без разметки: без заголовков, таблиц, списков со звёздочками, жирного шрифта, эмодзи и ссылок.
+- Числа, даты и единицы записывай так, чтобы их было легко произнести.
+- Если нужен код, таблица или длинный список — скажи об этом одной фразой и выведи их кратко: пользователь видит экран.
+- Речь распознаётся автоматически и может содержать ошибки: если вопрос неясен, коротко переспроси.`;
+}
+function voiceRulesActive() {
+    return !!(VoiceChat && VoiceChat.active);
+}
+
+// ---------- Выбор голоса и скорости (также для кнопки «Озвучить») ----------
+function speechVoicesList() {
+    try { return (window.speechSynthesis && window.speechSynthesis.getVoices()) || []; } catch (_) { return []; }
+}
+function normLang(l) { return String(l || '').replace('_', '-').toLowerCase(); }
+
+function speechLangFor(text) {
+    const pref = (Prefs.get().voiceLang || 'ru-RU');
+    const cyr = /[а-яёіўєїґ]/i.test(text || '');
+    if (cyr) return ['ru-RU', 'be-BY', 'uk-UA', 'kk-KZ'].includes(pref) ? pref : 'ru-RU';
+    return ['en-US', 'de-DE', 'pl-PL'].includes(pref) ? pref : 'en-US';
+}
+
+function voiceQuality(v, lang) {
+    let s = 0;
+    if (/natural|neural|online|enhanced|premium|wavenet/i.test(v.name)) s += 4;
+    if (/google/i.test(v.name)) s += 3;
+    if (v.localService === false) s += 1;
+    if (normLang(v.lang) === normLang(lang)) s += 2;
+    if (v.default) s += 0.5;
+    return s;
+}
+
+function pickSpeechVoice(text) {
+    let lang = speechLangFor(text);
+    const voices = speechVoicesList();
+    const prefix = normLang(lang).slice(0, 2);
+    const chosen = Prefs.get().ttsVoice;
+    if (chosen) {
+        const v = voices.find(x => x.voiceURI === chosen || x.name === chosen);
+        if (v && normLang(v.lang).startsWith(prefix)) return { voice: v, lang: v.lang || lang };
+    }
+    let cands = voices.filter(v => normLang(v.lang).startsWith(prefix));
+    if (!cands.length && ['be', 'uk', 'kk'].includes(prefix)) {
+        cands = voices.filter(v => normLang(v.lang).startsWith('ru'));
+        if (cands.length) lang = 'ru-RU';
+    }
+    cands.sort((a, b) => voiceQuality(b, lang) - voiceQuality(a, lang));
+    return { voice: cands[0] || null, lang: cands[0] && cands[0].lang ? cands[0].lang : lang };
+}
+
+function speechRate() {
+    const r = parseFloat(Prefs.get().ttsRate);
+    return Number.isFinite(r) && r > 0.5 && r < 2 ? r : 1;
+}
+
+// ---------- Текст для озвучки: без кода, таблиц и формул; растёт только с конца ----------
+function voiceSpeakableText(raw, final) {
+    let s = String(raw || '').replace(/\r/g, '');
+    s = s.replace(/```[\s\S]*?```/g, '\nКод — на экране.\n');
+    const open = s.indexOf('```');
+    if (open >= 0) s = s.slice(0, open) + (final ? '\nКод — на экране.\n' : '');
+    s = s.replace(/\$\$[\s\S]*?\$\$/g, '\nФормула — на экране.\n');
+    const openMath = s.indexOf('$$');
+    if (openMath >= 0) s = s.slice(0, openMath) + (final ? '\nФормула — на экране.\n' : '');
+    const lines = s.split('\n');
+    if (!final && lines.length && /^\s*\|/.test(lines[lines.length - 1])) lines.pop();
+    const out = [];
+    let prevTable = false;
+    lines.forEach(line => {
+        const isTable = /^\s*\|.*\|?\s*$/.test(line) && line.includes('|');
+        if (isTable) {
+            if (!prevTable) out.push('Таблица — на экране.');
+            prevTable = true;
+            return;
+        }
+        prevTable = false;
+        out.push(line);
+    });
+    return out.join('\n').replace(/\$([^$\n]{1,80})\$/g, '$1');
+}
+
+const VOICE_BOUNDARY_RE = /(?:[\p{L}]{2,}|\p{N}{2,}|[)»"'])[.!?…]+["»)\]]*(?=\s)|\n/gu;
+function voiceCutPoint(s, from) {
+    VOICE_BOUNDARY_RE.lastIndex = from;
+    let cut = -1;
+    let m;
+    while ((m = VOICE_BOUNDARY_RE.exec(s))) cut = m.index + m[0].length;
+    // Очень длинный кусок без точки — режем по запятой, чтобы не ждать слишком долго
+    if (cut < 0 && s.length - from > 260) {
+        const comma = s.lastIndexOf(', ', s.length - 20);
+        if (comma > from + 80) cut = comma + 1;
+    }
+    return cut;
+}
+
+// ---------- Состояние ----------
+var VoiceChat = {
+    active: false,
+    state: 'idle',          // listening | thinking | speaking | paused
+    muted: false,
+    rec: null,
+    recSession: 0,
+    finalText: '',
+    interimText: '',
+    emptyRuns: 0,
+    silenceTimer: null,
+    maxTimer: null,
+    turn: null,             // { raw, spokenPos, gotAnswer, done }
+    queue: [],
+    speaking: false,
+    ttsToken: 0,
+    wakeLock: null,
+    dock: null,
+    note: ''
+};
+window.VoiceChat = VoiceChat;
+
+function voiceEl(id) { return document.getElementById(id); }
+
+function ensureVoiceDock() {
+    if (VoiceChat.dock && VoiceChat.dock.isConnected) return VoiceChat.dock;
+    const container = document.querySelector('.bottom-bar .input-container');
+    if (!container) return null;
+    const dock = document.createElement('div');
+    dock.className = 'voice-dock';
+    dock.id = 'voiceDock';
+    dock.setAttribute('role', 'region');
+    dock.setAttribute('aria-label', 'Голосовой разговор');
+    dock.innerHTML = `
+        <button type="button" class="voice-orb-btn" id="voiceOrbBtn" aria-label="Голосовой разговор">
+            <span class="voice-orb" aria-hidden="true"><span class="voice-orb-core"></span><span class="voice-orb-ring"></span></span>
+        </button>
+        <div class="voice-text">
+            <div class="voice-status" id="voiceStatus" aria-live="polite">Голосовой разговор</div>
+            <div class="voice-caption" id="voiceCaption"></div>
+        </div>
+        <div class="voice-ctls">
+            <button type="button" class="voice-ctl" id="voiceMicBtn" title="Выключить микрофон" aria-label="Выключить микрофон" aria-pressed="false">${icon('mic', 18)}</button>
+            <button type="button" class="voice-ctl voice-ctl-end" id="voiceEndBtn" title="Завершить разговор (Esc)" aria-label="Завершить разговор">${icon('x', 18)}</button>
+        </div>`;
+    container.appendChild(dock);
+    VoiceChat.dock = dock;
+    voiceEl('voiceOrbBtn').addEventListener('click', voiceOrbTap);
+    voiceEl('voiceMicBtn').addEventListener('click', voiceToggleMute);
+    voiceEl('voiceEndBtn').addEventListener('click', () => closeVoiceChat());
+    return dock;
+}
+
+const VOICE_STATUS = {
+    listening: ['Слушаю…', 'Говорите — паузу я пойму как конец вопроса'],
+    thinking: ['Думаю…', 'Нажмите на круг, чтобы остановить'],
+    speaking: ['Отвечаю', 'Нажмите на круг, чтобы перебить'],
+    paused: ['Микрофон выключен', 'Нажмите на круг, чтобы говорить']
+};
+
+function setVoiceState(state, note) {
+    VoiceChat.state = state;
+    VoiceChat.note = note || '';
+    const dock = VoiceChat.dock;
+    if (!dock) return;
+    dock.dataset.state = state;
+    const st = VOICE_STATUS[state] || ['', ''];
+    const statusEl = voiceEl('voiceStatus');
+    if (statusEl) statusEl.textContent = st[0];
+    const orb = voiceEl('voiceOrbBtn');
+    if (orb) orb.setAttribute('aria-label', st[1]);
+    if (state === 'paused' || state === 'listening') setVoiceCaption(note || st[1], 'hint');
+    else if (state === 'thinking' && note) setVoiceCaption(note, 'hint');
+    const mic = voiceEl('voiceMicBtn');
+    if (mic) {
+        mic.innerHTML = icon(VoiceChat.muted ? 'mic-off' : 'mic', 18);
+        mic.classList.toggle('is-off', VoiceChat.muted);
+        mic.setAttribute('aria-pressed', VoiceChat.muted ? 'true' : 'false');
+        const t = VoiceChat.muted ? 'Включить микрофон' : 'Выключить микрофон';
+        mic.title = t;
+        mic.setAttribute('aria-label', t);
+    }
+}
+
+function setVoiceCaption(text, kind) {
+    const el = voiceEl('voiceCaption');
+    if (!el) return;
+    el.textContent = text || '';
+    el.dataset.kind = kind || '';
+}
+
+// ---------- Открыть / закрыть ----------
+window.openVoiceChat = function (opts = {}) {
+    if (!voiceModeSupported()) {
+        showToast(voiceUnsupportedText());
+        return;
+    }
+    if (VoiceChat.active) return;
+    if (window.genAbort) window.stopGeneration();
+    if (typeof Speech !== 'undefined') Speech.stop();
+    const dock = ensureVoiceDock();
+    if (!dock) return;
+    VoiceChat.active = true;
+    VoiceChat.muted = false;
+    VoiceChat.emptyRuns = 0;
+    VoiceChat.turn = null;
+    VoiceChat.queue = [];
+    VoiceChat.speaking = false;
+    document.body.classList.add('voice-on');
+    if (mainInput) { try { mainInput.blur(); } catch (_) {} }
+    primeSpeechSynthesis();
+    voiceWakeLock(true);
+    refreshVoiceSendButton();
+    if (opts.waitTap) {
+        VoiceChat.muted = true;
+        setVoiceState('paused', 'Нажмите на круг и говорите');
+    } else {
+        startVoiceListening();
+    }
+    try { voiceEl('voiceOrbBtn').focus({ preventScroll: true }); } catch (_) {}
+};
+
+window.closeVoiceChat = function () {
+    if (!VoiceChat.active) return;
+    VoiceChat.active = false;
+    stopVoiceRecognition();
+    cancelVoiceSpeech();
+    VoiceChat.turn = null;
+    document.body.classList.remove('voice-on');
+    if (VoiceChat.dock) VoiceChat.dock.dataset.state = 'idle';
+    voiceWakeLock(false);
+    refreshVoiceSendButton();
+    if (mainInput && window.innerWidth > 768) { try { mainInput.focus({ preventScroll: true }); } catch (_) {} }
+};
+
+function voiceUnsupportedText() {
+    if (!voiceRecognitionCtor()) {
+        return /Firefox\/|FxiOS/i.test(navigator.userAgent || '')
+            ? 'В Firefox и Zen нет распознавания речи. Голосовой разговор работает в Chrome, Edge, Яндекс Браузере, Safari и на телефоне'
+            : 'Этот браузер не умеет распознавать речь. Откройте Quanta в Chrome, Edge или на телефоне';
+    }
+    return 'В этом браузере нет синтеза речи — голосовой разговор недоступен';
+}
+
+function primeSpeechSynthesis() {
+    // iPhone и некоторые Android разрешают звук только после нажатия — «будим» синтезатор сразу
+    try {
+        const u = new SpeechSynthesisUtterance(' ');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+    } catch (_) {}
+}
+
+async function voiceWakeLock(on) {
+    try {
+        if (on) {
+            if (!VoiceChat.wakeLock && navigator.wakeLock && document.visibilityState === 'visible') {
+                VoiceChat.wakeLock = await navigator.wakeLock.request('screen');
+                VoiceChat.wakeLock.addEventListener && VoiceChat.wakeLock.addEventListener('release', () => { VoiceChat.wakeLock = null; });
+            }
+        } else if (VoiceChat.wakeLock) {
+            const l = VoiceChat.wakeLock;
+            VoiceChat.wakeLock = null;
+            await l.release();
+        }
+    } catch (_) {
+        VoiceChat.wakeLock = null;
+    }
+}
+
+// ---------- Слушаем ----------
+function stopVoiceRecognition() {
+    VoiceChat.recSession++;
+    clearTimeout(VoiceChat.silenceTimer);
+    clearTimeout(VoiceChat.maxTimer);
+    const rec = VoiceChat.rec;
+    VoiceChat.rec = null;
+    if (rec) {
+        try { rec.onresult = rec.onerror = rec.onend = null; } catch (_) {}
+        try { rec.abort(); } catch (_) {}
+    }
+}
+
+function startVoiceListening() {
+    if (!VoiceChat.active) return;
+    stopVoiceRecognition();
+    if (VoiceChat.muted) {
+        setVoiceState('paused');
+        return;
+    }
+    const SR = voiceRecognitionCtor();
+    if (!SR) return;
+    let rec;
+    try { rec = new SR(); } catch (e) { voiceRecognitionError('start'); return; }
+    const session = ++VoiceChat.recSession;
+    const android = /Android/i.test(navigator.userAgent || '');
+    rec.lang = Prefs.get().voiceLang || 'ru-RU';
+    rec.interimResults = true;
+    // На ПК слушаем непрерывно и сами ловим паузу; на Android непрерывный режим работает плохо
+    rec.continuous = !android;
+    rec.maxAlternatives = 1;
+    VoiceChat.finalText = '';
+    VoiceChat.interimText = '';
+    VoiceChat.rec = rec;
+    let errorCode = null;
+
+    const finish = () => {
+        if (session !== VoiceChat.recSession) return;
+        try { rec.stop(); } catch (_) {}
+    };
+    rec.onresult = (ev) => {
+        if (session !== VoiceChat.recSession) return;
+        let fin = '';
+        let interim = '';
+        for (let i = 0; i < ev.results.length; i++) {
+            const r = ev.results[i];
+            const t = r && r[0] ? r[0].transcript : '';
+            if (r.isFinal) fin += t; else interim += t;
+        }
+        VoiceChat.finalText = fin.trim();
+        VoiceChat.interimText = interim.trim();
+        const shown = (VoiceChat.finalText + ' ' + VoiceChat.interimText).trim();
+        if (shown) setVoiceCaption(shown, 'user');
+        clearTimeout(VoiceChat.silenceTimer);
+        if (rec.continuous) VoiceChat.silenceTimer = setTimeout(finish, VoiceChat.interimText ? 2200 : 1200);
+    };
+    rec.onerror = (ev) => {
+        if (session !== VoiceChat.recSession) return;
+        errorCode = (ev && ev.error) || 'error';
+    };
+    rec.onend = () => {
+        if (session !== VoiceChat.recSession) return;
+        clearTimeout(VoiceChat.silenceTimer);
+        clearTimeout(VoiceChat.maxTimer);
+        VoiceChat.rec = null;
+        if (!VoiceChat.active) return;
+        const text = (VoiceChat.finalText + ' ' + VoiceChat.interimText).trim();
+        if (text) {
+            VoiceChat.emptyRuns = 0;
+            submitVoiceText(text);
+            return;
+        }
+        if (errorCode && errorCode !== 'no-speech') {
+            voiceRecognitionError(errorCode);
+            return;
+        }
+        VoiceChat.emptyRuns++;
+        if (VoiceChat.emptyRuns >= 3) {
+            VoiceChat.muted = true;
+            setVoiceState('paused', 'Не слышу вас — нажмите на круг, чтобы продолжить');
+            return;
+        }
+        setTimeout(() => {
+            if (VoiceChat.active && VoiceChat.state === 'listening' && !VoiceChat.rec) startVoiceListening();
+        }, 250);
+    };
+    try {
+        rec.start();
+    } catch (e) {
+        VoiceChat.rec = null;
+        voiceRecognitionError('start');
+        return;
+    }
+    setVoiceState('listening');
+    // Страховка: один вопрос — не дольше 45 секунд
+    VoiceChat.maxTimer = setTimeout(finish, 45000);
+}
+
+function voiceRecognitionError(code) {
+    const map = {
+        'not-allowed': 'Нет доступа к микрофону. Разрешите микрофон для сайта (значок слева в адресной строке) и нажмите на круг',
+        'service-not-allowed': 'Браузер не разрешил распознавание речи. Разрешите микрофон для сайта или попробуйте Chrome',
+        'audio-capture': 'Микрофон не найден или занят другой программой',
+        'network': 'Для распознавания речи нужен интернет — проверьте подключение',
+        'language-not-supported': 'Этот язык распознавания не поддерживается. Выберите другой: Настройки → Чат → Голос',
+        'aborted': 'Распознавание речи прервалось — нажмите на круг, чтобы продолжить',
+        'start': 'Не удалось включить микрофон — нажмите на круг, чтобы попробовать ещё раз'
+    };
+    VoiceChat.muted = true;
+    setVoiceState('paused', map[code] || 'Распознавание речи прервалось — нажмите на круг, чтобы продолжить');
+}
+
+const VOICE_STOP_RE = /^(?:стоп|хватит|всё|все|выход|выйти|закончить|закончим|заверши(?:ть)?(?: разговор)?|пока|до свидания|отбой|stop|bye|goodbye|exit)$/i;
+function isVoiceStopCommand(text) {
+    const t = String(text || '').toLowerCase().replace(/[.,!?…"«»]/g, '').replace(/\s+/g, ' ').trim();
+    return VOICE_STOP_RE.test(t);
+}
+
+function waitUntil(fn, timeoutMs) {
+    return new Promise(resolve => {
+        const t0 = Date.now();
+        const tick = () => {
+            if (fn() || Date.now() - t0 > timeoutMs) return resolve();
+            setTimeout(tick, 200);
+        };
+        tick();
+    });
+}
+
+async function submitVoiceText(text) {
+    if (!VoiceChat.active) return;
+    if (isVoiceStopCommand(text)) {
+        closeVoiceChat();
+        showToast('Голосовой разговор завершён');
+        return;
+    }
+    const turn = { raw: '', spokenPos: 0, gotAnswer: false, done: false, text };
+    VoiceChat.turn = turn;
+    setVoiceState('thinking');
+    setVoiceCaption(text, 'user');
+    if (window.genAbort) await waitUntil(() => !window.genAbort, 20000);
+    if (VoiceChat.turn !== turn || !VoiceChat.active) return;
+    if (!mainInput) return;
+    mainInput.value = text;
+    let p = null;
+    try { p = window.handleSend(); } catch (e) { console.warn('Voice send error:', e); }
+    try { await p; } catch (e) { console.warn('Voice send error:', e); }
+    // Картинка ещё грузится — ждём, чтобы сказать «готово»
+    if (window.genAbort) await waitUntil(() => !window.genAbort || VoiceChat.turn !== turn, 120000);
+    if (VoiceChat.turn !== turn || !VoiceChat.active) return;
+    if (!turn.gotAnswer) {
+        turn.gotAnswer = true;
+        const phrase = voicePhraseForLastResult();
+        if (phrase) enqueueVoiceSpeech(phrase);
+    }
+    turn.done = true;
+    if (!VoiceChat.speaking && !VoiceChat.queue.length) onVoiceQueueEmpty();
+}
+
+function voicePhraseForLastResult() {
+    const msgs = document.querySelectorAll('#workspaceBody > .msg.msg-ai');
+    const last = msgs[msgs.length - 1];
+    if (!last) return 'Готово.';
+    if (last.querySelector('.generated-img-card img')) return 'Готово — картинка на экране.';
+    if (last.querySelector('.slides-card, .slide-deck, .slides-preview, [data-slides]')) return 'Презентация готова — она на экране.';
+    const bubble = last.querySelector('.msg-bubble');
+    const txt = bubble ? (bubble.innerText || '').replace(/\s+/g, ' ').trim() : '';
+    if (!txt) return 'Готово — результат на экране.';
+    return txt.length > 260 ? txt.slice(0, 240) + '… Остальное — на экране.' : txt;
+}
+
+// ---------- Хуки из отправки ответа (runAnswerTurn) ----------
+function voiceTurnForRequest() {
+    return VoiceChat.active && VoiceChat.turn && !VoiceChat.turn.gotAnswer ? VoiceChat.turn : null;
+}
+function voiceOnProgress(turn, text) {
+    if (!turn || turn !== VoiceChat.turn || turn.gotAnswer) return;
+    turn.raw = String(text || '');
+    pumpVoiceSpeech(turn, false);
+}
+function voiceOnAnswer(turn, answer) {
+    if (!turn || turn !== VoiceChat.turn) return;
+    turn.raw = String(answer || '');
+    pumpVoiceSpeech(turn, true);
+    turn.gotAnswer = true;
+}
+function voiceOnError(turn, e) {
+    if (!turn || turn !== VoiceChat.turn) return;
+    turn.gotAnswer = true;
+    if (e && e.isUserAbort) return;
+    const msg = typeof friendlyErrorText === 'function' ? friendlyErrorText(e && e.message) : '';
+    const first = String(msg || '').split(/[.!?]\s/)[0].slice(0, 180);
+    enqueueVoiceSpeech('Не получилось получить ответ. ' + (first || 'Попробуйте ещё раз.'));
+}
+
+function pumpVoiceSpeech(turn, final) {
+    const s = voiceSpeakableText(turn.raw, final);
+    const cut = final ? s.length : voiceCutPoint(s, turn.spokenPos);
+    if (cut <= turn.spokenPos) return;
+    const piece = s.slice(turn.spokenPos, cut);
+    turn.spokenPos = cut;
+    const plain = markdownToPlain(piece);
+    splitForSpeech(plain, 200).forEach(chunk => enqueueVoiceSpeech(chunk));
+}
+
+// ---------- Говорим ----------
+function enqueueVoiceSpeech(text) {
+    if (!VoiceChat.active || !text) return;
+    VoiceChat.queue.push(text);
+    if (!VoiceChat.speaking) speakNextVoiceChunk();
+}
+
+function cancelVoiceSpeech() {
+    VoiceChat.ttsToken++;
+    VoiceChat.queue = [];
+    VoiceChat.speaking = false;
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+}
+
+function speakNextVoiceChunk() {
+    if (!VoiceChat.active) return;
+    const next = VoiceChat.queue.shift();
+    if (!next) {
+        VoiceChat.speaking = false;
+        onVoiceQueueEmpty();
+        return;
+    }
+    // Пока ИИ говорит, микрофон выключен — иначе он услышит сам себя
+    stopVoiceRecognition();
+    VoiceChat.speaking = true;
+    setVoiceState('speaking');
+    setVoiceCaption(next, 'ai');
+    const token = ++VoiceChat.ttsToken;
+    let finished = false;
+    let watchdog = null;
+    const done = () => {
+        if (finished || token !== VoiceChat.ttsToken) return;
+        finished = true;
+        clearTimeout(watchdog);
+        speakNextVoiceChunk();
+    };
+    let u;
+    try {
+        u = new SpeechSynthesisUtterance(next);
+        const pick = pickSpeechVoice(next);
+        u.lang = pick.lang;
+        if (pick.voice) u.voice = pick.voice;
+        u.rate = speechRate();
+        u.onend = done;
+        u.onerror = done;
+        u.onboundary = () => {
+            const orb = VoiceChat.dock && VoiceChat.dock.querySelector('.voice-orb');
+            if (!orb) return;
+            orb.classList.remove('beat');
+            void orb.offsetWidth;
+            orb.classList.add('beat');
+        };
+    } catch (e) {
+        done();
+        return;
+    }
+    // Некоторые телефоны не сообщают об окончании фразы — страхуемся таймером
+    const est = 2500 + next.length * 110 / (u.rate || 1);
+    const check = () => {
+        if (finished || token !== VoiceChat.ttsToken) return;
+        let busy = false;
+        try { busy = window.speechSynthesis.speaking || window.speechSynthesis.pending; } catch (_) {}
+        if (busy) { watchdog = setTimeout(check, 1000); return; }
+        done();
+    };
+    watchdog = setTimeout(check, est);
+    try {
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+        window.speechSynthesis.speak(u);
+    } catch (e) {
+        done();
+    }
+}
+
+function onVoiceQueueEmpty() {
+    if (!VoiceChat.active) return;
+    const turn = VoiceChat.turn;
+    if (turn && !turn.done) {
+        setVoiceState('thinking');
+        return;
+    }
+    VoiceChat.turn = null;
+    if (VoiceChat.muted) {
+        setVoiceState('paused');
+        return;
+    }
+    setVoiceState('listening');
+    // Небольшая пауза, чтобы микрофон не поймал «хвост» собственной речи
+    setTimeout(() => {
+        if (VoiceChat.active && !VoiceChat.speaking && !VoiceChat.turn && !VoiceChat.rec) startVoiceListening();
+    }, 350);
+}
+
+// ---------- Кнопки ----------
+function voiceOrbTap() {
+    if (!VoiceChat.active) return;
+    const st = VoiceChat.state;
+    if (st === 'speaking' || st === 'thinking') {
+        voiceInterrupt();
+    } else if (st === 'paused') {
+        VoiceChat.muted = false;
+        VoiceChat.emptyRuns = 0;
+        primeSpeechSynthesis();
+        startVoiceListening();
+    } else if (st === 'listening' && VoiceChat.rec) {
+        // Нажали, пока слушаю: сразу отправляем сказанное
+        if (VoiceChat.finalText || VoiceChat.interimText) {
+            try { VoiceChat.rec.stop(); } catch (_) {}
+        }
+    }
+}
+
+function voiceInterrupt() {
+    cancelVoiceSpeech();
+    VoiceChat.turn = null;
+    if (window.genAbort) window.stopGeneration();
+    VoiceChat.muted = false;
+    VoiceChat.emptyRuns = 0;
+    startVoiceListening();
+}
+
+function voiceToggleMute() {
+    if (!VoiceChat.active) return;
+    VoiceChat.muted = !VoiceChat.muted;
+    if (VoiceChat.muted) {
+        if (VoiceChat.state === 'listening') {
+            stopVoiceRecognition();
+            setVoiceState('paused');
+        } else {
+            setVoiceState(VoiceChat.state);
+        }
+    } else {
+        VoiceChat.emptyRuns = 0;
+        if (VoiceChat.state === 'paused') startVoiceListening();
+        else setVoiceState(VoiceChat.state);
+    }
+}
+
+// ---------- Кнопка «Отправить» превращается в «Голосовой разговор», когда поле пустое ----------
+function voiceAttachmentsPending() {
+    return !!(window.pendingImage || window.pendingFile || window.pendingZip || (typeof _attachBusy !== 'undefined' && _attachBusy));
+}
+function shouldOpenVoiceFromSend() {
+    if (!voiceModeSupported() || VoiceChat.active || window.genAbort) return false;
+    if (mainInput && mainInput.value.trim()) return false;
+    return !voiceAttachmentsPending();
+}
+
+function refreshVoiceSendButton() {
+    const btn = document.getElementById('sendBtn');
+    if (!btn || btn.classList.contains('is-stop')) return;
+    if (_sendIconHtml === null && !btn.classList.contains('is-voice')) _sendIconHtml = btn.innerHTML;
+    const voice = shouldOpenVoiceFromSend();
+    if (voice === btn.classList.contains('is-voice')) return;
+    btn.classList.toggle('is-voice', voice);
+    if (voice) {
+        btn.innerHTML = VOICE_WAVE_ICON;
+        btn.title = 'Голосовой разговор';
+        btn.setAttribute('aria-label', 'Голосовой разговор');
+    } else {
+        if (_sendIconHtml !== null) btn.innerHTML = _sendIconHtml;
+        btn.title = 'Отправить';
+        btn.setAttribute('aria-label', 'Отправить');
+    }
+}
+window.refreshVoiceSendButton = refreshVoiceSendButton;
+
+// ---------- Настройки голоса ----------
+function fillVoiceSettings() {
+    const sel = document.getElementById('prefTtsVoice');
+    if (sel) {
+        const lang = Prefs.get().voiceLang || 'ru-RU';
+        const prefix = normLang(lang).slice(0, 2);
+        let voices = speechVoicesList().filter(v => normLang(v.lang).startsWith(prefix));
+        if (!voices.length && ['be', 'uk', 'kk'].includes(prefix)) voices = speechVoicesList().filter(v => normLang(v.lang).startsWith('ru'));
+        voices.sort((a, b) => voiceQuality(b, lang) - voiceQuality(a, lang));
+        const chosen = Prefs.get().ttsVoice;
+        sel.innerHTML = '<option value="">Автоматически (лучший доступный)</option>' + voices.map(v => {
+            const id = v.voiceURI || v.name;
+            return `<option value="${escapeAttr(id)}">${escapeHtml(v.name)}${v.localService === false ? ' · онлайн' : ''}</option>`;
+        }).join('');
+        sel.value = voices.some(v => (v.voiceURI || v.name) === chosen) ? chosen : '';
+        sel.disabled = !Speech.supported();
+    }
+    const note = document.getElementById('voiceSupportNote');
+    if (note) {
+        note.textContent = voiceModeSupported()
+            ? 'Нажмите кнопку с волной в поле ввода (когда оно пустое) и говорите — Quanta ответит голосом. Речь распознаёт сервис браузера.'
+            : voiceUnsupportedText() + '.';
+    }
+    const test = document.getElementById('voiceTestBtn');
+    if (test) test.disabled = !Speech.supported();
+}
+
+var _voiceSettingsBound = false;
+function bindVoiceSettings() {
+    if (_voiceSettingsBound) return;
+    _voiceSettingsBound = true;
+    const sel = document.getElementById('prefTtsVoice');
+    if (sel) sel.addEventListener('change', () => { Prefs.set({ ttsVoice: sel.value }); flashSaved(); });
+    const lang = document.getElementById('prefVoiceLang');
+    if (lang) lang.addEventListener('change', () => setTimeout(fillVoiceSettings, 0));
+    const test = document.getElementById('voiceTestBtn');
+    if (test) test.addEventListener('click', () => {
+        if (!Speech.supported()) return;
+        const samples = {
+            'ru-RU': 'Привет! Я Quanta. Так звучит мой голос в разговоре.',
+            'be-BY': 'Прывітанне! Я Quanta. Так гучыць мой голас.',
+            'uk-UA': 'Привіт! Я Quanta. Так звучить мій голос.',
+            'kk-KZ': 'Сәлем! Мен Quanta. Менің дауысым осылай естіледі.',
+            'en-US': 'Hi! I am Quanta. This is how my voice sounds.',
+            'de-DE': 'Hallo! Ich bin Quanta. So klingt meine Stimme.',
+            'pl-PL': 'Cześć! Jestem Quanta. Tak brzmi mój głos.'
+        };
+        const text = samples[Prefs.get().voiceLang] || samples['ru-RU'];
+        try {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            const pick = pickSpeechVoice(text);
+            u.lang = pick.lang;
+            if (pick.voice) u.voice = pick.voice;
+            u.rate = speechRate();
+            window.speechSynthesis.speak(u);
+        } catch (_) {
+            showToast('Не удалось воспроизвести голос');
+        }
+    });
+    try {
+        if (window.speechSynthesis && window.speechSynthesis.addEventListener) {
+            window.speechSynthesis.addEventListener('voiceschanged', () => {
+                const m = document.getElementById('settingsModal');
+                if (m && m.classList.contains('open')) fillVoiceSettings();
+            });
+        }
+    } catch (_) {}
+}
+
+// ---------- Подписки ----------
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !VoiceChat.active) return;
+    if (document.querySelector('.modal-overlay.open, .lightbox-modal.open')) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    closeVoiceChat();
+}, true);
+
+document.addEventListener('visibilitychange', () => {
+    if (!VoiceChat.active) return;
+    if (document.visibilityState === 'hidden') {
+        // Свернули приложение: микрофон выключаем, разговор ставим на паузу
+        stopVoiceRecognition();
+        if (!VoiceChat.speaking && !VoiceChat.turn) {
+            VoiceChat.muted = true;
+            setVoiceState('paused', 'Пауза — нажмите на круг, чтобы продолжить');
+        }
+    } else {
+        voiceWakeLock(true);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (mainInput) mainInput.addEventListener('input', refreshVoiceSendButton);
+    ['filePreviewBar', 'imagePreviewBar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && window.MutationObserver) {
+            new MutationObserver(() => refreshVoiceSendButton()).observe(el, { attributes: true, childList: true, subtree: true, characterData: true });
+        }
+    });
+    refreshVoiceSendButton();
+    // Голоса синтезатора в Chrome загружаются не сразу
+    try { if (window.speechSynthesis) window.speechSynthesis.getVoices(); } catch (_) {}
+});
+
+// ==========================================
+// 🔗 ПОДЕЛИТЬСЯ ЧАТОМ ПО ССЫЛКЕ
+// С входом через Google — короткая ссылка ?s=ID (копия чата в Firestore, коллекция shares).
+// Без входа (или если правила Firestore ещё не обновлены) — чат упаковывается прямо в ссылку (#c=…).
+// ==========================================
+Object.assign(ICONS, {
+    'share': '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>',
+    'link': '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'
+});
+
+const SHARE_HASH_MAX = 3800;           // длина ссылки без входа: помещается даже в сообщение Telegram
+const SHARE_CLOUD_MAX_BYTES = 900000;  // документ Firestore — не больше 1 МБ (считаем байты, а не буквы)
+const SHARE_CLOUD_MAX_MSGS = 1000;
+const SHARE_ID_RE = /^[A-Za-z0-9]{12,40}$/;
+
+var SharedView = { active: false, adopted: false, data: null, source: '' };
+window.SharedView = SharedView;
+
+// ---------- Утилиты ----------
+function newShareId() {
+    const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = new Uint8Array(16);
+    (window.crypto || window.msCrypto).getRandomValues(bytes);
+    return Array.from(bytes, b => abc[b % abc.length]).join('');
+}
+
+function b64urlFromBytes(bytes) {
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function bytesFromB64url(s) {
+    s = String(s || '').replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    const bin = atob(s);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+}
+function canDeflate() {
+    try { return typeof CompressionStream !== 'undefined' && !!new CompressionStream('deflate-raw'); } catch (_) { return false; }
+}
+async function deflateBytes(bytes) {
+    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function inflateBytes(bytes, maxBytes) {
+    const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+    const chunks = [];
+    let total = 0;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.length;
+        if (total > maxBytes) {
+            try { reader.cancel(); } catch (_) {}
+            throw new Error('Слишком большая ссылка');
+        }
+        chunks.push(value);
+    }
+    const out = new Uint8Array(total);
+    let off = 0;
+    chunks.forEach(c => { out.set(c, off); off += c.length; });
+    return out;
+}
+
+function shareMapKey(uid) { return 'quanta_shares_' + (uid || 'guest'); }
+function loadShareMap(uid) {
+    try {
+        const m = JSON.parse(localStorage.getItem(shareMapKey(uid)) || '{}');
+        return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
+    } catch (_) { return {}; }
+}
+function saveShareMap(uid, map) {
+    try { localStorage.setItem(shareMapKey(uid), JSON.stringify(map)); } catch (_) {}
+}
+
+// Сообщения чата → компактный вид для ссылки
+function shareMessagesFromChat(chat) {
+    return (chat.messages || []).filter(m => m && (m.role === 'user' || m.role === 'assistant')).map(m => {
+        const o = { r: m.role === 'user' ? 'u' : 'a', c: String(m.content || '') };
+        if (m.type === 'image' && m.imageUrl && /^https:\/\//i.test(m.imageUrl)) {
+            o.t = 'image';
+            o.u = String(m.imageUrl).slice(0, 4000);
+        }
+        return o;
+    });
+}
+
+// Компактный вид → сообщения для показа (с проверкой: ссылку мог собрать кто угодно)
+function sharedToMessages(list) {
+    if (!Array.isArray(list)) return [];
+    return list.slice(-SHARE_CLOUD_MAX_MSGS).map(x => {
+        if (!x || typeof x !== 'object') return null;
+        const role = x.r === 'u' ? 'user' : x.r === 'a' ? 'assistant' : null;
+        if (!role) return null;
+        const m = { role, content: String(x.c == null ? '' : x.c).slice(0, 300000), type: 'text', imageUrl: null };
+        if (role === 'assistant' && x.t === 'image' && typeof x.u === 'string' && /^https:\/\//i.test(x.u) && isSafeImageUrl(x.u)) {
+            m.type = 'image';
+            m.imageUrl = x.u;
+        }
+        return m;
+    }).filter(Boolean);
+}
+
+function cleanShareTitle(t) {
+    return String(t || '').replace(/[\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Общий чат';
+}
+
+function shareBaseUrl() {
+    return location.origin + location.pathname;
+}
+
+// ---------- Создание ссылки ----------
+async function createCloudShare(chat, uid) {
+    const map = loadShareMap(uid);
+    const prev = map[chat.id];
+    const all = shareMessagesFromChat(chat);
+    if (prev && prev.id && prev.count === all.length && (prev.updated || 0) >= (chat.updatedAt || 0)) {
+        return { kind: 'cloud', id: prev.id, url: shareBaseUrl() + '?s=' + prev.id, count: all.length };
+    }
+    const enc = new TextEncoder();
+    const sizeOf = m => enc.encode(m.c).length + (m.u ? m.u.length : 0) + 24;
+    let msgs = all.slice(-SHARE_CLOUD_MAX_MSGS);
+    let bytes = msgs.reduce((n, m) => n + sizeOf(m), 0);
+    while (msgs.length > 1 && bytes > SHARE_CLOUD_MAX_BYTES) {
+        bytes -= sizeOf(msgs[0]);
+        msgs = msgs.slice(1);
+    }
+    if (bytes > SHARE_CLOUD_MAX_BYTES) {
+        let c = msgs[0].c;
+        while (c.length > 1 && enc.encode(c).length > SHARE_CLOUD_MAX_BYTES - 64) c = c.slice(0, Math.floor(c.length * 0.9));
+        msgs = [{ ...msgs[0], c: c + '…' }];
+    }
+    const id = prev && prev.id ? prev.id : newShareId();
+    const now = Date.now();
+    await db.collection('shares').doc(id).set({
+        v: 1,
+        ownerUid: uid,
+        title: cleanShareTitle(chat.title),
+        messages: msgs,
+        count: msgs.length,
+        total: all.length,
+        createdAt: prev && prev.createdAt ? prev.createdAt : now,
+        updatedAt: now
+    });
+    map[chat.id] = { id, count: all.length, updated: chat.updatedAt || now, createdAt: prev && prev.createdAt ? prev.createdAt : now };
+    saveShareMap(uid, map);
+    const note = msgs.length < all.length ? `В ссылку вошли последние ${msgs.length} из ${all.length} сообщений (чат очень большой).` : '';
+    return { kind: 'cloud', id, url: shareBaseUrl() + '?s=' + id, count: msgs.length, note };
+}
+
+async function encodeHashPayload(obj) {
+    const json = JSON.stringify(obj);
+    const bytes = new TextEncoder().encode(json);
+    if (canDeflate()) return 'z' + b64urlFromBytes(await deflateBytes(bytes));
+    return 'j' + b64urlFromBytes(bytes);
+}
+
+async function createHashShare(chat) {
+    const all = shareMessagesFromChat(chat);
+    const title = cleanShareTitle(chat.title);
+    const pack = list => ({ v: 1, t: title, n: all.length, m: list.map(m => m.t ? [m.r, m.c, 1, m.u] : [m.r, m.c]) });
+    const base = shareBaseUrl() + '#c=';
+    const fits = async list => {
+        const enc = await encodeHashPayload(pack(list));
+        return (base + enc).length <= SHARE_HASH_MAX ? base + enc : null;
+    };
+    let url = await fits(all);
+    let used = all.length;
+    if (!url) {
+        // Бинарный поиск: сколько последних сообщений помещается
+        let lo = 1, hi = all.length - 1, best = null, bestK = 0;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            const u = await fits(all.slice(-mid));
+            if (u) { best = u; bestK = mid; lo = mid + 1; } else hi = mid - 1;
+        }
+        if (best) {
+            url = best;
+            used = bestK;
+        } else {
+            // Даже одно сообщение не помещается — сокращаем его текст
+            const last = all.slice(-1)[0] || { r: 'a', c: '' };
+            let len = Math.min(last.c.length, 6000);
+            while (len > 50 && !url) {
+                url = await fits([{ ...last, c: last.c.slice(0, len) + '…' }]);
+                len = Math.floor(len * 0.7);
+            }
+            used = 1;
+        }
+    }
+    if (!url) throw new Error('Не удалось упаковать чат в ссылку');
+    const note = used < all.length
+        ? `Без входа в ссылку поместились только последние ${used} из ${all.length} сообщений.`
+        : '';
+    return { kind: 'hash', url, count: used, note };
+}
+
+async function createShareLink(chat) {
+    const uid = currentUidOrGuest();
+    const signedIn = !!(window.currentUser && db && uid === window.currentUser.uid);
+    if (signedIn) {
+        try {
+            return await createCloudShare(chat, uid);
+        } catch (e) {
+            console.info('Cloud share notice:', e && e.message);
+            const denied = (e && e.code === 'permission-denied') || /permission|insufficient/i.test((e && e.message) || '');
+            const r = await createHashShare(chat);
+            r.note = [r.note, denied
+                ? 'Облако пока не принимает общие ссылки: в Firebase нужно обновить правила Firestore (инструкция в README). До тех пор чат хранится прямо в ссылке.'
+                : 'Нет связи с облаком — чат хранится прямо в ссылке.'].filter(Boolean).join(' ');
+            return r;
+        }
+    }
+    const r = await createHashShare(chat);
+    r.note = [r.note, 'Войдите через Google — тогда ссылки станут короткими и вместят чат целиком.'].filter(Boolean).join(' ');
+    return r;
+}
+
+// ---------- Окно «Поделиться» ----------
+var _shareState = { chatId: null, result: null, busy: false, returnFocus: null };
+
+function ensureShareModal() {
+    let modal = document.getElementById('shareModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'shareModal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'shareTitle');
+    modal.innerHTML = `
+        <div class="modal-box share-box">
+            <div class="modal-header">
+                <h2 id="shareTitle">${icon('share', 18)} Поделиться чатом</h2>
+                <button type="button" class="modal-close-btn" data-share-close title="Закрыть (Esc)" aria-label="Закрыть">${icon('x', 20)}</button>
+            </div>
+            <p class="share-desc">Любой, у кого есть ссылка, сможет прочитать этот чат и продолжить его у себя. Ваша память, настройки и другие чаты по ссылке не видны.</p>
+            <div class="share-link-row">
+                <input type="text" id="shareLinkInput" readonly aria-label="Ссылка на чат" placeholder="Создаю ссылку…">
+                <button type="button" class="modal-btn modal-btn-primary" id="shareCopyBtn" disabled>${icon('copy', 15)} <span>Копировать</span></button>
+            </div>
+            <div class="share-status" id="shareStatus" role="status" aria-live="polite"></div>
+            <div class="share-note" id="shareNote" hidden></div>
+            <div class="share-actions">
+                <button type="button" class="modal-btn modal-btn-secondary" id="shareDeleteBtn" hidden>${icon('trash', 15)} Удалить ссылку</button>
+                <button type="button" class="modal-btn modal-btn-secondary" id="shareNativeBtn" hidden>${icon('share', 15)} Отправить…</button>
+                <button type="button" class="modal-btn modal-btn-secondary share-done" data-share-close>Готово</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+    modal.querySelectorAll('[data-share-close]').forEach(b => b.addEventListener('click', closeShareDialog));
+    if (typeof bindBackdropClose === 'function') bindBackdropClose(modal, closeShareDialog);
+    modal.querySelector('#shareCopyBtn').addEventListener('click', copyShareLink);
+    modal.querySelector('#shareLinkInput').addEventListener('focus', e => { try { e.target.select(); } catch (_) {} });
+    modal.querySelector('#shareNativeBtn').addEventListener('click', nativeShareLink);
+    modal.querySelector('#shareDeleteBtn').addEventListener('click', deleteShareLink);
+    return modal;
+}
+
+function setShareStatus(text, kind) {
+    const el = document.getElementById('shareStatus');
+    if (!el) return;
+    el.textContent = text || '';
+    el.dataset.kind = kind || '';
+}
+
+window.openShareDialog = async function () {
+    if (SharedView.active) {
+        showToast('Это чат по чужой ссылке — сохраните его себе, чтобы поделиться');
+        return;
+    }
+    const uid = currentUidOrGuest();
+    const chatId = window.currentChatId;
+    const chat = chatId ? ChatStorage.getChat(chatId, uid) : null;
+    if (!chat || !chat.messages || !chat.messages.length) {
+        showToast(window.genAbort ? 'Дождитесь окончания ответа' : 'В этом чате пока нечем делиться');
+        return;
+    }
+    const modal = ensureShareModal();
+    _shareState = { chatId, result: null, busy: true, returnFocus: document.activeElement };
+    const input = modal.querySelector('#shareLinkInput');
+    const copyBtn = modal.querySelector('#shareCopyBtn');
+    const note = modal.querySelector('#shareNote');
+    input.value = '';
+    copyBtn.disabled = true;
+    note.hidden = true;
+    modal.querySelector('#shareDeleteBtn').hidden = true;
+    modal.querySelector('#shareNativeBtn').hidden = true;
+    setShareStatus('Создаю ссылку…', 'busy');
+    modal.classList.add('open');
+    if (window.genAbort) setShareStatus('Ответ ещё печатается — в ссылку попадёт то, что уже сохранено', 'busy');
+    try {
+        const res = await createShareLink(chat);
+        if (_shareState.chatId !== chatId || !modal.classList.contains('open')) return;
+        _shareState.result = res;
+        input.value = res.url;
+        copyBtn.disabled = false;
+        const n = res.count;
+        setShareStatus(`${res.kind === 'cloud' ? 'Ссылка готова' : 'Ссылка готова (чат внутри ссылки)'} · ${n} ${plural(n, 'сообщение', 'сообщения', 'сообщений')}`, 'ok');
+        if (res.note) { note.textContent = res.note; note.hidden = false; }
+        modal.querySelector('#shareDeleteBtn').hidden = res.kind !== 'cloud';
+        modal.querySelector('#shareNativeBtn').hidden = typeof navigator.share !== 'function';
+        try { copyBtn.focus({ preventScroll: true }); } catch (_) {}
+    } catch (e) {
+        console.warn('Share error:', e);
+        setShareStatus('Не удалось создать ссылку: ' + (typeof friendlyErrorText === 'function' ? friendlyErrorText(e && e.message) : (e && e.message) || 'ошибка'), 'err');
+    } finally {
+        _shareState.busy = false;
+    }
+};
+
+window.closeShareDialog = function () {
+    const modal = document.getElementById('shareModal');
+    if (!modal || !modal.classList.contains('open')) return;
+    modal.classList.remove('open');
+    const f = _shareState.returnFocus;
+    if (f && f.isConnected && typeof f.focus === 'function') { try { f.focus({ preventScroll: true }); } catch (_) {} }
+};
+
+async function copyTextToClipboard(text) {
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+    } catch (_) {}
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        return ok;
+    } catch (_) { return false; }
+}
+
+async function copyShareLink() {
+    const res = _shareState.result;
+    if (!res) return;
+    const ok = await copyTextToClipboard(res.url);
+    const btn = document.getElementById('shareCopyBtn');
+    if (ok) {
+        showToast('Ссылка скопирована');
+        if (btn) {
+            const span = btn.querySelector('span');
+            if (span) {
+                span.textContent = 'Скопировано';
+                setTimeout(() => { if (span.isConnected) span.textContent = 'Копировать'; }, 1600);
+            }
+        }
+    } else {
+        const input = document.getElementById('shareLinkInput');
+        if (input) { input.focus(); input.select(); }
+        showToast('Выделите ссылку и скопируйте вручную (Ctrl + C)');
+    }
+}
+
+async function nativeShareLink() {
+    const res = _shareState.result;
+    if (!res || typeof navigator.share !== 'function') return;
+    const chat = ChatStorage.getChat(_shareState.chatId, currentUidOrGuest());
+    try {
+        await navigator.share({ title: (chat && chat.title) || 'Чат Quanta AI', text: 'Чат в Quanta AI', url: res.url });
+    } catch (e) {
+        if (e && e.name !== 'AbortError') showToast('Не удалось открыть меню «Поделиться»');
+    }
+}
+
+async function deleteShareLink() {
+    const res = _shareState.result;
+    if (!res || res.kind !== 'cloud' || !db) return;
+    const ok = typeof quantaConfirm === 'function'
+        ? await quantaConfirm({ title: 'Удалить ссылку?', text: 'Чат останется у вас, но по этой ссылке его больше никто не откроет.', okLabel: 'Удалить', danger: true })
+        : window.confirm('Удалить ссылку?');
+    if (!ok) return;
+    try {
+        await db.collection('shares').doc(res.id).delete();
+        const uid = currentUidOrGuest();
+        const map = loadShareMap(uid);
+        Object.keys(map).forEach(k => { if (map[k] && map[k].id === res.id) delete map[k]; });
+        saveShareMap(uid, map);
+        _shareState.result = null;
+        closeShareDialog();
+        showToast('Ссылка удалена — по ней чат больше не откроется');
+    } catch (e) {
+        setShareStatus('Не удалось удалить ссылку: ' + (typeof friendlyErrorText === 'function' ? friendlyErrorText(e && e.message) : (e && e.message)), 'err');
+    }
+}
+
+// Кнопка «Поделиться» в шапке — когда в чате есть сообщения
+function updateShareButton() {
+    const btn = document.getElementById('headerShareBtn');
+    if (!btn) return;
+    const body = document.getElementById('workspaceBody');
+    const ws = document.getElementById('workspace');
+    const has = !!(body && ws && ws.style.display !== 'none' && body.querySelector(':scope > .msg'));
+    btn.hidden = !has || SharedView.active;
+}
+
+// ---------- Просмотр чата по ссылке ----------
+function chatsFromShareSet() {
+    try {
+        const arr = JSON.parse(localStorage.getItem('quanta_from_share') || '[]');
+        return new Set(Array.isArray(arr) ? arr : []);
+    } catch (_) { return new Set(); }
+}
+var _fromShareCache = null;
+function isChatFromShare(chatId) {
+    if (!chatId) return false;
+    if (!_fromShareCache) _fromShareCache = chatsFromShareSet();
+    return _fromShareCache.has(chatId);
+}
+function markChatFromShare(chatId) {
+    const set = chatsFromShareSet();
+    set.add(chatId);
+    const arr = Array.from(set).slice(-500);
+    try { localStorage.setItem('quanta_from_share', JSON.stringify(arr)); } catch (_) {}
+    _fromShareCache = new Set(arr);
+}
+
+function ensureSharedBanner() {
+    let el = document.getElementById('sharedBanner');
+    if (el) return el;
+    const chat = document.getElementById('chatContainer');
+    if (!chat || !chat.parentNode) return null;
+    el = document.createElement('div');
+    el.className = 'shared-banner';
+    el.id = 'sharedBanner';
+    el.hidden = true;
+    el.setAttribute('role', 'region');
+    el.setAttribute('aria-label', 'Общий чат');
+    el.innerHTML = `
+        <span class="shared-banner-icon" aria-hidden="true">${icon('link', 16)}</span>
+        <div class="shared-banner-text">
+            <div class="shared-banner-title" id="sharedBannerTitle">Общий чат</div>
+            <div class="shared-banner-sub">Чат по ссылке. Напишите сообщение — и он сохранится у вас, чтобы продолжить</div>
+        </div>
+        <button type="button" class="set-btn set-btn-sm set-btn-primary" id="sharedSaveBtn">Сохранить себе</button>
+        <button type="button" class="shared-banner-close" id="sharedCloseBtn" title="Закрыть" aria-label="Закрыть общий чат">${icon('x', 16)}</button>`;
+    chat.parentNode.insertBefore(el, chat);
+    el.querySelector('#sharedSaveBtn').addEventListener('click', () => {
+        const id = adoptSharedChat();
+        if (id) showToast('Чат сохранён в вашу историю');
+    });
+    el.querySelector('#sharedCloseBtn').addEventListener('click', () => {
+        startNewChat({ silent: true });
+    });
+    return el;
+}
+
+function cleanShareUrl() {
+    try {
+        const url = new URL(location.href);
+        const had = url.searchParams.has('s') || /^#c=/.test(url.hash);
+        if (!had) return;
+        url.searchParams.delete('s');
+        if (/^#c=/.test(url.hash)) url.hash = '';
+        history.replaceState(history.state, '', url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '') + url.hash);
+    } catch (_) {}
+}
+
+function endSharedView() {
+    if (!SharedView.active) return;
+    SharedView.active = false;
+    SharedView.data = null;
+    const el = document.getElementById('sharedBanner');
+    if (el) el.hidden = true;
+    document.body.classList.remove('shared-view');
+    cleanShareUrl();
+    updateShareButton();
+}
+window.endSharedView = endSharedView;
+
+function adoptSharedChat() {
+    if (!SharedView.active || !SharedView.data) return null;
+    const d = SharedView.data;
+    const uid = currentUidOrGuest();
+    const id = window.currentChatId && !ChatStorage.getChat(window.currentChatId, uid) ? window.currentChatId : newChatId();
+    window.currentChatId = id;
+    const now = Date.now();
+    const n = d.messages.length;
+    const messages = d.messages.map((m, i) => ({
+        role: m.role,
+        content: m.content,
+        timestamp: now - (n - i) * 10,
+        type: m.type || 'text',
+        imageUrl: m.imageUrl || null,
+        meta: null
+    }));
+    const firstUser = d.messages.find(m => m.role === 'user');
+    const title = cleanShareTitle(d.title || (firstUser ? firstUser.content.slice(0, 45) : 'Общий чат'));
+    const chat = { id, title, createdAt: now, updatedAt: now, messages, msgCount: messages.length, synced: false };
+    const chats = ChatStorage.getAllLocal(uid).filter(c => c.id !== id);
+    chats.unshift(chat);
+    ChatStorage.saveAllLocal(chats, uid);
+    markChatFromShare(id);
+    endSharedView();
+    renderChatHistoryList(ChatStorage.getAllLocal(uid));
+    markActiveChatInSidebar(id);
+    if (window.currentUser && db && uid === window.currentUser.uid) {
+        ChatStorage.uploadChat(uid, chat).then(() => {
+            // Пока шла загрузка, могли добавиться новые сообщения — поправляем счётчик
+            const cur = ChatStorage.getChat(id, uid);
+            if (cur && cur.messages.length !== messages.length) {
+                ChatStorage.patchChat(id, c => { c.msgCount = c.messages.length; }, uid);
+                ChatStorage.chatRef(uid, id).set({ msgCount: cur.messages.length }, { merge: true }).catch(() => {});
+            }
+        }).catch(e => console.info('Shared chat upload notice:', e && e.message));
+    }
+    return id;
+}
+window.adoptSharedChat = adoptSharedChat;
+
+// Вызывается из addMessage перед первым вашим сообщением в открытом по ссылке чате
+function adoptSharedChatBeforeReply() {
+    if (SharedView.active) adoptSharedChat();
+}
+
+async function loadSharedFromHash(hash) {
+    const raw = hash.slice(3);
+    if (raw.length > 200000) throw new Error('Слишком длинная ссылка');
+    const kind = raw[0];
+    const bytes = bytesFromB64url(raw.slice(1));
+    let jsonBytes;
+    if (kind === 'z') {
+        if (typeof DecompressionStream === 'undefined') throw new Error('Браузер слишком старый, чтобы открыть эту ссылку — обновите его');
+        jsonBytes = await inflateBytes(bytes, 5 * 1024 * 1024);
+    } else if (kind === 'j') {
+        jsonBytes = bytes;
+    } else {
+        throw new Error('Неизвестный формат ссылки');
+    }
+    const obj = JSON.parse(new TextDecoder().decode(jsonBytes));
+    if (!obj || !Array.isArray(obj.m)) throw new Error('Ссылка повреждена');
+    const list = obj.m.map(x => Array.isArray(x) ? { r: x[0], c: x[1], t: x[2] === 1 ? 'image' : undefined, u: x[3] } : null);
+    return { title: cleanShareTitle(obj.t), messages: sharedToMessages(list), total: Number(obj.n) || list.length };
+}
+
+async function loadSharedFromCloud(id) {
+    if (!db) throw new Error('Облако недоступно — проверьте интернет или отключите блокировщик для этого сайта');
+    const snap = await db.collection('shares').doc(id).get();
+    if (!snap.exists) {
+        const e = new Error('Чат по этой ссылке не найден — возможно, автор удалил ссылку');
+        e.notFound = true;
+        throw e;
+    }
+    const d = snap.data() || {};
+    return { title: cleanShareTitle(d.title), messages: sharedToMessages(d.messages), total: Number(d.total) || 0 };
+}
+
+async function openSharedFromUrl() {
+    let url;
+    try { url = new URL(location.href); } catch (_) { return; }
+    const sid = url.searchParams.get('s');
+    const hasHash = /^#c=./.test(url.hash);
+    if (!sid && !hasHash) return;
+    if (sid && !SHARE_ID_RE.test(sid)) {
+        showToast('Ссылка на чат повреждена');
+        cleanShareUrl();
+        return;
+    }
+    startNewChat({ silent: true });
+    openWorkspace();
+    const loader = addLoading('Открываю общий чат…');
+    try {
+        const data = sid ? await loadSharedFromCloud(sid) : await loadSharedFromHash(url.hash);
+        const wrap = loader.closest('.msg');
+        if (wrap) wrap.remove();
+        if (!data.messages.length) throw new Error('В этом общем чате нет сообщений');
+        SharedView.active = true;
+        SharedView.adopted = false;
+        SharedView.data = data;
+        SharedView.source = sid ? 'cloud' : 'hash';
+        document.body.classList.add('shared-view');
+        resetChatHistory();
+        renderStoredMessages(data.messages);
+        const banner = ensureSharedBanner();
+        if (banner) {
+            const t = banner.querySelector('#sharedBannerTitle');
+            const more = data.total > data.messages.length ? ` · последние ${data.messages.length} из ${data.total}` : '';
+            if (t) t.textContent = 'Общий чат: ' + data.title + more;
+            banner.hidden = false;
+        }
+        window.currentChatId = newChatId();
+        markActiveChatInSidebar(null);
+        scrollToBottom(true);
+        updateShareButton();
+    } catch (e) {
+        console.warn('Shared chat open error:', e);
+        loader.innerHTML = errHtml('Не удалось открыть общий чат: ', e);
+        cleanShareUrl();
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const m = document.getElementById('shareModal');
+    if (!m || !m.classList.contains('open')) return;
+    if (typeof isQuantaConfirmOpen === 'function' && isQuantaConfirmOpen()) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    closeShareDialog();
+}, true);
+
+document.addEventListener('DOMContentLoaded', () => {
+    const body = document.getElementById('workspaceBody');
+    if (body && window.MutationObserver) {
+        let t = null;
+        new MutationObserver(() => {
+            clearTimeout(t);
+            t = setTimeout(updateShareButton, 120);
+        }).observe(body, { childList: true });
+    }
+    updateShareButton();
+    openSharedFromUrl();
+});
+
+window.addEventListener('hashchange', () => {
+    if (/^#c=./.test(location.hash)) openSharedFromUrl();
 });

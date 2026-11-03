@@ -1,10 +1,30 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
     <meta name="color-scheme" content="dark">
+    <script>
+    (function () {
+        try {
+            var p = JSON.parse(localStorage.getItem('quanta_prefs') || 'null') || {};
+            var d = document.documentElement;
+            var t = (p.theme === 'light' || p.theme === 'dark') ? p.theme
+                : (p.theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+            d.setAttribute('data-theme', t);
+            if (/^(blue|violet|green|orange|pink|teal)$/.test(p.accent || '')) d.setAttribute('data-accent', p.accent);
+            if (t === 'light') {
+                var m = document.querySelector('meta[name="theme-color"]');
+                if (m) m.setAttribute('content', '#ffffff');
+                var c = document.querySelector('meta[name="color-scheme"]');
+                if (c) c.setAttribute('content', 'light');
+            }
+            var fs = { small: '0.88rem', large: '1.05rem', xlarge: '1.16rem', xxlarge: '1.3rem' }[p.fontSize];
+            if (fs) d.style.setProperty('--msg-font-size', fs);
+        } catch (e) {}
+    })();
+    </script>
     <title>Quanta AI — Умный чат и AI-платформа</title>
     <meta name="keywords" content="quanta, quanta ai, ai платформа, нейросеть онлайн, чат с ии бесплатно, генерация изображений, анализ документов ai">
     <meta name="description" content="Универсальная AI-платформа для ПК и смартфонов: чат с нейросетями, точная генерация картинок по описанию, анализ документов, таблиц и презентаций.">
@@ -41,11 +61,19 @@
     <!-- Иконки и фавиконки сайта -->
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <!-- Установка как приложения (PWA) -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="application-name" content="Quanta AI">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Quanta">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="styles.css?v=2.2">
+    <link rel="stylesheet" href="styles.css?v=2.3">
     <!-- Fonts load without blocking first paint; system fonts are the fallback -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"></noscript>
@@ -112,6 +140,10 @@
             </div>
 
             <div class="sidebar-bottom">
+                <button class="sidebar-item" id="sidebarInstallBtn" type="button" hidden onclick="installQuantaApp(); closeSidebarIfMobile();" title="Установить Quanta как приложение" style="border:none; background:transparent; width:100%; text-align:left; cursor:pointer;">
+                    <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="m9 8 3 3 3-3"/><path d="M12 5v6"/></svg>
+                    <span>Установить приложение</span>
+                </button>
                 <button class="sidebar-item" id="sidebarSettingsBtn" onclick="openSettingsModal(); closeSidebarIfMobile();" title="Настройки (Ctrl+,)" style="border:none; background:transparent; width:100%; text-align:left; cursor:pointer;">
                     <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
@@ -147,6 +179,9 @@
                 </div>
 
                 <div class="header-actions">
+                    <button class="header-icon-btn" id="headerShareBtn" type="button" hidden onclick="openShareDialog()" title="Поделиться чатом" aria-label="Поделиться чатом">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+                    </button>
                     <button class="header-icon-btn" onclick="startNewChat()" title="Новый диалог (Ctrl+K)" aria-label="Новый диалог">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
@@ -282,6 +317,7 @@
             <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
                 <button type="button" class="settings-tab active" role="tab" aria-selected="true" data-settings-tab="personal" data-icon="user">Персонализация</button>
                 <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="memory" data-icon="brain">Память</button>
+                <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="look" data-icon="palette">Оформление</button>
                 <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="chat" data-icon="chat">Чат</button>
                 <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="api" data-icon="key">API</button>
                 <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="data" data-icon="database">Данные</button>
@@ -425,23 +461,39 @@
                     </div>
                 </section>
 
-                <!-- Чат -->
-                <section class="settings-panel" role="tabpanel" data-settings-panel="chat" hidden>
-                    <div class="set-grid set-grid-3">
+                <!-- Оформление -->
+                <section class="settings-panel" role="tabpanel" data-settings-panel="look" hidden>
+                    <div class="set-subtitle set-subtitle-first">Тема</div>
+                    <div class="look-themes" role="radiogroup" aria-label="Тема">
+                        <button type="button" class="look-theme" role="radio" aria-checked="false" data-theme-choice="dark">
+                            <span class="look-theme-prev look-prev-dark" aria-hidden="true"><i></i><i></i><i></i></span>
+                            <span class="look-theme-name">Тёмная</span>
+                        </button>
+                        <button type="button" class="look-theme" role="radio" aria-checked="false" data-theme-choice="light">
+                            <span class="look-theme-prev look-prev-light" aria-hidden="true"><i></i><i></i><i></i></span>
+                            <span class="look-theme-name">Светлая</span>
+                        </button>
+                        <button type="button" class="look-theme" role="radio" aria-checked="false" data-theme-choice="system">
+                            <span class="look-theme-prev look-prev-system" aria-hidden="true"><i></i><i></i><i></i></span>
+                            <span class="look-theme-name">Как в системе</span>
+                        </button>
+                    </div>
+                    <div class="set-desc look-system-note" id="lookSystemNote" hidden></div>
+
+                    <div class="set-subtitle">Цвет акцента</div>
+                    <div class="set-desc">Кнопка «Отправить», переключатели, ваши сообщения и ссылки</div>
+                    <div class="look-accents" id="lookAccents" role="radiogroup" aria-label="Цвет акцента"></div>
+
+                    <div class="set-subtitle">Текст</div>
+                    <div class="set-grid">
                         <div class="set-field">
-                            <label for="prefSendKey">Отправка сообщения</label>
-                            <select id="prefSendKey" data-pref="sendKey">
-                                <option value="enter">Enter</option>
-                                <option value="ctrlEnter">Ctrl + Enter</option>
-                            </select>
-                        </div>
-                        <div class="set-field">
-                            <label for="prefFontSize">Размер текста</label>
+                            <label for="prefFontSize">Размер текста в чате</label>
                             <select id="prefFontSize" data-pref="fontSize">
                                 <option value="small">Мелкий</option>
                                 <option value="normal">Обычный</option>
                                 <option value="large">Крупный</option>
                                 <option value="xlarge">Очень крупный</option>
+                                <option value="xxlarge">Максимальный</option>
                             </select>
                         </div>
                         <div class="set-field">
@@ -450,6 +502,33 @@
                                 <option value="narrow">Узкая</option>
                                 <option value="normal">Обычная</option>
                                 <option value="wide">Широкая</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="look-preview" aria-hidden="true">
+                        <div class="look-prev-user">Как будет выглядеть текст?</div>
+                        <div class="look-prev-ai">Вот так. Размер меняется сразу — выберите самый удобный для чтения.</div>
+                    </div>
+
+                    <div class="set-subtitle">Приложение</div>
+                    <div class="look-install" id="lookInstall">
+                        <div class="set-row-text">
+                            <div class="set-label" id="lookInstallTitle">Установить Quanta как приложение</div>
+                            <div class="set-desc" id="lookInstallDesc">Отдельное окно без адресной строки и значок на рабочем столе или главном экране телефона</div>
+                        </div>
+                        <button type="button" class="set-btn set-btn-primary" id="lookInstallBtn">Установить</button>
+                    </div>
+                    <div class="look-install-help" id="lookInstallHelp" hidden></div>
+                </section>
+
+                <!-- Чат -->
+                <section class="settings-panel" role="tabpanel" data-settings-panel="chat" hidden>
+                    <div class="set-grid">
+                        <div class="set-field">
+                            <label for="prefSendKey">Отправка сообщения</label>
+                            <select id="prefSendKey" data-pref="sendKey">
+                                <option value="enter">Enter</option>
+                                <option value="ctrlEnter">Ctrl + Enter</option>
                             </select>
                         </div>
                     </div>
@@ -490,7 +569,7 @@
                         <label class="set-switch"><input type="checkbox" data-pref="notifyDone" aria-label="Сигнал о готовности"><span class="set-slider"></span></label>
                     </div>
 
-                    <div class="set-subtitle">Голосовой ввод</div>
+                    <div class="set-subtitle">Голос</div>
                     <div class="set-field">
                         <label for="prefVoiceLang">Язык распознавания речи</label>
                         <select id="prefVoiceLang" data-pref="voiceLang">
@@ -509,6 +588,31 @@
                             <div class="set-desc">После диктовки сообщение уйдёт без нажатия кнопки</div>
                         </div>
                         <label class="set-switch"><input type="checkbox" data-pref="voiceAutoSend" aria-label="Отправлять сразу после диктовки"><span class="set-slider"></span></label>
+                    </div>
+                    <div class="set-grid">
+                        <div class="set-field">
+                            <label for="prefTtsVoice">Голос, которым говорит ИИ</label>
+                            <select id="prefTtsVoice">
+                                <option value="">Автоматически</option>
+                            </select>
+                        </div>
+                        <div class="set-field">
+                            <label for="prefTtsRate">Скорость речи</label>
+                            <select id="prefTtsRate" data-pref="ttsRate">
+                                <option value="0.85">Медленно</option>
+                                <option value="1">Обычно</option>
+                                <option value="1.15">Чуть быстрее</option>
+                                <option value="1.3">Быстро</option>
+                                <option value="1.5">Очень быстро</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="set-row voice-test-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Голосовой режим</div>
+                            <div class="set-desc" id="voiceSupportNote">Разговор с ИИ голосом: нажмите кнопку с волной справа в поле ввода, когда оно пустое</div>
+                        </div>
+                        <button type="button" class="set-btn" id="voiceTestBtn">Прослушать</button>
                     </div>
 
                     <div class="set-subtitle">Горячие клавиши</div>
@@ -657,7 +761,7 @@
     <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-    <script defer src="app.js?v=2.2"></script>
+    <script defer src="app.js?v=2.3"></script>
     <!-- Drag & Drop Overlay -->
     <div class="drag-drop-overlay" id="dragDropOverlay">
         <div class="drag-drop-box">
