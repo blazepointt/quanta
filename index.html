@@ -45,7 +45,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2.0">
     <!-- Fonts load without blocking first paint; system fonts are the fallback -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"></noscript>
@@ -60,7 +60,7 @@
         <!-- Sidebar / Navigation Drawer -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-top">
-                <a href="#" class="sidebar-logo" onclick="event.preventDefault(); startNewChat(); toggleSidebar(false);">
+                <a href="#" class="sidebar-logo" onclick="event.preventDefault(); startNewChat(); closeSidebarIfMobile();">
                     <img class="brand-mark" src="assets/logo-mark-1x.webp" srcset="assets/logo-mark-1x.webp 1x, assets/logo-mark-2x.webp 2x, assets/logo-mark-3x.webp 3x" width="44" height="26" alt="" decoding="async">
                     <span>Quanta AI</span>
                 </a>
@@ -69,7 +69,7 @@
                 </button>
             </div>
 
-            <button class="new-chat-btn" onclick="startNewChat(); toggleSidebar(false);">
+            <button class="new-chat-btn" onclick="startNewChat(); closeSidebarIfMobile();">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 5v14M5 12h14"/>
                 </svg>
@@ -79,15 +79,15 @@
             <div class="sidebar-section-header">
                 <span class="sidebar-section-label">Быстрые сценарии</span>
             </div>
-            <div class="sidebar-item" onclick="runQuickAction('cluster'); toggleSidebar(false);">
+            <div class="sidebar-item" onclick="runQuickAction('cluster'); closeSidebarIfMobile();">
                 <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                 <span>Анализ отчётов и кластеры</span>
             </div>
-            <div class="sidebar-item" onclick="runQuickAction('slides'); toggleSidebar(false);">
+            <div class="sidebar-item" onclick="runQuickAction('slides'); closeSidebarIfMobile();">
                 <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                 <span>Генерация презентаций</span>
             </div>
-            <div class="sidebar-item" onclick="runQuickAction('code'); toggleSidebar(false);">
+            <div class="sidebar-item" onclick="runQuickAction('code'); closeSidebarIfMobile();">
                 <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                 <span>Код и разработка</span>
             </div>
@@ -103,17 +103,21 @@
                 </button>
             </div>
 
+            <div class="chat-search-wrap" id="chatSearchWrap" style="display:none;">
+                <input type="search" id="chatSearchInput" placeholder="Поиск по чатам" autocomplete="off" aria-label="Поиск по чатам">
+            </div>
+
             <div class="sidebar-history" id="firebaseChatList">
                 <div class="sidebar-item history-empty" id="chatHistoryPlaceholder">Войдите через Google, чтобы синхронизировать историю диалогов</div>
             </div>
 
             <div class="sidebar-bottom">
-                <button class="sidebar-item" id="sidebarSettingsBtn" onclick="openSettingsModal(); toggleSidebar(false);" title="Настройки API" style="border:none; background:transparent; width:100%; text-align:left; cursor:pointer;">
+                <button class="sidebar-item" id="sidebarSettingsBtn" onclick="openSettingsModal(); closeSidebarIfMobile();" title="Настройки (Ctrl+,)" style="border:none; background:transparent; width:100%; text-align:left; cursor:pointer;">
                     <svg class="item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
-                    <span>Настройки API</span>
+                    <span>Настройки</span>
                 </button>
 
                 <div id="authContainer">
@@ -143,10 +147,10 @@
                 </div>
 
                 <div class="header-actions">
-                    <button class="header-icon-btn" onclick="startNewChat()" title="Новый диалог">
+                    <button class="header-icon-btn" onclick="startNewChat()" title="Новый диалог (Ctrl+K)" aria-label="Новый диалог">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
-                    <button class="header-icon-btn" id="headerSettingsBtn" onclick="openSettingsModal()" title="Настройки API">
+                    <button class="header-icon-btn" id="headerSettingsBtn" onclick="openSettingsModal()" title="Настройки (Ctrl+,)" aria-label="Настройки">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -164,6 +168,7 @@
                          srcset="assets/logo-full-328.webp 328w, assets/logo-full-492.webp 492w, assets/logo-full-656.webp 656w"
                          sizes="(max-width: 768px) 172px, 200px"
                          width="200" height="163" alt="Quanta" fetchpriority="high" decoding="async">
+                    <div class="welcome-greeting" id="welcomeGreeting" hidden></div>
                 </div>
 
                 <!-- Active Chat messages -->
@@ -310,44 +315,334 @@
     </div>
 
     <!-- Settings Modal -->
-    <div class="modal-overlay" id="settingsModal">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h2><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> Настройки API</h2>
-                <button class="modal-close-btn" onclick="closeSettingsModal()" title="Закрыть">
+    <div class="modal-overlay" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="modal-box settings-box">
+            <div class="modal-header settings-header">
+                <h2 id="settingsTitle"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> Настройки</h2>
+                <button type="button" class="modal-close-btn" onclick="closeSettingsModal()" title="Закрыть (Esc)" aria-label="Закрыть">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
                 </button>
             </div>
 
-            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">
-                Быстрые пресеты для смартфона и ПК:
-            </div>
-            <div class="modal-presets">
-                <button class="preset-btn" onclick="applyPreset('openrouter')">OpenRouter</button>
-                <button class="preset-btn" onclick="applyPreset('ollama')">Local Ollama</button>
-                <button class="preset-btn" onclick="applyPreset('groq')">Groq</button>
-            </div>
-
-            <div class="modal-field">
-                <label for="settingsApiKey">API-ключ</label>
-                <input type="password" id="settingsApiKey" placeholder="sk-or-v1-... или ваш ключ">
-                <div class="modal-hint">Ключ хранится локально на вашем устройстве. Для бесплатного OpenRouter можно оставить пустым или указать личный ключ с openrouter.ai.</div>
+            <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
+                <button type="button" class="settings-tab active" role="tab" aria-selected="true" data-settings-tab="personal" data-icon="user">Персонализация</button>
+                <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="memory" data-icon="brain">Память</button>
+                <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="chat" data-icon="chat">Чат</button>
+                <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="api" data-icon="key">API</button>
+                <button type="button" class="settings-tab" role="tab" aria-selected="false" tabindex="-1" data-settings-tab="data" data-icon="database">Данные</button>
             </div>
 
-            <div class="modal-field">
-                <label for="settingsEndpoint">Эндпоинт (OpenAI-совместимый)</label>
-                <input type="text" id="settingsEndpoint" placeholder="https://openrouter.ai/api/v1/chat/completions">
-                <div class="modal-hint">По умолчанию: <code>https://openrouter.ai/api/v1/chat/completions</code></div>
+            <div class="settings-body">
+                <!-- Персонализация -->
+                <section class="settings-panel active" role="tabpanel" data-settings-panel="personal">
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Персонализация ответов</div>
+                            <div class="set-desc">ИИ учитывает эти сведения во всех чатах</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-pz="enabled" aria-label="Персонализация ответов"><span class="set-slider"></span></label>
+                    </div>
+
+                    <div class="pz-fields">
+                        <div class="set-grid">
+                            <div class="set-field">
+                                <label for="pzName">Как к вам обращаться</label>
+                                <input type="text" id="pzName" data-pz="name" maxlength="60" placeholder="Например: Алекс" autocomplete="off">
+                            </div>
+                            <div class="set-field">
+                                <label for="pzOccupation">Чем вы занимаетесь</label>
+                                <input type="text" id="pzOccupation" data-pz="occupation" maxlength="120" placeholder="Студент, дизайнер, разработчик…" autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div class="set-field">
+                            <div class="set-label-row"><label for="pzAbout">О себе</label><span class="set-counter" data-counter-for="pzAbout"></span></div>
+                            <textarea id="pzAbout" data-pz="about" maxlength="1200" rows="3" placeholder="Интересы, цели, уровень знаний — всё, что поможет отвечать точнее"></textarea>
+                        </div>
+
+                        <div class="set-grid set-grid-3">
+                            <div class="set-field">
+                                <label for="pzStyle">Стиль ответов</label>
+                                <select id="pzStyle" data-pz="style">
+                                    <option value="balanced">Сбалансированный</option>
+                                    <option value="concise">Кратко и по делу</option>
+                                    <option value="detailed">Подробно</option>
+                                    <option value="simple">Простыми словами</option>
+                                </select>
+                            </div>
+                            <div class="set-field">
+                                <label for="pzTone">Тон</label>
+                                <select id="pzTone" data-pz="tone">
+                                    <option value="default">Обычный</option>
+                                    <option value="friendly">Дружелюбный</option>
+                                    <option value="formal">Официальный</option>
+                                    <option value="casual">Неформальный</option>
+                                    <option value="humor">С юмором</option>
+                                </select>
+                            </div>
+                            <div class="set-field">
+                                <label for="pzLanguage">Язык ответов</label>
+                                <select id="pzLanguage" data-pz="language">
+                                    <option value="auto">Как в вопросе</option>
+                                    <option value="ru">Русский</option>
+                                    <option value="en">English</option>
+                                    <option value="uk">Українська</option>
+                                    <option value="be">Беларуская</option>
+                                    <option value="kk">Қазақша</option>
+                                    <option value="de">Deutsch</option>
+                                    <option value="es">Español</option>
+                                    <option value="fr">Français</option>
+                                    <option value="pl">Polski</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="set-field">
+                            <div class="set-label-row"><label for="pzInstructions">Особые инструкции для ИИ</label><span class="set-counter" data-counter-for="pzInstructions"></span></div>
+                            <textarea id="pzInstructions" data-pz="instructions" maxlength="2000" rows="4" placeholder="Например: приводи примеры кода на Python; не используй эмодзи; в конце давай краткий вывод"></textarea>
+                        </div>
+                    </div>
+
+                    <details class="set-preview">
+                        <summary>Что видит ИИ</summary>
+                        <pre id="pzPreview"></pre>
+                    </details>
+                </section>
+
+                <!-- Память -->
+                <section class="settings-panel" role="tabpanel" data-settings-panel="memory" hidden>
+                    <div class="mem-sync" id="memSyncStatus"></div>
+
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Память</div>
+                            <div class="set-desc">ИИ помнит важное о вас между разными чатами</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-mem="enabled" aria-label="Память"><span class="set-slider"></span></label>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Запоминать автоматически</div>
+                            <div class="set-desc">ИИ сам сохраняет то, что вы рассказываете о себе. Под ответом появится отметка с кнопкой «Отменить»</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-mem="auto" aria-label="Запоминать автоматически"><span class="set-slider"></span></label>
+                    </div>
+                    <div class="set-note" id="memOffNote" hidden>Память выключена: сохранённые факты не передаются ИИ и не пополняются. Список ниже сохранён.</div>
+
+                    <div class="mem-add">
+                        <input type="text" id="memAddInput" maxlength="300" placeholder="Новый факт, например: «Я пишу на Python»" autocomplete="off" aria-label="Новый факт для памяти">
+                        <button type="button" class="set-btn set-btn-primary" id="memAddBtn" data-icon="plus">Добавить</button>
+                    </div>
+
+                    <div class="mem-head">
+                        <div class="set-subtitle">Сохранённые факты <span class="mem-count" id="memCount"></span></div>
+                        <div class="mem-head-btns">
+                            <button type="button" class="set-btn set-btn-sm" id="memExportBtn" data-icon="download">Экспорт</button>
+                            <button type="button" class="set-btn set-btn-sm set-btn-danger" id="memClearBtn" data-icon="trash">Очистить</button>
+                        </div>
+                    </div>
+                    <div class="mem-search" id="memSearchWrap" hidden>
+                        <input type="search" id="memSearchInput" placeholder="Поиск по памяти" autocomplete="off" aria-label="Поиск по памяти">
+                    </div>
+                    <div class="mem-list" id="memList"></div>
+
+                    <div class="set-tip">
+                        <b>Команды прямо в чате:</b> «Запомни, что я живу в Минске», «Забудь, что я живу в Минске», «Забудь всё обо мне». Пароли, ключи и номера карт в память не сохраняются.
+                    </div>
+
+                    <div class="set-subtitle">Контекст диалога</div>
+                    <div class="set-field">
+                        <label for="prefContextDepth">Сколько последних сообщений чата видит ИИ</label>
+                        <select id="prefContextDepth" data-pref="contextDepth">
+                            <option value="6">6 — экономно</option>
+                            <option value="10">10</option>
+                            <option value="20">20 — рекомендуется</option>
+                            <option value="40">40</option>
+                            <option value="80">80 — максимум</option>
+                        </select>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Сводка старых сообщений</div>
+                            <div class="set-desc">В длинном диалоге ИИ получает список ваших прежних вопросов и не теряет нить разговора</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-pref="contextDigest" aria-label="Сводка старых сообщений"><span class="set-slider"></span></label>
+                    </div>
+                </section>
+
+                <!-- Чат -->
+                <section class="settings-panel" role="tabpanel" data-settings-panel="chat" hidden>
+                    <div class="set-grid set-grid-3">
+                        <div class="set-field">
+                            <label for="prefSendKey">Отправка сообщения</label>
+                            <select id="prefSendKey" data-pref="sendKey">
+                                <option value="enter">Enter</option>
+                                <option value="ctrlEnter">Ctrl + Enter</option>
+                            </select>
+                        </div>
+                        <div class="set-field">
+                            <label for="prefFontSize">Размер текста</label>
+                            <select id="prefFontSize" data-pref="fontSize">
+                                <option value="small">Мелкий</option>
+                                <option value="normal">Обычный</option>
+                                <option value="large">Крупный</option>
+                                <option value="xlarge">Очень крупный</option>
+                            </select>
+                        </div>
+                        <div class="set-field">
+                            <label for="prefChatWidth">Ширина чата</label>
+                            <select id="prefChatWidth" data-pref="chatWidth">
+                                <option value="narrow">Узкая</option>
+                                <option value="normal">Обычная</option>
+                                <option value="wide">Широкая</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Автопрокрутка</div>
+                            <div class="set-desc">Следовать за текстом, пока ИИ печатает ответ</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-pref="autoScroll" aria-label="Автопрокрутка"><span class="set-slider"></span></label>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Скорость генерации</div>
+                            <div class="set-desc">Показывать токены в секунду под ответом</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-pref="showSpeed" aria-label="Скорость генерации"><span class="set-slider"></span></label>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Кнопки под ответами</div>
+                            <div class="set-desc">Копировать, озвучить, повторить, скачать .md</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-pref="msgActions" aria-label="Кнопки под ответами"><span class="set-slider"></span></label>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Распознавать команды</div>
+                            <div class="set-desc">«Нарисуй…» запускает генерацию картинки, «Сделай презентацию…» — слайды</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-pref="autoIntents" aria-label="Распознавать команды"><span class="set-slider"></span></label>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Сигнал о готовности</div>
+                            <div class="set-desc">Если вы ушли на другую вкладку, в её заголовке появится «● Ответ готов»</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-pref="notifyDone" aria-label="Сигнал о готовности"><span class="set-slider"></span></label>
+                    </div>
+
+                    <div class="set-subtitle">Голосовой ввод</div>
+                    <div class="set-field">
+                        <label for="prefVoiceLang">Язык распознавания речи</label>
+                        <select id="prefVoiceLang" data-pref="voiceLang">
+                            <option value="ru-RU">Русский</option>
+                            <option value="be-BY">Беларуская</option>
+                            <option value="uk-UA">Українська</option>
+                            <option value="en-US">English (US)</option>
+                            <option value="de-DE">Deutsch</option>
+                            <option value="pl-PL">Polski</option>
+                            <option value="kk-KZ">Қазақша</option>
+                        </select>
+                    </div>
+                    <div class="set-row">
+                        <div class="set-row-text">
+                            <div class="set-label">Отправлять сразу</div>
+                            <div class="set-desc">После диктовки сообщение уйдёт без нажатия кнопки</div>
+                        </div>
+                        <label class="set-switch"><input type="checkbox" data-pref="voiceAutoSend" aria-label="Отправлять сразу после диктовки"><span class="set-slider"></span></label>
+                    </div>
+
+                    <div class="set-subtitle">Горячие клавиши</div>
+                    <div class="hotkeys">
+                        <div class="hotkey"><span><kbd>Enter</kbd></span><span>отправить (или новая строка, если выбран Ctrl + Enter)</span></div>
+                        <div class="hotkey"><span><kbd>Shift</kbd> + <kbd>Enter</kbd></span><span>новая строка</span></div>
+                        <div class="hotkey"><span><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span><span>отправить всегда</span></div>
+                        <div class="hotkey"><span><kbd>Ctrl</kbd> + <kbd>K</kbd></span><span>новый чат</span></div>
+                        <div class="hotkey"><span><kbd>Ctrl</kbd> + <kbd>,</kbd></span><span>настройки</span></div>
+                        <div class="hotkey"><span><kbd>/</kbd></span><span>перейти к полю ввода</span></div>
+                        <div class="hotkey"><span><kbd>Esc</kbd></span><span>закрыть окно или остановить генерацию</span></div>
+                    </div>
+                </section>
+
+                <!-- API -->
+                <section class="settings-panel" role="tabpanel" data-settings-panel="api" hidden>
+                    <div class="set-tip">Без ключа работают бесплатные модели. Личный ключ OpenRouter снимает лимиты. Можно подключить и другого провайдера с OpenAI-совместимым API.</div>
+
+                    <div class="set-subtitle">Быстрые пресеты</div>
+                    <div class="modal-presets">
+                        <button type="button" class="preset-btn" onclick="applyPreset('openrouter')">OpenRouter</button>
+                        <button type="button" class="preset-btn" onclick="applyPreset('ollama')">Local Ollama</button>
+                        <button type="button" class="preset-btn" onclick="applyPreset('groq')">Groq</button>
+                    </div>
+
+                    <div class="set-field">
+                        <label for="settingsApiKey">API-ключ</label>
+                        <div class="set-input-wrap">
+                            <input type="password" id="settingsApiKey" placeholder="sk-or-v1-... или ваш ключ" autocomplete="off" spellcheck="false">
+                            <button type="button" class="set-eye-btn" id="toggleApiKeyVis" title="Показать ключ" aria-label="Показать ключ"></button>
+                        </div>
+                        <div class="set-warn" id="settingsApiKeyWarn" hidden></div>
+                        <div class="modal-hint">Ключ хранится только в этом браузере и не попадает в резервные копии.</div>
+                    </div>
+
+                    <div class="set-field">
+                        <label for="settingsEndpoint">Эндпоинт (OpenAI-совместимый)</label>
+                        <input type="text" id="settingsEndpoint" inputmode="url" placeholder="https://openrouter.ai/api/v1/chat/completions" autocomplete="off" spellcheck="false">
+                        <div class="modal-hint" id="settingsEndpointHint">По умолчанию: <code>https://openrouter.ai/api/v1/chat/completions</code></div>
+                    </div>
+
+                    <div class="set-field">
+                        <label for="settingsModelName">Модель у своего провайдера</label>
+                        <input type="text" id="settingsModelName" placeholder="например: llama-3.3-70b-versatile" autocomplete="off" spellcheck="false">
+                        <div class="modal-hint">Нужна для Groq, Ollama и других провайдеров. Для OpenRouter модель выбирается в списке над полем ввода.</div>
+                    </div>
+
+                    <div class="set-field">
+                        <label for="prefTemperature">Креативность ответов (temperature)</label>
+                        <select id="prefTemperature" data-pref="temperature">
+                            <option value="auto">Авто — как задумано для модели</option>
+                            <option value="0.2">0.2 — точно и предсказуемо</option>
+                            <option value="0.5">0.5 — сдержанно</option>
+                            <option value="0.7">0.7 — сбалансированно</option>
+                            <option value="1.0">1.0 — максимально творчески</option>
+                        </select>
+                    </div>
+
+                    <div class="set-actions">
+                        <button type="button" class="set-btn" id="apiTestBtn" data-icon="plug">Проверить подключение</button>
+                    </div>
+                    <div class="api-test-result" id="apiTestResult" role="status" hidden></div>
+                </section>
+
+                <!-- Данные -->
+                <section class="settings-panel" role="tabpanel" data-settings-panel="data" hidden>
+                    <div class="data-stats" id="dataStats"></div>
+
+                    <div class="set-subtitle">Экспорт и резервная копия</div>
+                    <div class="set-actions-col">
+                        <button type="button" class="set-btn" id="exportChatBtn" data-icon="download">Скачать открытый чат (.md)</button>
+                        <button type="button" class="set-btn" id="backupBtn" data-icon="archive">Скачать резервную копию (.json)</button>
+                        <button type="button" class="set-btn" id="restoreBtn" data-icon="upload">Восстановить из копии</button>
+                    </div>
+                    <div class="modal-hint">В копию входят чаты, память, персонализация и настройки чата. API-ключ в неё не попадает.</div>
+
+                    <div class="set-subtitle">Очистка</div>
+                    <div class="set-actions-col">
+                        <button type="button" class="set-btn set-btn-danger" id="clearChatsBtn" data-icon="trash">Удалить все чаты</button>
+                        <button type="button" class="set-btn set-btn-danger" id="clearMemoryBtn2" data-icon="brain">Очистить память</button>
+                        <button type="button" class="set-btn set-btn-danger" id="resetSettingsBtn" data-icon="refresh">Сбросить настройки</button>
+                    </div>
+                    <div class="modal-hint">«Сбросить настройки» возвращает персонализацию и параметры чата к стандартным. Чаты, память и API-ключ остаются.</div>
+                </section>
             </div>
 
-            <div class="modal-field">
-                <label for="settingsModelName">Название модели (опционально)</label>
-                <input type="text" id="settingsModelName" placeholder="nvidia/nemotron-3-ultra-550b-a55b:free">
-            </div>
-
-            <div class="modal-actions">
-                <button class="modal-btn modal-btn-secondary" onclick="closeSettingsModal()">Отмена</button>
-                <button class="modal-btn modal-btn-primary" onclick="saveApiSettings()">Сохранить</button>
+            <div class="settings-footer">
+                <span id="settingsSavedNote" data-icon="check">Изменения сохраняются автоматически</span>
+                <button type="button" class="modal-btn modal-btn-primary" onclick="closeSettingsModal()">Готово</button>
             </div>
         </div>
     </div>
@@ -367,6 +662,18 @@
         </div>
     </div>
 
+    <!-- Универсальное подтверждение -->
+    <div class="modal-overlay" id="quantaConfirmModal" role="alertdialog" aria-modal="true" aria-labelledby="quantaConfirmTitle" aria-describedby="quantaConfirmText">
+        <div class="modal-box" style="max-width: 420px; text-align: center;">
+            <h2 id="quantaConfirmTitle" style="font-size: 1.12rem; margin-bottom: 8px;">Вы уверены?</h2>
+            <p id="quantaConfirmText" style="font-size: 0.86rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 18px; white-space: pre-line;"></p>
+            <div class="modal-actions">
+                <button type="button" class="modal-btn modal-btn-secondary" id="quantaConfirmCancel">Отмена</button>
+                <button type="button" class="modal-btn modal-btn-primary" id="quantaConfirmOk">Да</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Image Lightbox Modal -->
     <div class="lightbox-modal" id="imageLightbox" onclick="closeImageLightbox(event)">
         <div class="lightbox-box" onclick="event.stopPropagation()">
@@ -382,14 +689,15 @@
         </div>
     </div>
 
-    <div class="toast" id="toast"></div>
-    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.xls,.html,.htm,.js,.css,.json,.zip,image/*">
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <input type="file" id="importFileInput" accept=".json,application/json" style="display:none">
+    <input type="file" id="fileInput" style="display:none" accept=".pdf,.docx,.txt,.md,.csv,.tsv,.xlsx,.xls,.html,.htm,.xml,.json,.yml,.yaml,.js,.jsx,.mjs,.ts,.tsx,.css,.scss,.py,.java,.kt,.c,.h,.cpp,.hpp,.cs,.go,.rs,.php,.rb,.swift,.dart,.lua,.sh,.bat,.ps1,.sql,.vue,.svelte,.ini,.toml,.cfg,.conf,.env,.log,.tex,.srt,.vtt,.zip,image/*">
 
     <!-- Firebase (auth + sync). Heavy file libs (pdf/docx/xlsx/csv/pptx) are loaded on demand in app.js -->
     <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
-    <script defer src="app.js"></script>
+    <script defer src="app.js?v=2.0"></script>
     <!-- Drag & Drop Overlay -->
     <div class="drag-drop-overlay" id="dragDropOverlay">
         <div class="drag-drop-box">
@@ -399,7 +707,7 @@
                 <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
             <div class="drag-drop-title">Перетащите файл сюда</div>
-            <div class="drag-drop-sub">PDF, DOCX, TXT, CSV, Excel, ZIP или фото</div>
+            <div class="drag-drop-sub">PDF, DOCX, TXT, CSV, Excel, код, ZIP или фото</div>
         </div>
     </div>
 </body>
