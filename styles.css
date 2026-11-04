@@ -2987,6 +2987,8 @@ html[data-accent] ::selection { background: color-mix(in srgb, var(--accent) 35%
 }
 .app-about-line { font-size: 0.84rem; color: var(--text-secondary); }
 .app-about-line b { color: var(--text-primary); font-weight: 600; }
+.app-about-line a { color: inherit; text-decoration: underline; text-decoration-color: var(--border-color, currentColor); text-underline-offset: 2px; }
+.app-about-line a:hover { color: var(--text-primary); }
 .app-about-links { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; }
 .app-about-links a {
     font-size: 0.8rem;
