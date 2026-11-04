@@ -2,7 +2,7 @@
    Свои файлы сайта: сначала сеть (всегда свежая версия), без сети или при очень медленной сети — копия из кэша.
    Библиотеки и шрифты с CDN: из кэша (у них в адресе версия, они не меняются).
    Запросы к ИИ, поиску, Firebase и картинкам не трогаем — они идут напрямую. */
-const VERSION = '2.3';
+const VERSION = '2.4';
 const SHELL_CACHE = 'quanta-shell-' + VERSION;
 const CDN_CACHE = 'quanta-cdn-v1';
 const SHELL = [
@@ -13,6 +13,7 @@ const SHELL = [
     'assets/icon-192.png',
     'assets/icon-512.png',
     'assets/apple-touch-icon.png',
+    'assets/favicon-48.png',
     'assets/logo-mark-1x.webp',
     'assets/logo-mark-2x.webp',
     'assets/logo-mark-3x.webp',
@@ -98,9 +99,17 @@ async function networkFirst(event, cacheKey, timeoutMs) {
     }
 }
 
-async function handleNavigation(event) {
+// Главная страница приложения (с любыми параметрами: ?new=1, ?s=…) хранится в кэше под одним ключом './',
+// остальные страницы сайта (privacy.html и т. п.) — под своим адресом
+const SCOPE_PATH = new URL(self.registration.scope).pathname;
+function isAppShellPath(pathname) {
+    return pathname === SCOPE_PATH || pathname === SCOPE_PATH + 'index.html';
+}
+
+async function handleNavigation(event, url) {
+    const key = isAppShellPath(url.pathname) ? './' : url.origin + url.pathname;
     try {
-        return await networkFirst(event, './', 5000);
+        return await networkFirst(event, key, 5000);
     } catch (err) {
         return new Response(OFFLINE_HTML, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
@@ -131,8 +140,13 @@ self.addEventListener('fetch', event => {
 
     if (url.origin === self.location.origin) {
         if (url.pathname.startsWith('/__/')) return;   // служебные адреса Firebase
+        if (url.pathname.startsWith(SCOPE_PATH + 'downloads/')) {
+            // Файл приложения (APK) качается напрямую, без копии в кэше
+            if (event.preloadResponse) event.waitUntil(Promise.resolve(event.preloadResponse).catch(() => {}));
+            return;
+        }
         if (req.mode === 'navigate') {
-            event.respondWith(handleNavigation(event));
+            event.respondWith(handleNavigation(event, url));
             return;
         }
         event.respondWith(handleSameOrigin(event));

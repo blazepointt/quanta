@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Страница не найдена — Quanta AI</title>
+    <meta name="theme-color" content="#000000">
+    <script>
+    (function () {
+        try {
+            var p = JSON.parse(localStorage.getItem('quanta_prefs') || 'null') || {};
+            if (p.theme === 'light' || (p.theme === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        } catch (e) {}
+    })();
+    </script>
+    <style>
+        :root { --bg: #000; --fg: #fff; --muted: #a1a1aa; --btn-bg: #fff; --btn-fg: #000; }
+        [data-theme="light"] { --bg: #fff; --fg: #09090b; --muted: #52525b; --btn-bg: #09090b; --btn-fg: #fff; }
+        html, body { height: 100%; margin: 0; }
+        body { display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; text-align: center;
+               background: var(--bg); color: var(--fg); font: 16px/1.5 Inter, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif; }
+        .code { font-size: 64px; font-weight: 700; letter-spacing: -2px; margin: 0 0 4px; }
+        h1 { font-size: 22px; margin: 0 0 8px; }
+        p { color: var(--muted); margin: 0 0 24px; }
+        a { display: inline-block; padding: 11px 22px; border-radius: 12px; background: var(--btn-bg); color: var(--btn-fg); text-decoration: none; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="code">404</div>
+        <h1>Страница не найдена</h1>
+        <p>Такой страницы нет — возможно, ссылка устарела или в ней опечатка.</p>
+        <a id="home" href="/">Открыть Quanta AI</a>
+    </main>
+    <script>
+    (function () {
+        // На GitHub Pages сайт лежит в папке проекта (/quanta/), на других адресах — в корне
+        var seg = location.pathname.split('/')[1];
+        var home = /\.github\.io$/.test(location.hostname) && seg ? '/' + seg + '/' : '/';
+        document.getElementById('home').setAttribute('href', home);
+    })();
+    </script>
+</body>
+</html>

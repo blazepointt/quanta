@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Конфиденциальность — Quanta AI</title>
+    <meta name="description" content="Какие данные использует Quanta AI, где они хранятся и как их удалить.">
+    <link rel="canonical" href="https://blazepointt.github.io/quanta/privacy.html">
+    <link rel="icon" type="image/png" sizes="48x48" href="assets/favicon-48.png">
+    <meta name="theme-color" content="#000000">
+    <script>
+    (function () {
+        try {
+            var p = JSON.parse(localStorage.getItem('quanta_prefs') || 'null') || {};
+            var light = p.theme === 'light' || (p.theme === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
+            if (light) document.documentElement.setAttribute('data-theme', 'light');
+        } catch (e) {}
+    })();
+    </script>
+    <style>
+        :root { --bg: #000; --fg: #e4e4e7; --head: #fff; --muted: #a1a1aa; --line: #27272a; --card: #0a0a0b; --link: #fff; }
+        [data-theme="light"] { --bg: #fff; --fg: #27272a; --head: #09090b; --muted: #52525b; --line: #e4e4e7; --card: #fafafa; --link: #09090b; }
+        * { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.65 Inter, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif; }
+        .wrap { max-width: 720px; margin: 0 auto; padding: 28px 20px 64px; }
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 36px; }
+        .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--head); text-decoration: none; font-weight: 600; }
+        .brand img { width: 28px; height: 28px; border-radius: 7px; }
+        .back { color: var(--fg); text-decoration: none; font-size: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 14px; }
+        .back:hover { border-color: var(--muted); }
+        h1 { color: var(--head); font-size: clamp(25px, 7.4vw, 32px); line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.4px; }
+        h1, h2, p, li { overflow-wrap: break-word; hyphens: auto; }
+        .updated { color: var(--muted); font-size: 14px; margin: 0 0 28px; }
+        h2 { color: var(--head); font-size: 19px; margin: 34px 0 8px; }
+        p, li { margin: 0 0 10px; }
+        ul { padding-left: 22px; margin: 0 0 10px; }
+        a { color: var(--link); }
+        .summary { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+        .summary ul { margin: 0; }
+        .summary li:last-child { margin-bottom: 0; }
+        footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="top">
+        <a class="brand" href="./"><img src="assets/icon-192.png" alt="" width="28" height="28">Quanta AI</a>
+        <a class="back" href="./">Открыть чат</a>
+    </div>
+
+    <h1>Конфиденциальность</h1>
+    <p class="updated">Обновлено 3 ноября 2026 г.</p>
+
+    <div class="summary">
+        <ul>
+            <li>Quanta AI работает в вашем браузере. Мы не показываем рекламу, не продаём данные и не ставим счётчики посещений.</li>
+            <li>Без входа чаты и настройки хранятся только на вашем устройстве.</li>
+            <li>С входом через Google чаты, память и персонализация синхронизируются через ваш аккаунт. Их видите только вы.</li>
+        </ul>
+    </div>
+
+    <h2>Что хранится на устройстве</h2>
+    <p>Чаты, настройки, память (сведения о вас, которые вы разрешили запоминать) и ключи API сохраняются в хранилище браузера для этого сайта. Ключ API отправляется только тому провайдеру ИИ, который вы выбрали, и не попадает в облако.</p>
+
+    <h2>Вход через Google</h2>
+    <p>Вход и синхронизация работают на сервисах Google Firebase. Сохраняются ваши имя, почта и фото профиля из аккаунта Google, а также чаты, память и персонализация. Правила базы данных разрешают доступ к ним только вашему аккаунту. Выйти можно в любой момент в меню профиля.</p>
+
+    <h2>Ссылки на чаты</h2>
+    <p>Если вы делитесь чатом, его копия сохраняется в облаке (или прямо внутри ссылки, если вы не вошли). Прочитать её может любой, у кого есть ссылка. Удалить ссылку можно в окне «Поделиться».</p>
+
+    <h2>Запросы к ИИ</h2>
+    <p>Чтобы получить ответ, текст сообщения, вложения и нужная часть переписки отправляются провайдеру модели: Pollinations (без ключа), OpenRouter (с вашим ключом — он передаёт запрос выбранной модели) или другому сервису, который вы указали в настройках. Для этих данных действуют правила конфиденциальности провайдера. Не отправляйте ИИ пароли, данные карт и другие секреты.</p>
+
+    <h2>Поиск, сайты и картинки</h2>
+    <p>Поисковые запросы уходят в DuckDuckGo, а страницы сайтов для анализа загружаются через сервис allorigins.win. Картинки рисует Pollinations по вашему описанию.</p>
+
+    <h2>Голос</h2>
+    <p>Распознавание и озвучивание речи выполняет ваш браузер (в Chrome — с помощью сервисов Google). Quanta AI не записывает и не хранит звук.</p>
+
+    <h2>Приложение для Android</h2>
+    <p>Приложение открывает этот же сайт через Chrome и не собирает дополнительных данных. Из разрешений ему нужен только интернет; доступ к микрофону браузер спросит, когда вы включите голосовой разговор.</p>
+
+    <h2>Сторонние ресурсы</h2>
+    <p>Шрифты (Google Fonts) и библиотеки (jsDelivr) загружаются с общедоступных серверов. Как и любой сайт, они видят ваш IP-адрес.</p>
+
+    <h2>Как удалить данные</h2>
+    <p>В разделе <b>Настройки → Данные</b> можно скачать резервную копию, удалить все чаты, очистить память и сбросить настройки. Если вы вошли, удаление действует и в облаке. Чтобы стереть всё с устройства, очистите данные сайта в настройках браузера.</p>
+
+    <h2>Ответы ИИ</h2>
+    <p>ИИ может ошибаться. Проверяйте важную информацию, особенно медицинскую, юридическую и финансовую.</p>
+
+    <h2>Связь</h2>
+    <p>Вопросы и сообщения о проблемах: <a href="https://github.com/blazepointt/quanta/issues" target="_blank" rel="noopener">github.com/blazepointt/quanta/issues</a>.</p>
+
+    <footer>© 2026 Quanta AI · Blazepoint</footer>
+</div>
+</body>
+</html>

@@ -1449,7 +1449,7 @@ window.signInWithGoogle = async function () {
         if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request' || code === 'auth/user-cancelled') {
             showToast('Вход отменён');
         } else if (code === 'auth/unauthorized-domain') {
-            showToast('Этот домен не разрешён в Firebase (Authentication → Settings → Authorized domains)');
+            showToast('Вход через Google пока не включён для домена ' + location.hostname + '. Владельцу сайта: Firebase → Authentication → Settings → Authorized domains → Add domain', { duration: 8000 });
         } else if (code === 'auth/network-request-failed') {
             showToast('Нет соединения с сервером входа. Проверьте интернет');
         } else if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment' || !code) {
@@ -3306,7 +3306,7 @@ function extractReasoningDelta(data) {
 }
 
 const DEFAULT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-const SETTINGS_TABS = ['personal', 'memory', 'look', 'chat', 'api', 'data'];
+const SETTINGS_TABS = ['personal', 'memory', 'look', 'chat', 'api', 'data', 'app'];
 
 function cleanApiKey(k) {
     return String(k || '').replace(/[^\x00-\x7F]/g, '').replace(/^\s*bearer\s+/i, '').replace(/\s+/g, '').trim();
@@ -3687,19 +3687,41 @@ function switchSettingsTab(tab) {
         p.hidden = !on;
     });
     if (tab === 'data') renderDataStats();
+    if (tab === 'app' && typeof renderAppSection === 'function') renderAppSection();
     const body = document.querySelector('#settingsModal .settings-body');
     if (body) body.scrollTop = 0;
-    const activeTab = document.querySelector(`#settingsModal [data-settings-tab="${tab}"]`);
+    revealActiveSettingsTab();
+}
+
+// Вкладки не помещаются в строку (телефон, узкое окно) — прокручиваем к выбранной и показываем,
+// с какой стороны есть ещё разделы (плавное затухание края)
+function revealActiveSettingsTab() {
+    const activeTab = document.querySelector(`#settingsModal [data-settings-tab="${_settingsTab}"]`);
     const tabs = activeTab ? activeTab.parentElement : null;
-    if (activeTab && tabs && tabs.scrollWidth > tabs.clientWidth) {
-        tabs.scrollLeft = Math.max(0, activeTab.offsetLeft - (tabs.clientWidth - activeTab.offsetWidth) / 2);
+    if (!activeTab || !tabs) return;
+    if (tabs.scrollWidth > tabs.clientWidth + 1) {
+        const tr = tabs.getBoundingClientRect();
+        const ar = activeTab.getBoundingClientRect();
+        const left = tabs.scrollLeft + (ar.left - tr.left) - (tr.width - ar.width) / 2;
+        tabs.scrollLeft = Math.max(0, Math.min(left, tabs.scrollWidth - tabs.clientWidth));
     }
+    updateSettingsTabsFade();
+}
+
+function updateSettingsTabsFade() {
+    const tabs = document.querySelector('#settingsModal .settings-tabs');
+    if (!tabs) return;
+    const max = tabs.scrollWidth - tabs.clientWidth;
+    tabs.classList.toggle('fade-right', max > 1 && tabs.scrollLeft < max - 1);
+    tabs.classList.toggle('fade-left', max > 1 && tabs.scrollLeft > 1);
 }
 
 window.openSettingsModal = function(tab) {
     const modal = $id('settingsModal');
     if (!modal) return;
     bindSettingsUI();
+    const tabList = modal.querySelector('.settings-tabs');
+    if (tabList) tabList.setAttribute('aria-orientation', window.matchMedia && window.matchMedia('(min-width: 900px)').matches ? 'vertical' : 'horizontal');
     fillApiFields();
     fillPersonalizationFields(false);
     fillMemoryToggles();
@@ -3707,6 +3729,7 @@ window.openSettingsModal = function(tab) {
     // Оформление, установка приложения, голос
     if (typeof renderLookControls === 'function') renderLookControls();
     if (typeof renderInstallSection === 'function') renderInstallSection();
+    if (typeof renderAppSection === 'function') renderAppSection();
     if (typeof fillVoiceSettings === 'function') fillVoiceSettings();
     const ms = $id('memSearchInput');
     if (ms) ms.value = '';
@@ -3719,6 +3742,7 @@ window.openSettingsModal = function(tab) {
     const mm = $id('modelDropdownMenu');
     if (mm) mm.style.display = 'none';
     modal.classList.add('open');
+    revealActiveSettingsTab();
 };
 
 window.closeSettingsModal = function() {
@@ -3750,13 +3774,21 @@ function bindSettingsUI() {
     modal.querySelectorAll('[data-icon]').forEach(el => el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon, 15)));
     bindBackdropClose(modal, () => closeSettingsModal());
 
+    const tabStrip = modal.querySelector('.settings-tabs');
+    if (tabStrip) tabStrip.addEventListener('scroll', updateSettingsTabsFade, { passive: true });
+    window.addEventListener('resize', () => { if (modal.classList.contains('open')) updateSettingsTabsFade(); });
     const tabButtons = Array.from(modal.querySelectorAll('[data-settings-tab]'));
     tabButtons.forEach((btn, idx) => {
         btn.addEventListener('click', () => switchSettingsTab(btn.dataset.settingsTab));
         btn.addEventListener('keydown', e => {
-            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            // Стрелки: влево/вправо (вкладки сверху) и вверх/вниз (вкладки слева на широком экране), Home/End
+            const fwd = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+            const back = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+            if (!fwd && !back && e.key !== 'Home' && e.key !== 'End') return;
             e.preventDefault();
-            const next = tabButtons[(idx + (e.key === 'ArrowRight' ? 1 : tabButtons.length - 1)) % tabButtons.length];
+            const n = tabButtons.length;
+            const target = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : (idx + (fwd ? 1 : n - 1)) % n;
+            const next = tabButtons[target];
             switchSettingsTab(next.dataset.settingsTab);
             next.focus();
         });
@@ -7772,7 +7804,7 @@ function installHelpHtml() {
     if (p.android && p.firefox) return 'В Firefox на Android: меню <b>⋮</b> → <b>Установить</b> (или «Добавить на главный экран»).';
     if (p.android && p.samsung) return 'В Samsung Internet: меню <b>≡</b> → <b>Добавить страницу на</b> → <b>Главный экран</b>.';
     if (p.android) return 'На Android: меню браузера <b>⋮</b> → <b>Установить приложение</b> (или «Добавить на главный экран»).';
-    if (p.firefox) return 'Firefox и Zen на компьютере пока не умеют устанавливать сайты как приложения. Откройте <b>quanta-app.pages.dev</b> в Chrome, Edge или Яндекс Браузере и нажмите значок установки в правой части адресной строки (монитор со стрелкой). А на телефоне Quanta устанавливается из Chrome.';
+    if (p.firefox) return 'Firefox и Zen на компьютере пока не умеют устанавливать сайты как приложения. Откройте <b>' + escapeHtml(location.host + location.pathname.replace(/index\.html$/, '')) + '</b> в Chrome, Edge или Яндекс Браузере и нажмите значок установки в правой части адресной строки (монитор со стрелкой). А на телефоне Quanta устанавливается из Chrome.';
     if (p.safari) return 'В Safari на Mac: меню <b>Файл</b> → <b>Добавить в Dock</b>.';
     return 'Нажмите значок установки в правой части адресной строки (монитор со стрелкой) или меню браузера <b>⋮</b> → <b>Трансляция, сохранение и отправка</b> → <b>Установить страницу как приложение</b>.';
 }
@@ -7780,7 +7812,24 @@ function installHelpHtml() {
 function renderInstallSection() {
     const standalone = isStandaloneApp();
     const sideBtn = document.getElementById('sidebarInstallBtn');
-    if (sideBtn) sideBtn.hidden = standalone || !_installPromptEvent;
+    if (sideBtn) {
+        const p = pwaPlatform();
+        const inApp = typeof isAndroidAppShell === 'function' && isAndroidAppShell();
+        const label = sideBtn.querySelector('span');
+        if (p.mobile) {
+            // На телефоне кнопка ведёт в раздел «Приложение» (APK для Android, инструкция для iPhone)
+            sideBtn.hidden = standalone || inApp;
+            if (label) label.textContent = 'Мобильное приложение';
+            sideBtn.title = 'Скачать мобильное приложение Quanta AI';
+            const svg = sideBtn.querySelector('svg');
+            if (svg && ICONS.smartphone && !svg.dataset.mobile) {
+                svg.innerHTML = ICONS.smartphone;
+                svg.dataset.mobile = '1';
+            }
+        } else {
+            sideBtn.hidden = standalone || !_installPromptEvent;
+        }
+    }
     const title = document.getElementById('lookInstallTitle');
     const desc = document.getElementById('lookInstallDesc');
     const btn = document.getElementById('lookInstallBtn');
@@ -7804,6 +7853,10 @@ window.installQuantaApp = async function () {
         showToast('Quanta уже открыта как приложение');
         return;
     }
+    if (pwaPlatform().mobile) {
+        openSettingsModal('app');
+        return;
+    }
     const ev = _installPromptEvent;
     if (ev && typeof ev.prompt === 'function') {
         _installPromptEvent = null;
@@ -7823,7 +7876,7 @@ window.installQuantaApp = async function () {
 
 function showInstallHelp() {
     const modal = document.getElementById('settingsModal');
-    if (!modal || !modal.classList.contains('open')) openSettingsModal('look');
+    if (!modal || !modal.classList.contains('open')) openSettingsModal('app');
     const help = document.getElementById('lookInstallHelp');
     if (!help) return;
     help.innerHTML = installHelpHtml();
@@ -9294,4 +9347,249 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.addEventListener('hashchange', () => {
     if (/^#c=./.test(location.hash)) openSharedFromUrl();
+});
+
+// ==========================================
+// 📱 МОБИЛЬНОЕ ПРИЛОЖЕНИЕ: раздел «Приложение» в настройках, запуск из Android-приложения, горячие клавиши
+// ==========================================
+Object.assign(ICONS, {
+    'smartphone': '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>'
+});
+
+var APP_SHELL_KEY = 'quanta_app_shell';
+var ANDROID_PACKAGE = 'io.github.blazepointt.quanta';
+
+// Android-приложение открывает сайт с ?source=android (и с адресом-источником android-app://…).
+// Запоминаем это на время сеанса и убираем метку из адреса, чтобы она не попадала в ссылки и закладки.
+(function detectAppShell() {
+    let fromApp = false;
+    try {
+        const url = new URL(location.href);
+        if (url.searchParams.get('source') === 'android') {
+            fromApp = true;
+            url.searchParams.delete('source');
+            const q = url.searchParams.toString();
+            history.replaceState(history.state, '', url.pathname + (q ? '?' + q : '') + url.hash);
+        }
+    } catch (_) {}
+    if (!fromApp && String(document.referrer || '').indexOf('android-app://' + ANDROID_PACKAGE) === 0) fromApp = true;
+    if (fromApp) {
+        try { sessionStorage.setItem(APP_SHELL_KEY, 'android'); } catch (_) {}
+        try { document.documentElement.classList.add('in-android-app'); } catch (_) {}
+    }
+})();
+
+function isAndroidAppShell() {
+    try {
+        if (sessionStorage.getItem(APP_SHELL_KEY) === 'android') return true;
+    } catch (_) {}
+    return String(document.referrer || '').indexOf('android-app://' + ANDROID_PACKAGE) === 0;
+}
+
+function isMacLike() {
+    try {
+        const p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+        return /mac|iphone|ipad|ipod/i.test(p);
+    } catch (_) { return false; }
+}
+
+function renderKbdList() {
+    const list = document.getElementById('kbdList');
+    if (!list) return;
+    const mod = isMacLike() ? '⌘' : 'Ctrl';
+    const ctrlEnter = Prefs.get().sendKey === 'ctrlEnter';
+    const rows = [
+        [[mod, 'K'], 'Новый чат'],
+        [[mod, ','], 'Настройки'],
+        [['/'], 'Перейти к полю ввода'],
+        ctrlEnter ? [[mod, 'Enter'], 'Отправить сообщение'] : [['Enter'], 'Отправить сообщение'],
+        ctrlEnter ? [['Enter'], 'Новая строка'] : [['Shift', 'Enter'], 'Новая строка'],
+        [[mod, 'V'], 'Вставить картинку из буфера обмена'],
+        [['Esc'], 'Остановить ответ или закрыть окно']
+    ];
+    list.textContent = '';
+    rows.forEach(([keys, label]) => {
+        const row = document.createElement('div');
+        row.className = 'kbd-row';
+        const dt = document.createElement('dt');
+        keys.forEach((k, i) => {
+            if (i) dt.appendChild(document.createTextNode(' + '));
+            const kbd = document.createElement('kbd');
+            kbd.textContent = k;
+            dt.appendChild(kbd);
+        });
+        const dd = document.createElement('dd');
+        dd.textContent = label;
+        row.append(dt, dd);
+        list.appendChild(row);
+    });
+}
+
+function renderAppSection() {
+    const card = document.getElementById('appAndroidCard');
+    if (!card) return;
+    const p = pwaPlatform();
+    const inApp = isAndroidAppShell();
+    const standalone = isStandaloneApp();
+    const show = (id, on) => { const el = document.getElementById(id); if (el) el.hidden = !on; };
+    const title = card.querySelector('.app-card-title');
+    const meta = document.getElementById('appAndroidMeta');
+    const inAppNote = document.getElementById('appInAppNote');
+
+    if (!card.dataset.metaText && meta) card.dataset.metaText = meta.textContent;
+
+    if (inApp || (standalone && p.mobile)) {
+        // Уже в приложении — скачивать нечего
+        card.hidden = true;
+        if (inAppNote) {
+            inAppNote.textContent = inApp
+                ? 'Вы пользуетесь приложением Quanta AI для Android. Оно обновляется само вместе с сайтом.'
+                : 'Quanta AI открыта как приложение с главного экрана. Оно обновляется само вместе с сайтом.';
+            inAppNote.hidden = false;
+        }
+        show('appPwaBlock', false);
+    } else if (p.iOS) {
+        card.hidden = false;
+        if (inAppNote) inAppNote.hidden = true;
+        if (title) title.textContent = 'Quanta AI на iPhone и iPad';
+        if (meta) meta.textContent = 'Без App Store — значок ставится прямо из Safari';
+        show('appDownloadActions', false);
+        show('appSteps', false);
+        show('appIosNote', true);
+        show('appPwaBlock', false);
+    } else {
+        card.hidden = false;
+        if (inAppNote) inAppNote.hidden = true;
+        if (title) title.textContent = 'Quanta AI для Android';
+        if (meta && card.dataset.metaText) meta.textContent = card.dataset.metaText;
+        show('appDownloadActions', true);
+        show('appSteps', true);
+        show('appIosNote', false);
+        // На телефоне QR-код не нужен — файл скачивается прямо здесь
+        show('appQr', !p.mobile);
+        // Установка сайта как приложения для компьютера; на Android есть полноценное приложение
+        show('appPwaBlock', !p.mobile);
+    }
+    // Горячие клавиши — только там, где есть клавиатура
+    const touchOnly = p.mobile || (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    show('appKeys', !touchOnly);
+    if (!touchOnly) renderKbdList();
+}
+
+var _appUiBound = false;
+function bindAppUI() {
+    if (_appUiBound) return;
+    const btn = document.getElementById('appDownloadBtn');
+    if (!btn) return;
+    _appUiBound = true;
+    btn.addEventListener('click', () => {
+        const p = pwaPlatform();
+        const steps = document.getElementById('appSteps');
+        if (steps && !steps.hidden) steps.open = true;
+        if (p.android) {
+            showToast('Скачивание началось. Откройте файл Quanta-AI.apk из уведомления или папки «Загрузки»', { duration: 6000 });
+        } else {
+            showToast('Файл для Android скачивается на компьютер. Перенесите его на телефон или просто наведите камеру телефона на QR-код', { duration: 7000 });
+        }
+    });
+}
+
+// Ссылка из QR-кода (?app=1) сразу открывает раздел «Приложение»
+function handleAppLaunchParam() {
+    let url;
+    try { url = new URL(location.href); } catch (_) { return; }
+    if (url.searchParams.get('app') !== '1') return;
+    url.searchParams.delete('app');
+    const q = url.searchParams.toString();
+    try { history.replaceState(history.state, '', url.pathname + (q ? '?' + q : '') + url.hash); } catch (_) {}
+    setTimeout(() => {
+        if (!document.querySelector('.modal-overlay.open, .lightbox-modal.open')) openSettingsModal('app');
+    }, 0);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    bindAppUI();
+    handleAppLaunchParam();
+});
+
+// ==========================================
+// 🎨 ПОДСВЕТКА КОДА: библиотека highlight.js подгружается, только когда в чате появляется код
+// ==========================================
+var HLJS_URL = 'https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/highlight.min.js';
+var HL_MAX_CHARS = 60000;
+var _hljsState = 'idle';      // idle → loading → ready | failed
+var _hljsPromise = null;
+var _hlTimer = null;
+
+function loadHighlighter() {
+    if (_hljsState === 'ready') return Promise.resolve(true);
+    if (_hljsState === 'failed') return Promise.resolve(false);
+    if (_hljsPromise) return _hljsPromise;
+    _hljsState = 'loading';
+    _hljsPromise = new Promise(resolve => {
+        const finish = (ok) => { _hljsState = ok ? 'ready' : 'failed'; resolve(ok); };
+        if (window.hljs && typeof window.hljs.highlight === 'function') { finish(true); return; }
+        const s = document.createElement('script');
+        s.src = HLJS_URL;
+        s.async = true;
+        s.onload = () => finish(!!(window.hljs && typeof window.hljs.highlight === 'function'));
+        s.onerror = () => finish(false);   // нет сети или CDN недоступен — код остаётся просто моноширинным
+        document.head.appendChild(s);
+    });
+    return _hljsPromise;
+}
+
+function codeBlockLanguage(codeEl) {
+    const wrap = codeEl.closest('.code-block-wrapper');
+    const label = wrap && wrap.querySelector('.code-block-lang');
+    const lang = label ? label.textContent.trim().toLowerCase() : '';
+    if (!lang || lang === 'код' || lang === 'text' || lang === 'txt' || lang === 'plaintext') return '';
+    return lang;
+}
+
+async function highlightCodeBlocks() {
+    _hlTimer = null;
+    // Пока ответ печатается, блок перерисовывается на каждом кусочке — подсветим, когда ответ закончится
+    if (window.genAbort) return;
+    const body = document.getElementById('workspaceBody');
+    if (!body) return;
+    const blocks = Array.from(body.querySelectorAll('.code-block-wrapper > pre > code:not([data-hl])')).filter(c => codeBlockLanguage(c));
+    if (!blocks.length) return;
+    const ok = await loadHighlighter();
+    if (!ok || window.genAbort) return;
+    blocks.forEach(code => {
+        if (!code.isConnected || code.hasAttribute('data-hl')) return;
+        code.setAttribute('data-hl', '1');
+        const lang = codeBlockLanguage(code);
+        const text = code.textContent || '';
+        if (!text.trim() || text.length > HL_MAX_CHARS || !window.hljs.getLanguage(lang)) return;
+        try {
+            // highlight.js сам экранирует текст: в результате только его <span class="hljs-…">
+            code.innerHTML = window.hljs.highlight(text, { language: lang, ignoreIllegals: true }).value;
+            code.classList.add('hljs');
+        } catch (_) {}
+    });
+}
+
+function scheduleHighlight() {
+    if (_hlTimer) return;
+    _hlTimer = setTimeout(() => { highlightCodeBlocks().catch(() => {}); }, 150);
+}
+
+// Конец генерации — повод подсветить только что напечатанный код
+(function wrapEndGeneration() {
+    const orig = window.endGeneration;
+    if (typeof orig !== 'function') return;
+    window.endGeneration = function () {
+        const r = orig.apply(this, arguments);
+        scheduleHighlight();
+        return r;
+    };
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+    const body = document.getElementById('workspaceBody');
+    if (!body || typeof MutationObserver !== 'function') return;
+    new MutationObserver(scheduleHighlight).observe(body, { childList: true, subtree: true });
+    scheduleHighlight();
 });
