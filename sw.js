@@ -1,10 +1,11 @@
 /* Quanta AI — service worker: установка как приложения и запуск без интернета.
    Свои файлы сайта: сначала сеть (всегда свежая версия), без сети или при очень медленной сети — копия из кэша.
-   Библиотеки и шрифты с CDN: из кэша (у них в адресе версия, они не меняются).
+   Библиотеки и шрифты с CDN: из кэша (у них в адресе версия, они не меняются). В кэш попадают только
+   проверенные успешные ответы — сбой CDN или страница входа в Wi‑Fi не «застрянут» в кэше навсегда.
    Запросы к ИИ, поиску, Firebase и картинкам не трогаем — они идут напрямую. */
 const VERSION = '2.4';
 const SHELL_CACHE = 'quanta-shell-' + VERSION;
-const CDN_CACHE = 'quanta-cdn-v1';
+const CDN_CACHE = 'quanta-cdn-v2';   // v1 мог хранить непроверенные ответы — удаляется при обновлении
 const SHELL = [
     './',
     'styles.css?v=' + VERSION,
@@ -48,7 +49,8 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
     event.waitUntil((async () => {
         const keys = await caches.keys();
-        await Promise.all(keys.filter(k => k.startsWith('quanta-shell-') && k !== SHELL_CACHE).map(k => caches.delete(k)));
+        const stale = k => (k.startsWith('quanta-shell-') && k !== SHELL_CACHE) || (k.startsWith('quanta-cdn-') && k !== CDN_CACHE);
+        await Promise.all(keys.filter(stale).map(k => caches.delete(k)));
         if (self.registration.navigationPreload) {
             try { await self.registration.navigationPreload.enable(); } catch (_) {}
         }
@@ -119,14 +121,36 @@ function handleSameOrigin(event) {
     return networkFirst(event, event.request, 6000);
 }
 
+// Скрипты и стили с CDN страница запрашивает без CORS, и ответ получается «непрозрачным»: по нему не видно,
+// успешный он или нет. Если сохранить такой ответ в кэш во время сбоя CDN или на странице входа в Wi‑Fi,
+// библиотека (marked, Firebase и др.) будет сломана, пока кэш не очистят. Поэтому качаем файл сами в режиме
+// CORS (все наши CDN его поддерживают), проверяем статус и тип файла и сохраняем только настоящие файлы.
+function isGoodCdnResponse(req, res) {
+    if (!res || !res.ok || res.type === 'opaque') return false;
+    const type = (res.headers.get('content-type') || '').toLowerCase();
+    if (type.includes('text/html')) return false;   // страница ошибки или входа в Wi‑Fi вместо файла
+    const dest = req.destination;
+    if (dest === 'script' || dest === 'worker' || dest === 'sharedworker') return /javascript|ecmascript/.test(type);
+    if (dest === 'style') return type.includes('text/css');
+    if (dest === 'font') return /font|woff|ttf|otf|octet-stream/.test(type);
+    return true;
+}
+
 async function handleCdn(event) {
+    const req = event.request;
     const cache = await caches.open(CDN_CACHE);
-    const hit = await cache.match(event.request);
-    if (hit) return hit;
-    const res = await fetch(event.request);
-    if (res && (res.ok || res.type === 'opaque')) {
+    const hit = await cache.match(req);
+    if (hit && isGoodCdnResponse(req, hit)) return hit;
+    let res = null;
+    try {
+        res = await fetch(req.url, { mode: 'cors', credentials: 'omit' });
+    } catch (_) {
+        res = null;   // нет сети или сервер не разрешает CORS
+    }
+    if (!res) return fetch(req);   // обычный запрос, но без сохранения в кэш
+    if (isGoodCdnResponse(req, res)) {
         const copy = res.clone();
-        event.waitUntil(cache.put(event.request, copy).then(() => trimCache(CDN_CACHE, CDN_CACHE_MAX)).catch(() => {}));
+        event.waitUntil(cache.put(req, copy).then(() => trimCache(CDN_CACHE, CDN_CACHE_MAX)).catch(() => {}));
     }
     return res;
 }
